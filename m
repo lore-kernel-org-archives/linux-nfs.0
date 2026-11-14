@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794661678;
-	b=nPHe8vGLugoc9LmAGC+L5ttIyHUZVJlkF9euPiwi6cPJBFVdMDtIgRfQK0PKEWTbZzfB
-	 ewOr+6oBSPREOYNMYstn3W8zCEH4EGvery9myRBqdhXHlaGkkqU8mmJPK5ufxkMca3oYB
-	 CbImEW6lgcNx2R9ucy/8HWU1pAqTNzdVMwLx7Caj/UoA6sqb6YgsLQdwX1NVqfhaoRieQ
-	 AphYC+SCSx2pqgKHCYYY253jnlTg+6UuvAU8WjlSB8F7ch/2j/274w5SaubWkRXoSJ8fZ
-	 XtFGTuOeqorfXtk/BOpynX4Wm8z0w4igxqt4TnN8o02jbHcvSqyLFjStVKATJm3XjJQ==
+	t=1794661685;
+	b=uoPRMDi4JimW/xxHpBslz+VuopyS9XgvyHm3JAW9n+fkhKd9FVyGQUVDQpO8xwCp/kxr
+	 kUUSzgkx3Ky/tvN6NfEn0D1sZZ4ID23wIQeL45Y3adtL5zNWOmixZ73dPBUUplwL9IOYr
+	 c1yuMxuHeJbpo6+3s8UmaYhPXpIpWK/lvoV6zf0zWxyvijeBFinGkEaNM/L3lHrFaVMsD
+	 X7tbUuiMtjs1ZUcP9PesnEL0BpYIw+gNaIITfBzujnN5RWvK89eTlG+7IVW7WdQmUecwa
+	 Bj8DwImujUAK56IvrCppNx4VRRxUYC0DtyHCwxdMMngrrE/flnC9NLGl8vv+oSscW4g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794661678;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794661685;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=4kkI+IPK2+Ut0+1ZoXiEi8rjJhct2bhRJIg1CarRCAo=;
-	b=ZXMCESrm+GCcAvJYtpDiDSIbTJWpE0aypJiQYP6aDM0hZCpGjaMgDS+5BKS+fdjqA6EQ
-	 YVEyXeMLut66sQ6Jo8Z7wvB2q8GjwieGc8Ssly3/7h2w/heZiX2ape78qOvnZGv4EF3pN
-	 CYtgrnYo+7qUQvPw6S7jONBhF9dTUMcxH+9erdmS3piLQG2hp0JrhVgXD7I8qiN1MRJ15
-	 3zsuaVn7wHNJ3+5ZRmAcfdTcHpI6o21uHU1eDGyXM+TCZJOatG8E3aywTCKXcjRYN2+JC
-	 kQLjMCJYB0YFJfV1ZGOLRf3P77lYRlYkRLeUsOWzoVTGyBkV9HmDPI/JJikpzUz30Rg==
+	bh=M+wQ9mIvjJGXRJRbFoASGD8D6MKl3oze995xCAu4PIw=;
+	b=ZtLpRDRj+FnhiznanVm7h5NLm7u5Pcm3jF/zk5dF8E6NHQfnBSSOdAz5xvdgB6Bn7u0s
+	 8p8Zk64jA3MsCQkvn//BaphlyKBgc9CT9eBL0XEc3keyRve95LS5AshBX0UC3NvlKgseW
+	 8rzVuHOUXCt35vuVCr3JDPXqZqOgwm99rfVtKo07LlSmfyA64X4EePMN7byTYboqFhu+r
+	 ITgaH5+dXcpkPnErJzIrqm55kUK5ZWVmOGte/7ehfEC3DLHp67OQu6qXhApbR6Axnmc8+
+	 bHwgqlIhNlx98QBEgL2RUZ4KLI1XMk5BKhA0HEsYK3iXPNofMe8RLJ/ioOGIoDMww3A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hEkWoi0t;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NsZWIZ0u;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83D2C60A2626;
-	Sat, 14 Nov 2026 13:07:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 473766070FAC;
+	Sat, 14 Nov 2026 13:08:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hEkWoi0t
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8C0AC1F000C4;
-	Sat, 14 Nov 2026 13:07:51 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NsZWIZ0u
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9255F1F000C5;
+	Sat, 14 Nov 2026 13:07:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794661678;
-	bh=4kkI+IPK2+Ut0+1ZoXiEi8rjJhct2bhRJIg1CarRCAo=;
+	s=k20260515; t=1794661685;
+	bh=M+wQ9mIvjJGXRJRbFoASGD8D6MKl3oze995xCAu4PIw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=hEkWoi0tyCsc9zadGHLm768O7sYlLi/D+fGyMzmvsQLG0ecR+NMw+wied9l5d5Zwz
-	 gXg/BXMBhAqtrrbzcnX7swbJyRTSoeXkE0/Xj4exo4chOq2rqW8u9NgVvtGNx7NQ4N
-	 tXKYibjQAPgJeWrE1gEMbtIXMLXERqjMNC3NkxnywycmncD6Z6ELQskYJq/tDcjGyo
-	 b7MiLG6d3/YOLC/qD+DFLTnmKp2Eap+cYDtfpnlvFm0Sd20bv+GLE20cwwAUSwJX76
-	 vkqL8xuR//PPoR3nag7/4uwnKL0zHsmwqxxmbWxXcW1V6+IGZWFTG9QrabHpoz3t6k
-	 wNuuL3/EHnOaw==
+	b=NsZWIZ0uyJ/kEeg27LNsarwDMno74uYeR1qvyZgeFqeOAzIo39kAe0MSpeaDBfyna
+	 OG+SkTUFAd55NxkkZY4/tgrlFTOMIlMqstHT23WH9HmxSQHID6HZivP6RTGGasAtEv
+	 ghdyrIYjK3Gq6GDN43kCLZl7rWTXSXciNlNO9nHbFmzAoVc7dcCL6Fvc9EA7GbsEHM
+	 JDKJiOhvg95JFUcodZAZ1CCOfjp/PYgklweHBo4CkLN70q6kRCKVJf5HI0WMNA4lCf
+	 fVobYC0NGlECT/3MARJG5ONmb7zmOAQZxfL/PpE2kk6Jb29ZnuuOdRMC+6AygDXLUO
+	 SOqbbaseGw8nQ==
 From: Christian Brauner <brauner@kernel.org>
-Date: Sat, 14 Nov 2026 14:02:01 +0100
-Subject: [PATCH RFC v2 20/42] apparmor: use fc_init_pseudo() for apparmorfs
+Date: Sat, 14 Nov 2026 14:02:02 +0100
+Subject: [PATCH RFC v2 21/42] nfsd: use fc_init_pseudo()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-work-loop-pseudo-v2-20-98639a2286fb@kernel.org>
+Message-Id: <20261114-work-loop-pseudo-v2-21-98639a2286fb@kernel.org>
 References: <20261114-work-loop-pseudo-v2-0-98639a2286fb@kernel.org>
 In-Reply-To: <20261114-work-loop-pseudo-v2-0-98639a2286fb@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -74,45 +74,45 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  Amir Goldstein <amir73il@gmail.com>, linux-erofs@lists.ozlabs.org, 
  linux-kselftest@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
- Alexander Mikhalitsyn <alex@amutable.com>
+ Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1033; i=brauner@kernel.org;
- h=from:subject:message-id; bh=2+D6KLg9w3laVv0BnjhP1IDdcfwT6twoVX6+ZeNTRuo=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9iKmZKcpwLKbq/umvv9mCX4WuWfO/R+PnjY3u1b0xy
- aJzTtb4d5SyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzk1w1GhpYuUdG4qi+fP0qp
- P5/cI7ND32rq574Xhq4Gah0nZWLEwxj+Z3padK6OzZ+r0dD959lvmcWH1WL54+qWl5q+bm665Hu
- KCwA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=938; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=333wt1W/Zu6jr+pk5l0cVZ7RaBW0U1/QWczclcq5D2g=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9iKmLTHPo2r7Kfu7yRemXBPUWve7/actZfm6rc/k25
+ jem724e6ChlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIRR5Gho4FIlHz9++53fnK
+ eYmA2xVfqS8fnermTZ72xHcPu+nShFOMDBvE1IVLnCTmP3kZv4jlPnfC5t2t7WarJxSWKke6dZS
+ u5QQA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize apparmorfs as a pseudo filesystem. This raises SB_I_PSEUDO and
-also SB_I_NOEXEC and SB_I_NODEV. apparmorfs never holds executables or
-device nodes.
+Initialize the nfsd filesystem as a pseudo filesystem. This raises
+SB_I_PSEUDO and also SB_I_NOEXEC and SB_I_NODEV. It never holds
+executables or device nodes.
 
-Reviewed-by: Alexander Mikhalitsyn <alex@amutable.com>
+Acked-by: Chuck Lever <cel@kernel.org>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- security/apparmor/apparmorfs.c | 2 ++
+ fs/nfsd/nfsctl.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/security/apparmor/apparmorfs.c b/security/apparmor/apparmorfs.c
-index a993664672173..351ea3a7120e3 100644
---- a/security/apparmor/apparmorfs.c
-+++ b/security/apparmor/apparmorfs.c
-@@ -21,6 +21,7 @@
- #include <linux/rcupdate.h>
- #include <linux/fs.h>
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index f32311f2d7cf9..ce2666deddbd9 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -9,6 +9,7 @@
+ #include <linux/namei.h>
+ #include <linux/ctype.h>
  #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
- #include <linux/poll.h>
- #include <linux/zstd.h>
- #include <linux/string.h>
-@@ -263,6 +264,7 @@ static const struct fs_context_operations apparmorfs_context_ops = {
  
- static int apparmorfs_init_fs_context(struct fs_context *fc)
+ #include <linux/sunrpc/cache.h>
+ #include <linux/sunrpc/svcsock.h>
+@@ -1375,6 +1376,7 @@ static int nfsd_init_fs_context(struct fs_context *fc)
  {
+ 	put_user_ns(fc->user_ns);
+ 	fc->user_ns = get_user_ns(fc->net_ns->user_ns);
 +	fc_init_pseudo(fc);
- 	fc->ops = &apparmorfs_context_ops;
+ 	fc->ops = &nfsd_fs_context_ops;
  	return 0;
  }
 
