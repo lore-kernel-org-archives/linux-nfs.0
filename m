@@ -1,106 +1,45 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794664330;
-	b=WO/CemhhTjDpIaoaNY2ZX17FJjxhviuD9pUgk43c4b+numLQbOWEnZIGNMgZ1HJEjSFJ
-	 7NiZ5eInHc9QWY6RNHameBDqdVGb1V4/UTWA0pAqvZTWgYt1FsYXtQrgsX6XwGwCUQ+6j
-	 eNu5BZ3w/RGpOnUNi+FLxkkIc9JSpbYsF87ZoE3fG4ye9R3VQ5xngzyXjBLBwX08JqXUD
-	 6fk36GHxGTAhgeEj5iPS+2gMvfD80KYqz+qmVy5SU0YN8RQxWPlO+SlVXqUv/s1eEFsr+
-	 pWVAv9YijG2FH10wOp3ZACIVJRUauavXsfK317rUbBsWxaD3otp/LejFkM6JuBz3GPQ==
+	t=1794664496;
+	b=yP7+dX7p3iS9wbCgHDGUVq641Nxxuk2mFjKYY5pVOZUEGPJPgHF3JhNF97/3CoYMLmkz
+	 Mkq6PTiBvZej2Q7RcD4E3BMaK0Q4dY1uE9P5s2Cp7jFS+A77MVAT8FC1J5mAt5koodxSV
+	 uvnF6lvc3i6BeIdqtBPQ7MlwpZPAnx8iU9ztXMhLIOXld3hcsq7ZXagWl+aw+0VL7pmoL
+	 69kh7tzIJsjqTukSFSS6/72hnMvigQDcQi2MB8T71IhbCQbo3x0KQHs/x1CYU2SvZNRGM
+	 x7GO+SINOfsK/gmYVQZ6j7XTw2oqpM+kJc0pW8SySimJPmOF+nD53MbtgY5XqDo1kHA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794664330;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
-	 Content-Language:From:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=tHza3z4s45pIJ2GPKijovhB9sBTc830I4fCUe8B5OBU=;
-	b=n770sLUog9QDJoyM7EI10Y/+QIyOeGPoZc9lZUdY6u+6tdozV9gVQnfhB3wrKTp+fhSZ
-	 ugabrTXrQxp2/hb9xjg+H8mLlJ0cPyYsaEm+QL7r1rRSRe5FWKAmD0XVJOMrNLBmLh4P5
-	 RUq8dZPAiNG2haLLSS1yrfgadA8DvnevHWN44w8za+p9EHt38v4BEevUVcDt/oiY/UTYb
-	 GueoYVVH4f/n9TYzQ94dH44AuGTfMVPtcw7xRoJ3Eo/ASeVsS6S0HOJmuZV4EO7nIpRVp
-	 tZ7Jg87fVBxlMNTZsKIq4DR4pEHTo3IbNjNFYBmbYketwiDX5XgCOdzY0PdVWnX1ybw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794664496;
+	h=Received:DKIM-Signature:Content-Type:MIME-Version:Message-Id:
+	 In-Reply-To:References:Subject:From:To:Cc:Date;
+	bh=I6J+1H3vQpLdJ7UVpJ/tC85ye3HYuCATNIJGMbrXQJM=;
+	b=q1CZ4i+mmH7K20AAIyHJtswA2VFZqxHuZuIbP6uRX8Q+KFJx0jzV2Yhix46Fjl2JCCl1
+	 R7pNlnSnqt9uX0l6qz1gP1UYlDEGVC4IUZugkDAH7fomc7aK7vAybU0eT9w5hpPJ/Rqwe
+	 MyyEwtr9yM2uaoEwOQvp1Qbf7d3CMvZtjij/CdVYSYlhGtNRwvEfhUTma+iVrKVQ+uwdX
+	 lZwDXr+SHhCpllkAJ8g3gelLMj84PnqRQKCRqjKhV6Swhh/A2YQe6EVIJEK4UinR10QzZ
+	 ZDmwhaiI7GaX0Ro7FirDObnlgbuEz0vwSYZYDNtTZZZIvSM/xAT12hQtnfT3s188zsA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=fKxC9SAZ;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=ULamVJcx;
-	arc=none smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gm28Ha6j;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4532606A32D
-	for <linux-nfs@vger.kernel.org>; Sat, 14 Nov 2026 13:52:09 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D4532606A32D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 604C3606A32E;
+	Sat, 14 Nov 2026 13:54:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=fKxC9SAZ;
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=ULamVJcx
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794664328;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=tHza3z4s45pIJ2GPKijovhB9sBTc830I4fCUe8B5OBU=;
-	b=fKxC9SAZ4rWo3MQDiYe/XeskNv1U0VYyP0znwJdj85ARaAG9VewWDr0ff7DwDDga1ljUJC
-	uONG4Ld1645JSkIlrGQUc6GIJPb4c9tuMEPaBuoudQWMxaSwxG3ARn+/RLHwRxBbgn/d6G
-	Pqmvx8Y5CTisl9UjGg73uPe2fpEBzQQ=
-Received: from mail-qk1-f198.google.com (mail-qk1-f198.google.com
- [209.85.222.198]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-660-p8qREBXpMYe131rd85E__Q-1; Sat, 14 Nov 2026 08:52:07 -0500
-X-MC-Unique: p8qREBXpMYe131rd85E__Q-1
-X-Mimecast-MFC-AGG-ID: p8qREBXpMYe131rd85E__Q_1794664327
-Received: by mail-qk1-f198.google.com with SMTP id af79cd13be357-93f37c94ceeso587785685a.1
-        for <linux-nfs@vger.kernel.org>; Sat, 14 Nov 2026 05:52:07 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1794664326; x=1795269126; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=tHza3z4s45pIJ2GPKijovhB9sBTc830I4fCUe8B5OBU=;
-        b=ULamVJcxyriGxgX1D5N2gZuPBE+Jp5cruuIUqeK/VScTohIx8mT3lEJIE+7ddQJzp7
-         /+ZP0/xbhArIfS6I6BbMUV/5bKHxAK9CzfbjhfFNQHYi95UM8KbcM1yneBCZbGqyEC1M
-         BECwQ4nc8kav0BYJfS20nuljYenKNESBd+JrvNwvBkHIN07NflHVjL6W7vd4Is0op0KE
-         BALCiP1r1wiVPGBHLDw91YcxnZzVS2jDEoO6KiroHm6SCB19p+0DDMGzJifM++gjGSMg
-         t7RfONn5mMhXh9zcqqb4IjUtDurEFlr57ckf06EiUrxWEV0JsohHWMHZ2aJQZcM4y8IY
-         MuzQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794664326; x=1795269126;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=tHza3z4s45pIJ2GPKijovhB9sBTc830I4fCUe8B5OBU=;
-        b=1C0pqGfEyuUQsztgZCEWunmBh0/4vpHvdyO0w1uvEiqWjGqmTztcVeyW/542RQhPU1
-         q3ggSwwiWLn1LXOs6ZkUP89d5WYm6/i14BFtKq2DmZ0/0pv+jW2p1R+5cDIGYfyayUIk
-         D2TgUJSphXCdC8FYtvrQAxh1fGgNV0WxxvRXCERX68pttSA8TdARDpnZsz81SHBjmQNH
-         YNKGknBqxRXEhqWERqhIRUavtVrDDVnPC3iI+/lJDkKv7u7+xKq5fbHNA9baBKz794CA
-         s338e88elpYqM0bm3+cDhU642T7nZ59x5etnuqduUdPx8WHneLZMeBEHkuFUAbJP4wjL
-         p+DQ==
-X-Gm-Message-State: APuU4Z922qxXHxlI6owqM1lWY4h2OvOYZb87uDvQPBzPFKdE4U4I5Rvx
-	RwJpVz9guwGJMLXG+c6p6RgfXQ6VkjL6zEKFd3Rz9INA4QjiJWH/kW5YFfB1h3e6r+A08ZvyfGy
-	tVfDV//b+rpd1tHmDyVtLbwIjexEbxSt9j06btSMEfIvWi9DR+AZ03K0IsKK5TQ==
-X-Gm-Gg: AYBFou2e50SttkggUwtDP1IboeJfD7s1RA7ts91zsTGdH+6syBAF8JZbvX90bL0hGQO
-	tfGqiAQfNRcWejyGHBa2LlnNOel0BSVNCyEjLJITwQhwkV2ZfvPlrrk8LnbCBXwbwrjyVirPem4
-	92I9VqxPfafmYmE4u0FyqLHtpM6UoIR3rA0nUvtqHVDz+J1gU4lwTe9VjWs/LvcNpYW1KATwhf6
-	DMsfd96gCprwM9h0JhPTWTU6WGB8ct86H3qDacxFj3g2v9i8VodIf9VHEXa8I77Qzx65QoLP1xg
-	26iPvS7X/y9E1WBsXKvwTPSWP7YhBy+5iI4WctxUdnBu+wRlKw+oH6WdLr6vjaLFw63XSlIWcg5
-	ZpgZ3l4jM7Wu1o+8OsFxcxt4qFN544inEEzWIiskc6L1eYC9a
-X-Received: by 2002:a05:620a:440f:b0:93f:3193:ac09 with SMTP id af79cd13be357-9493301ea95mr1456540985a.15.1794664326616;
-        Sat, 14 Nov 2026 05:52:06 -0800 (PST)
-X-Received: by 2002:a05:620a:440f:b0:93f:3193:ac09 with SMTP id af79cd13be357-9493301ea95mr1456538885a.15.1794664326209;
-        Sat, 14 Nov 2026 05:52:06 -0800 (PST)
-Received: from [172.31.1.12] ([70.105.240.105])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9494c836156sm411016985a.19.2026.11.14.05.52.04
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 14 Nov 2026 05:52:05 -0800 (PST)
-Message-ID: <ae6e8d5e-a7a8-49a0-8f46-65e3ece39a24@redhat.com>
-Date: Sat, 14 Nov 2026 08:52:04 -0500
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gm28Ha6j
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AC8EC1F000C4;
+	Sat, 14 Nov 2026 13:54:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794664496;
+	bh=I6J+1H3vQpLdJ7UVpJ/tC85ye3HYuCATNIJGMbrXQJM=;
+	h=In-Reply-To:References:Subject:From:To:Cc:Date;
+	b=gm28Ha6jFbZAVZELeCoAiv8yQmKhg2t27IzqaM5E6DHf1m/iHwaa05oOee2NvjSBl
+	 kc6ZaW7X7pNIXQAoh9xnp9MBMni3b8MRxZdEx/eTPDoUQsu/YruOICy0eelWOEyqgn
+	 3P8g8niOi/8NoL9V5UYuZAEp6DyvrAtH4YeuzU3fc3guDfP87KZmI3TI0lTfqozu4+
+	 ZpGn4biS09ByqImLH4ZYYUNpv6w1MO+E82dAPetup0Rc/sR/ssg0FbIV+aiwW6MIcv
+	 EBQr5L1AgJXIgzU68vHxaHLJx8/fkvXF+Z3xx/GTGkbG1HInFcXsLmVQOWzwu1EgJY
+	 hMWqsgyXoIXvw==
+Content-Type: multipart/mixed; boundary="===============4078380530865713043=="
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -110,74 +49,69 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH nfs-utils v2 0/4] exports: add support for new read_io=
- and write_io= export options
-To: Jeff Layton <jlayton@kernel.org>, Chuck Lever <cel@kernel.org>,
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
- Mike Snitzer <snitzer@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-References: <20261029-master-v2-0-32bfc6ac16da@kernel.org>
-Content-Language: en-US
-From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20261029-master-v2-0-32bfc6ac16da@kernel.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Message-Id: <bf4a6d1a8af90f3fac8754638a5f9b02fb40c0a066237181d456a25ac7f2c606@mail.kernel.org>
+In-Reply-To: <20261114-work-loop-pseudo-v2-4-98639a2286fb@kernel.org>
+References: <20261114-work-loop-pseudo-v2-4-98639a2286fb@kernel.org>
+Subject: Re: [PATCH RFC v2 04/42] fs: add SB_I_PSEUDO
+From: bot+bpf-ci@kernel.org
+To: brauner@kernel.org,linux-fsdevel@vger.kernel.org
+Cc: jannh@google.com,mason@kernel.org,josef@toxicpanda.com,hch@lst.de,linux-block@vger.kernel.org,linux-kernel@vger.kernel.org,linux-nvme@lists.infradead.org,viro@zeniv.linux.org.uk,jack@suse.cz,linux-scsi@vger.kernel.org,target-devel@vger.kernel.org,driver-core@lists.linux.dev,linux-mm@kvack.org,bpf@vger.kernel.org,linux-security-module@vger.kernel.org,selinux@vger.kernel.org,apparmor@lists.ubuntu.com,linux-nfs@vger.kernel.org,netdev@vger.kernel.org,fuse-devel@lists.linux.dev,linux-efi@vger.kernel.org,xen-devel@lists.xenproject.org,ocfs2-devel@lists.linux.dev,linux-s390@vger.kernel.org,linuxppc-dev@lists.ozlabs.org,linux-usb@vger.kernel.org,amir73il@gmail.com,linux-erofs@lists.ozlabs.org,linux-kselftest@vger.kernel.org,brauner@kernel.org,alex@amutable.com,ast@kernel.org,andrii@kernel.org,daniel@iogearbox.net,martin.lau@kernel.org,eddyz87@gmail.com,yonghong.song@linux.dev,mason@kernel.org,ihor.solodrai@linux.dev
+Date: Sat, 14 Nov 2026 13:54:52 +0000 (UTC)
+
+--===============4078380530865713043==
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Content-Transfer-Encoding: 7bit
 
+> fs: add SB_I_PSEUDO
+
+TL;DR: Nit only: the fc_init_pseudo() comment and commit message claim pseudo
+filesystems never hold device nodes, but devpts and binderfs do and must clear
+SB_I_NODEV; the wording could mislead.
+
+> diff --git a/include/linux/pseudo_fs.h b/include/linux/pseudo_fs.h
+> --- a/include/linux/pseudo_fs.h
+> +++ b/include/linux/pseudo_fs.h
+
+[ ... ]
+
+> +/*
+> + * Common initialization for all pseudo filesystems, mountable or not. Their
+> + * regular files are kernel interfaces. They don't store data and pseudo
+> + * filesystems never hold executables or device nodes.
+> + */
+> +static inline void fc_init_pseudo(struct fs_context *fc)
+> +{
+> +	fc->s_iflags |= SB_I_PSEUDO | SB_I_NOEXEC | SB_I_NODEV;
+> +}
+
+This isn't a bug, but is it accurate that pseudo filesystems "never hold
+executables or device nodes"?  The same wording is in the commit message.
+
+devpts creates character device inodes in devpts_pty_new():
+
+    init_special_inode(inode, S_IFCHR|opts->mode,
+                       MKDEV(UNIX98_PTY_SLAVE_MAJOR, index));
+
+and binderfs does the same with init_special_inode(inode, S_IFCHR | 0600,
+...).  Both filesystems are converted to fc_init_pseudo() later in the
+series, and both have to undo the flag in their fill_super callbacks:
+
+    s->s_iflags &= ~SB_I_NODEV;
+
+This works because sget_fc() ORs fc->s_iflags into sb->s_iflags before
+fill_super runs.  A filesystem that has device nodes and relies on this
+comment would not know it needs to clear SB_I_NODEV, and its device nodes
+would fail to open with -EACCES from may_open_dev().
+
+Could the comment say that SB_I_NODEV is the default and that pseudo
+filesystems with device nodes must clear it in fill_super, or could "never
+... device nodes" be dropped?
 
 
-On 10/29/26 8:10 AM, Jeff Layton wrote:
-> This is the companion patch series to [1]. Chuck suggested we change the
-> export options to read_io= and write_io=. That's the only real change
-> in this version.
-> 
-> The last patch in this adds a new nfsd-iomode-advisor script that
-> watches various stats on the server and advises the admin what mode to
-> use.
-> 
-> I consider the advisor optional as it was largely vibe-coded. I'm not
-> sure I'd trust its advice that far, but it's probably better than
-> guessing. I did test it on a range of different machine types and it
-> seemed to do the right thing.
-> 
-> [1]: https://lore.kernel.org/linux-nfs/20261029-export-iomode-v2-6-fe8ec6251a36@kernel.org/
-> 
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> ---
-> Changes in v2:
-> - Rename riomode=/wiomode= to read_io=/write_io= to match the kernel series.
-> - Link to v1: https://lore.kernel.org/r/20261027-master-v1-0-6f1f7a35a83b@kernel.org
-> 
-> ---
-> Jeff Layton (4):
->        exportfs/mountd/exportd: track the svc_export policy highest attribute
->        exports: Add read_io= and write_io= export options
->        exportfs: Display and document read_io= and write_io=
->        nfsd-iomode-advisor: recommend read_io= and write_io= for an export
-> 
->   configure.ac                                      |    3 +-
->   support/export/cache.c                            |   59 +-
->   support/export/export_policy.c                    |   29 +-
->   support/export/v4root.c                           |    2 +
->   support/include/exportfs.h                        |    3 +
->   support/include/nfsd_netlink.h                    |   12 +
->   support/include/nfslib.h                          |   14 +
->   support/nfs/exports.c                             |   51 +
->   tools/Makefile.am                                 |    2 +-
->   tools/nfsd-iomode-advisor/Makefile.am             |   14 +
->   tools/nfsd-iomode-advisor/nfsd-iomode-advisor.man |  232 ++++
->   tools/nfsd-iomode-advisor/nfsd-iomode-advisor.py  | 1198 +++++++++++++++++++++
->   utils/exportfs/exportfs.c                         |   34 +
->   utils/exportfs/exports.man                        |   22 +
->   14 files changed, 1671 insertions(+), 4 deletions(-)
-> ---
-> base-commit: 0ed4324cbbb8020039d338d597c1422a980f7085
-> change-id: 20261014-master-b5afd69e3772
-> 
-> Best regards,
-Committed... (tag: nfs-utils-3-1-2.rc3)
+---
+AI reviewed your patch. Please fix the bug or email reply why it's not a bug.
+See: https://github.com/kernel-patches/vmtest/blob/master/ci/claude/README.md
 
-steved
-
+CI run summary: https://github.com/kernel-patches/bpf/actions/runs/43599461726
+--===============4078380530865713043==--
