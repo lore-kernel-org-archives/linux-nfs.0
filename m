@@ -1,48 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794653301;
-	b=BWmA5i4GQSy5AERzJ1qCgN6EOR+9Z4ImOJJyWoDNgTALh02HfKkiQtlDqW1C97ZLIfzx
-	 CNMvg3ouM0M7Bf/YxGFcUlnVmDMx/4Nl0MpQWmtO/tYFDROM2R/Ek629gs/NMGeTliijc
-	 +O3AzvBcWIfqpJEfE8fd+6oIWJ/HJLI75XfGU52tn4Ewzy7aaaU3hmNbkDoexva674TU0
-	 Ua3MCkHuF6Iv740oU1pPyuDzQUMpYVc2FGurWqhDkwWC6j4oYS44R0OmFJPIi1I6UmUW6
-	 COcxoAOWqIVSkxrjS96yr+1WUS0M0p++Qe1PPXHP+Nc0R5/SLAA59tHEXp10JXyEfBw==
+	t=1794653313;
+	b=gHImyo9oe41TSTmstu3+In0PeAnTw2GbvGWrajcUdsbbaL8YROx8FHC+ogf+Nj5nee9g
+	 eHiBxLkHxoqulZopE9FDO3YiuIJ4oY4tvbZABCLGaJ7aUbWfZG748eBxlqdjuhk2eSK5E
+	 0rdjrBpK+7Xl8voIac5HoQ8XOcvPtFUaPmeMHIN6iM9zm7HqtM3uLbzjQKrq+NBsI1GeE
+	 CEM+FrD7nXZ7RHZiL2E/Wc0K6E0c+5kZItAv1HcuvjyDA4WAJrU5GREFN90uUvM3AZNXV
+	 pl7cj9AYodupDbrhjKz1sZcZ6d5AsOudA4OmL6XzsFsufXI9ihQ/bpHHtC2CwxiTHBg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794653301;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794653313;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=pjbhVx2fs5v7PEkUYOgJa+aS4bC1ZGO8oQVzHBWC01U=;
-	b=QAjSL+4UMiEOLyG8B/fhsSnhVdU5qXgJTr8S8Sx3mahrsoe1E0PqtL9K32y3AoHyKceh
-	 PvAhIPLNKhA/Cf4SZ2uvCiqqwGprsqajyU6YSISNbIVvmP8GCq4sNR//zNRvTBs+GXx4K
-	 d2gwgjW40EqwT+5Uah4uDQX7eoyuKe3DDmponBaLoG7PG2whrjozJbSgcRqx+qlNX38+T
-	 GPZKt6NnRk1GH5p5I+EzG3ngEZGd+jFw4qx4Spl+e4wvd48DCfRN1ganWQVvBlGSfAOyL
-	 /Oq/8/RKupHU89KBnsl3DzdKGVbYN6ZzzIc8mo3MWIrVRynHrMDRhCgXRSwjGkXQ+tw==
+	bh=vlnGjiz0WitO6a++5wfKz3FIFE4QfP7og6wENObjkjQ=;
+	b=z9Zyg1hraQkR4V8epnKq9TcTioD8q95lQ0Jj47tJ+j0RytC7Wxh89LBghNGcjm6mU/03
+	 WqHV+J06FVW6pD0lTKpE7wCRROiNByL1IP4ueotT8vmIiMt5OMQpv2Ubaij92i8mWOZ8E
+	 8QNUIkCdCBHtDrL66uDI8WvqKbQMNuF+QRT1nBolkw1wN51UU51V1VatEK7JyX4qUfC+V
+	 UbhP+rTejxoD3d6fEKpAnFy51S5evuJ3C9TQDqEEYe3b5Jjl5ygonYZ6HvTkWh+Zz2YEI
+	 hsI9cRxPfwI2Prc0Ln4rHSb9gCNnzh8BW6faG/w+XEMvoKKfMszQHD/U+skNwRs542Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Af+KKCs4;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YAmKiFKv;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0BF060A6F71;
-	Sat, 14 Nov 2026 10:48:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86E14606B4B3;
+	Sat, 14 Nov 2026 10:48:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Af+KKCs4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB7AC1F000C5;
-	Sat, 14 Nov 2026 10:48:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YAmKiFKv
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A92A31F000C5;
+	Sat, 14 Nov 2026 10:48:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794653301;
-	bh=pjbhVx2fs5v7PEkUYOgJa+aS4bC1ZGO8oQVzHBWC01U=;
+	s=k20260515; t=1794653313;
+	bh=vlnGjiz0WitO6a++5wfKz3FIFE4QfP7og6wENObjkjQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Af+KKCs45CAl7fomaGE+uUOySiwEadp9iG1LotBHwhmhbghDQTIHCPSuh6eDy1e0P
-	 Fnd1yVYV2Y5wDitIEf/NJcz++yTe0hJZbxOjRSoaQMibUYt4hRs15JM/1YKCmWuwHs
-	 3hjcXUrJjY4kESZeln2Z+kqoXaLfu/Rin3xwffDJbUAG9liYRqNnu/4HZRUBCHGmil
-	 ef8H4xARIwaAZM0JMbVOL2nhyeZWBNJj5g6BcBLFmyUsVhRxG5HpU9MplP3aYwCqXo
-	 m2gm6RCzHr5UE46ZXE3xH8jPlFrd7uZBmAgT5xivoAioLXGpHADKB3F4ybToeszXwK
-	 unVsVQJuFNETA==
+	b=YAmKiFKvxF2dqJ70rHRHIFzWFOSENglPJ7iVVtlJMeJPizgjDyjwhj1/ROXABd4Et
+	 bS2LB9Ar8T/0BNx16VCKlFg2fabI/kYgKN6KizzxYI5hiXrnQTHWsqMD/vVhp0iJw6
+	 BSh3zGBgjYZNG2gGvg840yNfMmHJsvEL8e0NiGtV60KvyTSoQnhMOfIvmGvHR/12L1
+	 6O92HQnZ5CbQImtytcFhNmkbwvgKXh/wZFcE7DrlN8z5jJwVu0pRBV+DH48kGKy4a6
+	 uhb9TA2ol473UTjKLxFsdZUDTZPbBtK2UOzRFmB4BQI/sDP67dC+HHuUTOorpen3/E
+	 JmS8GlEYJRJ6Q==
 From: Christian Brauner <brauner@kernel.org>
-Date: Sat, 14 Nov 2026 11:47:16 +0100
-Subject: [PATCH 09/12] coredump: take freeze protection for the truncate
+Date: Sat, 14 Nov 2026 11:47:19 +0100
+Subject: [PATCH 12/12] nfsd: take freeze protection for the truncate on
+ open
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-work-fs-frozen_writes-v1-9-f5ae61c898b1@kernel.org>
+Message-Id: <20261114-work-fs-frozen_writes-v1-12-f5ae61c898b1@kernel.org>
 References: <20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org>
 In-Reply-To: <20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org>
 To: Jan Kara <jack@suse.cz>
@@ -68,47 +69,57 @@ Cc: Shakeel Butt <shakeel.butt@linux.dev>,
  linux-nfs@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1200; i=brauner@kernel.org;
- h=from:subject:message-id; bh=34ncq8Kdq+MSTLVnNDtgt7r/DShig8xHabTi/tdVmLw=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9sHE//KxCTm/yQQbrTLaAG2s4RYXWfBTX5mt5mD7ZT
- 2gfb7NYRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwET+PWH4X+bDXclb0HDtNpeZ
- 5PPGQxfuqW20XvRg28kO7XU7H+XMaGJk+NGZaeWr687tmjInzW3nouY5zUEmt8+0ccY1NunfOPW
- QCQA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1520; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=d7TUoTxYNm2vxq8SD7MXgIqBY32W95I8i/PEQ3ekloQ=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9sPFiW6704Ye5dNmFuomL3BbsvtPb+kPxGdPsVa67P
+ 7o82+3+p6OUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAi174z/LMOSc6Mqtz59FDO
+ 3c8h5icXPbZ7tY73LsfkZuud07ee1rvEyPBrFbv4LU3zRP5kzytbKn/yzmRlu/9aLmLORO6HIS/
+ 6wlgB
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-coredump_file() truncates the core file after filp_open() returned.
-The open took freeze protection for the create but dropped it again
-before returning and coredump_write() only takes it for the dump
-itself. So a freeze that lands in between lets the truncate modify a
-frozen filesystem.
+An OPEN that truncates an existing file ends up in nfsd4_truncate()
+which calls nfsd_setattr() on the already verified file handle. For a
+verified file handle nfsd_setattr() leaves fh_want_write() to the
+caller but nfsd4_truncate() never takes it, and do_lookup_open() has
+dropped its own write access by then. So a freeze of the exported
+filesystem that lands in between lets the truncate modify a frozen
+filesystem.
 
-Take freeze protection around the truncate like do_ftruncate() does.
+Take write access around nfsd_setattr() like nfsd4_setattr() does.
 
-Fixes: 14da9200140f ("fs: Protect write paths by sb_start_write - sb_end_write")
+Fixes: 9f67f189939e ("nfsd: notify_change needs elevated write count")
 Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/coredump.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/fs/coredump.c b/fs/coredump.c
-index 82ef9d115999a..cc6a0c7e48ce2 100644
---- a/fs/coredump.c
-+++ b/fs/coredump.c
-@@ -1060,8 +1060,10 @@ static bool coredump_file(struct core_name *cn, struct coredump_params *cprm,
- 	}
- 	if (!(file->f_mode & FMODE_CAN_WRITE))
- 		return false;
--	if (do_truncate(idmap, file->f_path.dentry, 0, 0, file))
--		return false;
-+	scoped_guard(super_write, inode->i_sb) {
-+		if (do_truncate(idmap, file->f_path.dentry, 0, 0, file))
-+			return false;
-+	}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1de6c6d757c3e..e561903b9180f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6681,11 +6681,19 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ 	struct nfsd_attrs attrs = {
+ 		.na_iattr	= &iattr,
+ 	};
++	__be32 status;
++	int err;
++
+ 	if (!open->op_truncate)
+ 		return 0;
+ 	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
+ 		return nfserr_inval;
+-	return nfsd_setattr(rqstp, fh, &attrs, NULL);
++	err = fh_want_write(fh);
++	if (err)
++		return nfserrno(err);
++	status = nfsd_setattr(rqstp, fh, &attrs, NULL);
++	fh_drop_write(fh);
++	return status;
+ }
  
- 	cprm->file = no_free_ptr(file);
- 	return true;
+ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
 
 -- 
 2.53.0
