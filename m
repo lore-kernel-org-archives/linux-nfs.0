@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794661664;
-	b=YWYgIi74u0hykKmeds5qSz1i524gPz1VKpU3P/KlUv4nbWN+lIytC5UowuuRPUHj1Th9
-	 Fb5j6U3zc/uwTMAwpnCBMQMIxmV66kNLPxqQ2WmNiPCY1qQ8YkXmGqDmu9MPDKvNzrT++
-	 /DGAWO0xcxlGX0oSVyhg1XX6MYavjcfVO+mltcRe+o3Q52C7bD75L+jfoAYwxtWS2EJA7
-	 pbkDbgZz4zmhPJYx/rafKxTSEAFmTvmuHCZt8WEdZebLKTiHMX2U0B7lN1Uo3ITZmEaj1
-	 zsRYw2on0e+6zxJc5csANSFw3PxlL5tIbWEPnuoGoITvS34Am4t8qqZm3BcubxC330A==
+	t=1794661671;
+	b=Yh+dz2TgJ6P0v7x2BxolQVm72bjDdiyeVY66cRzuh1UQ2yFlnoADWwXo1VWgT3sYqRg4
+	 I0iK5BhxTs9GUr27hqNr9waXjr8DRTeHHVW4adPSky1lZVW/ST24zYeZhp0RX/j0mx7od
+	 8Lb16etCJIDlObVUQGCn8rBF5ldBILNsPv8RE7o5YxjC8OYymgsIghNu8ardi0P7QbIDA
+	 ZhsTgzJ+t10Vsy9anDZ8NPm5JZ3M1T3faZQGb/5o7DMLajs8mKxRguEcBC2Ydwj+WVyjr
+	 J3Gfsvj6ECSXRIrIxfj8DA3ipuE1C//0qgV/i279RbRm/5DW67GDQ+KCYcPJWiD+dTQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794661664;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794661671;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=PsEZAEo2EWjwlrQyS8FDrkYLrSxc4EoXaQ3VAa3T0to=;
-	b=45rYBaYtD2uxQgwKEHraqMJM5n3rkpo/AYurQ3ofNYjR2yeBo99zLfHokLCR8AkbvHpJ
-	 pt9ptPEvPd2SvTR3wfutSEDIG+llIXl5fUz543XNi1MW7Y4Ey0n6oufhr2AujRw75KshF
-	 pzCQ9bi11FOxk4Ec5Q9iXTs1QwlLgcsNUzEcfMbQn4QjUOg9+C5gAT1v9pzYTHbebAUT9
-	 pb+z2B8PeaTcQ4lcT15HIm30ZIfjdJlj5q5+S8fJKVbj+RgPM8IWUbh3bN9FqIurXwSM8
-	 yZeIiBqqCLfDEt10A1b9N7bZyZFuTsEp/byLoqWBg5W1OHrfiCwPLA4XnDY0OsMCirg==
+	bh=HLEBqcSKp1qX1T09y3XaYhOvlZUW+haNA06sn1fKMTM=;
+	b=gXf49JydC+XGXU2B/NRRO1ktxeW9ZqtptpIIvsSI038VvORNwMnSmDY9AAmgyWiwlUYt
+	 1eCoS8mZ4XUEzkgch2vDZlbxwxLploCo9O7+3Cct3jKXYV0UnYyHT4Si7htKbXDqGkHjr
+	 TKpHJJrD/pCBJG33nM3Yuj5E1iYfyLbK5O3FsRUl5W9RdrI92FpnBaunK7IPaFSrBMVHS
+	 WRAhCXc2PNqdvJtPxTlx7Z6iawV9SjqSLuz3pmY7fLNuL+uxWb5aAODWD9kR55WHdZ1yn
+	 VfVc+FQErapE9nxAeF9QLIYklZTvh7YBKI25S+sI7i3E7PP6QSKIkc9Iabe/aF4x/Cg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RP6bdqxg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ji+nEVur;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20CDB606FB2D;
-	Sat, 14 Nov 2026 13:07:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28F00606B0CE;
+	Sat, 14 Nov 2026 13:07:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RP6bdqxg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 254A51F000C4;
-	Sat, 14 Nov 2026 13:07:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ji+nEVur
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 377B01F000CA;
+	Sat, 14 Nov 2026 13:07:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794661663;
-	bh=PsEZAEo2EWjwlrQyS8FDrkYLrSxc4EoXaQ3VAa3T0to=;
+	s=k20260515; t=1794661671;
+	bh=HLEBqcSKp1qX1T09y3XaYhOvlZUW+haNA06sn1fKMTM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=RP6bdqxgYdTOvKQFb6NUJlAnzP0iuFZn14JV3dopj4eOhvt4mal1MYZtl7BQYCoxt
-	 w45XbT2grNM6Qg55/tsCLUdM0CQBOxLR2Kunja7yy54lP9Qfg63cbpj/uCek58LMdr
-	 2g0icThdvpsN4HTsfTKz9VeiMePWjWf1Q1K5NnEjU8lTRxQrEHOb8z5qeiSteKne2v
-	 cZsD/rPxnGg04mAtEBHiWHv5l/XXKkWr1ku1sBIHTZe1CFwHTqP1ghScoLp+fr2OPo
-	 fJrxBzLLgHTvheGhtWCqgnNRz1198UueTs5pHbgLcHIkedb4JvrikevLf2qm5DDpBH
-	 /871dihUSqoKg==
+	b=Ji+nEVurWmAWGlYK/nkfcItaW59n2bZXGZcxHBK4OdfGaK8u3mxnvdkxxHgDIydSr
+	 p/UqYko0xoSz4+2DnS47tPHRl2jWXh7tXIePEIQLB3C3jGbWQ9Au7YS1vvY5l7fUr5
+	 ph8m8OZcq0Am7xu1jp3h10AkrRPVtHIVmgjmJ4PmRoVOvpEKw36sGP9bQXZx0UwMKH
+	 HxikLBXNjHLBDBGgc6E13ZKeQwUfqBkSNN+kiTaJ4yJMSSYs09p0VgPuGTW3tcdwiR
+	 GA0Rcmh4JRimAm3px4/WK7WlefYTOW4KsqGKwhhMFZ1acn+6sH08twTlVYAZESB1es
+	 3OH10sFCA79yg==
 From: Christian Brauner <brauner@kernel.org>
-Date: Sat, 14 Nov 2026 14:01:59 +0100
-Subject: [PATCH RFC v2 18/42] selinux: use fc_init_pseudo() for selinuxfs
+Date: Sat, 14 Nov 2026 14:02:00 +0100
+Subject: [PATCH RFC v2 19/42] smack: use fc_init_pseudo() for smackfs
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-work-loop-pseudo-v2-18-98639a2286fb@kernel.org>
+Message-Id: <20261114-work-loop-pseudo-v2-19-98639a2286fb@kernel.org>
 References: <20261114-work-loop-pseudo-v2-0-98639a2286fb@kernel.org>
 In-Reply-To: <20261114-work-loop-pseudo-v2-0-98639a2286fb@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -74,62 +74,47 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  Amir Goldstein <amir73il@gmail.com>, linux-erofs@lists.ozlabs.org, 
  linux-kselftest@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
+ Casey Schaufler <casey@schaufler-ca.com>, 
  Alexander Mikhalitsyn <alex@amutable.com>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1689; i=brauner@kernel.org;
- h=from:subject:message-id; bh=Eg4JynB39S+cJriPMxPoEFKswaAikvmz7VyAKkVX+DM=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9iKlyMVy9yP1TKKNxrIjSmW/cGdIrJik/frn0dv3to
- /8K4+ukO0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACYSMIHhv2uEhSiX6eXHduxb
- hf4+qrT5tnTptBUl2zO0TXL7X/736WFkWNSWEJ/+ZOJcg73v3vA+s01c+03lUdAuJu+uVeeshCM
- ymAA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1015; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=mE4jYSsHEwuAZf3nmG7Zw4WEpYRZ8AUzYrhlfcWNpTk=;
+ b=kA0DAAoWkcYbwGV43KIByyZiAGr4XHvIqDUMQ3Y3FWiJAOR/6/2bqf9F3aGnkKR/Ws7txmnIJ
+ oh1BAAWCgAdFiEEQIc0Vx6nDHizMmkokcYbwGV43KIFAmr4XHsACgkQkcYbwGV43KJGMAD9GRGB
+ jgYj+fXNJRfyU9Ary0JbYVPSrhncPXZR9kWxX5sBAJyDlhh8buWDux0CUa6zjYdeue58XdJanKh
+ tYMsz8+gL
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize selinuxfs as a pseudo filesystem. This raises SB_I_PSEUDO and
-SB_I_NOEXEC. selinuxfs never holds executables. SB_I_NOEXEC also
-refuses PROT_EXEC mappings but the status and policy files are only
-ever mapped for reading.
+Initialize smackfs as a pseudo filesystem. This raises SB_I_PSEUDO and
+also SB_I_NOEXEC and SB_I_NODEV. smackfs never holds executables or
+device nodes.
 
-But selinuxfs needs device nodes. The kernel replaces file descriptors
-with /sys/fs/selinux/null on exec via dentry_open() which doesn't care
-about SB_I_NODEV. Android init however opens /sys/fs/selinux/null by
-path as /dev/null doesn't exist yet at that point. So clear SB_I_NODEV
-again in sel_fill_super().
-
+Acked-by: Casey Schaufler <casey@schaufler-ca.com>
 Reviewed-by: Alexander Mikhalitsyn <alex@amutable.com>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- security/selinux/selinuxfs.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ security/smack/smackfs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/security/selinux/selinuxfs.c b/security/selinux/selinuxfs.c
-index 310e19efff1d0..d7ae853b6d685 100644
---- a/security/selinux/selinuxfs.c
-+++ b/security/selinux/selinuxfs.c
-@@ -18,6 +18,7 @@
- #include <linux/vmalloc.h>
- #include <linux/fs.h>
+diff --git a/security/smack/smackfs.c b/security/smack/smackfs.c
+index a72bc7fabea99..4a56bbeaeca37 100644
+--- a/security/smack/smackfs.c
++++ b/security/smack/smackfs.c
+@@ -25,6 +25,7 @@
+ #include <linux/magic.h>
+ #include <linux/mount.h>
  #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
- #include <linux/hex.h>
- #include <linux/mount.h>
- #include <linux/mutex.h>
-@@ -1852,6 +1853,9 @@ static int sel_fill_super(struct super_block *sb, struct fs_context *fc)
- 		/* last one */ {"", NULL, 0}
- 	};
+ #include "smack.h"
  
-+	/* Android init opens the null device below by path. */
-+	sb->s_iflags &= ~SB_I_NODEV;
-+
- 	ret = selinux_fs_info_create(sb);
- 	if (ret)
- 		goto err;
-@@ -1955,6 +1959,7 @@ static const struct fs_context_operations sel_context_ops = {
- 
- static int sel_init_fs_context(struct fs_context *fc)
+ #define BEBITS	(sizeof(__be32) * 8)
+@@ -2880,6 +2881,7 @@ static const struct fs_context_operations smk_context_ops = {
+  */
+ static int smk_init_fs_context(struct fs_context *fc)
  {
 +	fc_init_pseudo(fc);
- 	fc->ops = &sel_context_ops;
+ 	fc->ops = &smk_context_ops;
  	return 0;
  }
 
