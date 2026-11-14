@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794661788;
-	b=0kbxMEQmCdqqyQy9iqn8h2TbAgiuHzEA5THSX6p9JRRNqzLmlcymMJ+d6bae0MDZP0n7
-	 AALhF1L/B3v2+hGWeWzFW6tKYRbSssP7WbwUK/IMWXFvXvds1c7Bn0GyIlNxT36cb4qdI
-	 VVirDrlQ9/Wsuv4QPm08Tle6VEb0ymHCV53Jw9dtORx+quypnAqOleXvsqjTSWnhbJilD
-	 Qg5oJuUwolWQxIR34U5PjYo+LDDJLALJN9MTTlk74VuqRKaog54aFxoBtwHdO2OHgcS+z
-	 O96DWll1EfFAU3+gDP5V/wqlHCpbxxBtGJJAa6eQviK5ekyBpusYVv4fP2ewItHzXEQ==
+	t=1794661795;
+	b=WomYWjSisuIlsXfmqI3WBcpNkNiA9eiJMUTrnXS1Qw9KtYrUG12yIdF62dz2KvYe3SLg
+	 uyDV8jmgIpD8BWcj0wise/rlHe/KqmhyZwP5DGM74sUNDxI9GNsPceT2Me0y8JBl/8t93
+	 KYqJeniGmjAdxHqmCu47VygvNfA1fhvTwfOfq/Ddl70EHmwNQPsHLmVUhTOXYic5TvgfF
+	 2J1ZZjpQn+pLNQJdx9DKkPAplEVTud+5uVo5XhmBJt8rQFHXRIHABFCJOoyJGfRxiZbRw
+	 SjsdL7YiQysR4+bBNavLff+OPVGePD4fYaFWu6aBjtE2v5fR7/zCBJIe4FIO/PkelwA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794661788;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794661795;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=TzlH4lJ7ZSZIblRm06H21pfwXJAWDZmkD7RxeUrwAwo=;
-	b=feWPRbmBvaAcfSgqoWPXMSu3F1SZc5re0T8rw5bmZKEp99DvDq9EnHCMRz7dwMR5Wc6w
-	 sjF9MLGjxCojLbSKOUPx9vVpNI4O4mzPYQkjPJvuaNvqpkbD8BA+yXdUp89LFUn77u+wH
-	 5WsMH8qF7J6IjzIeouUqAiyTK2bslZhrkf1CpDzL+xc6HvdzXG4W0F+vadRzGw3Pyk4Zr
-	 jOuzOxqA/c3yfMGDpoQggdbdmmYdq0QK/o2/Yxby/kzqHaJcJGIEvdvLCg3TTGIdhJe3x
-	 kcgF5LHhXSSiZvQZgbwG3O95ve/IIBdiytVksJCRLXHTXRs2J/nH9ePzHE8KP0cu8cA==
+	bh=fZyqvTAJYFugTtfLrdTGe2itrOrTKvVMIRQURP2gQHw=;
+	b=iWjubyIemNMnIssLCgPdhTW5M7VEazMm2VwcU1ZA78ijcnG6tERW6kBc6uNXdVA6lHZA
+	 FxKHDOe/Q9dWEoUFUS0BT8X7AIj8XeySKXCP8lLdFjuGFDMbYqx/PD1QkJFabpqBk7Oog
+	 EWRgL7Fi4WLv8rQ1naVOMOqT7KyhNTo0saLx5p7uzu38CKzdsKQ9l7GYD6R08q13cQFAa
+	 ++vAikODRJuZcFEVUGmUiHxB5m8DtOitI7hEUjJQoostXOUtrmQTiw6U0prWGLjtixecN
+	 BB5c0M1ZHtumNUO/MrGAFJvCVI1DCvds7H3bYYEC7VB0HIaWolvQ1npO0r2AaVqYAtg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GlyL6zOy;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="Ty8/r0So";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21ADC6079E1F;
-	Sat, 14 Nov 2026 13:09:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18ED3606E99A;
+	Sat, 14 Nov 2026 13:09:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GlyL6zOy
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AF37C1F000C5;
-	Sat, 14 Nov 2026 13:09:41 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Ty8/r0So
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6FE891F000C4;
+	Sat, 14 Nov 2026 13:09:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794661788;
-	bh=TzlH4lJ7ZSZIblRm06H21pfwXJAWDZmkD7RxeUrwAwo=;
+	s=k20260515; t=1794661794;
+	bh=fZyqvTAJYFugTtfLrdTGe2itrOrTKvVMIRQURP2gQHw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=GlyL6zOy3U34aQUy3eHEQO1vIyJXeAiTdOGtABLlkjbMnvKHjyhKDScl3Hk7rbn/i
-	 bUN/hnUMxKho/1WWAiF8JiculAXTejCCuJ3FonfhnSNp937ufCy4qoRmfbGVvZHsH7
-	 9rlf5d2C3SdZVqBTg4J8yIIUsxC5D98LB2FsGhf59wAx6+iIV/zNQO/IKTaGaMPHTI
-	 VX46CiB8pXPS+hXzwpsFz2BDETD3xysRH8Rj/RJaz/eTFDnVWydJvu5JEiwzj8rnWQ
-	 EWDXUNsiasluJEgOXK7yZCzr+ogHhW+EDBwb4kKVBL61Tujac2yGBy06BywSGLd7Mo
-	 Pny//KWEyQopg==
+	b=Ty8/r0SoMUqxO4LrNlfBZ8jM+8/0m/Yce0IMqMBaJmgGc4ZGWPEqHBehqsfDPy+BR
+	 7ef+eIqu+WmvEMZfLPmETCepGidhu2UkGPQ0nTWhjjjuRnwcFNiN6JzDR1fRA1/ugZ
+	 Sn6LVjLv9jAcLEQBHwoyMpIdcNUEDbbRAZTR3aGQK3rufuCJq/cnndIhDlgUJy9O2f
+	 s8N4jEwp0PEH9JhOgls40BEgYiB1OOpcBsPu5jb0Z8jZteTY7OSFJ5bvMKLOtswjjD
+	 pCiBAvVrnmgUx9Fr/vgwDkzbuX+HpQAkfTAlSP6UjZymqEm2v8y36GJ4FGcks7sAfP
+	 jVvqXF2NJyHKA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Sat, 14 Nov 2026 14:02:17 +0100
-Subject: [PATCH RFC v2 36/42] nvmet: refuse files on pseudo filesystems as
- namespace backing files
+Date: Sat, 14 Nov 2026 14:02:18 +0100
+Subject: [PATCH RFC v2 37/42] target: fileio: refuse files on pseudo
+ filesystems as backing files
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261114-work-loop-pseudo-v2-36-98639a2286fb@kernel.org>
+Message-Id: <20261114-work-loop-pseudo-v2-37-98639a2286fb@kernel.org>
 References: <20261114-work-loop-pseudo-v2-0-98639a2286fb@kernel.org>
 In-Reply-To: <20261114-work-loop-pseudo-v2-0-98639a2286fb@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -74,52 +74,69 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  linuxppc-dev@lists.ozlabs.org, linux-usb@vger.kernel.org, 
  Amir Goldstein <amir73il@gmail.com>, linux-erofs@lists.ozlabs.org, 
  linux-kselftest@vger.kernel.org, 
- "Christian Brauner (Amutable)" <brauner@kernel.org>
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, 
+ Sashiko <sashiko-bot@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1428; i=brauner@kernel.org;
- h=from:subject:message-id; bh=T+p95LnTvG69fzj91gxDjYpoYRzamfjNk16RgT8U7v8=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9iOn/sX7W5ofcrzdtZCmXtdsrsyZy06+ylnkxnetWq
- G9bLL97VkcpC4MYF4OsmCKLQ7tJuNxynorNRpkaMHNYmUCGMHBxCsBElN4x/E+qPMN83LkkV8+9
- 6emz+TtUM58mNc28vP//+pR517bGGTYz/NOw1Z5h9eBm2/zf+wUFPT6nLXtx+IKQe7yGYPaa6P/
- 27ZwA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2129; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=xgyzkhEOeMIb5OW3d10L8uW2mAkBVhLOiqNzKM5XfpI=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9iJlQ21ua5fP3d++vyX77z2zLm/wtYK6mnmdGnefJJ
+ ZPudHDadJSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEykWJ3hn07xtqPzj9wUZ7vy
+ edLyTyHJHLN7PitM3LpayFxXR3yVlz8jQ7//U8b9N/kvXLob3vlgj1P9psj3Uo6hOtH7Hi5Onjd
+ 1NgsA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-The file backend takes any file that can be opened for reading and
-writing. With buffered_io=1 that includes files on procfs or sysfs which
-then get read and written by a kernel worker on behalf of the host.
-Refuse files on pseudo filesystems just like loop does by switching to
-file_check_backing().
+fd_dev_name can name any file including files on procfs or sysfs. The
+initiator then gets to read and write kernel interfaces through the LUN
+with kernel credentials. Refuse files on pseudo filesystems just like
+loop does by switching to file_check_backing().
 
-Note that the helper only accepts regular files and block devices. A
-block device ends up in the file backend when buffered_io is set. But
-so far the file backend also took anything else with ->read_iter() and
-->write_iter() such as character devices and FIFOs. The size of the
-namespace is the size of the inode which is zero for all of them. So
-such a namespace was unusable anyway. Refuse them.
+Do the same for the protection file. With DIF protection enabled the
+fileio backend keeps the protection information in a second file. It is
+named like the backing file with ".protection" appended and
+fd_init_prot() opens it by path. Whatever that path leads to was taken
+without any checks.
 
+Note that the helper only accepts regular files and block devices as
+backing file and only regular files as protection file. So far the
+backing file could be anything with ->read_iter() and ->write_iter()
+including character devices and FIFOs.
+
+Reported-by: Sashiko <sashiko-bot@kernel.org>
+Closes: https://lore.kernel.org/all/sashiko-outbox-206765@kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/nvme/target/io-cmd-file.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ drivers/target/target_core_file.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/nvme/target/io-cmd-file.c b/drivers/nvme/target/io-cmd-file.c
-index dfa8aa46188c8..2249ad3bb46d8 100644
---- a/drivers/nvme/target/io-cmd-file.c
-+++ b/drivers/nvme/target/io-cmd-file.c
-@@ -47,10 +47,9 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
+diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
+index a5391e57e9aa5..c747cc4a647ff 100644
+--- a/drivers/target/target_core_file.c
++++ b/drivers/target/target_core_file.c
+@@ -145,8 +145,8 @@ static int fd_configure_device(struct se_device *dev)
+ 	}
+ 	fd_dev->fd_file = file;
+ 
+-	if (!file->f_op->read_iter || !file->f_op->write_iter) {
+-		pr_err("FILEIO: %s lacks ->read_iter or ->write_iter\n",
++	if (file_check_backing(file, FMODE_READ | FMODE_WRITE, S_IFBLK)) {
++		pr_err("FILEIO: %s can't be used as a backing file\n",
+ 		       fd_dev->fd_dev_name);
+ 		ret = -EINVAL;
+ 		goto fail;
+@@ -861,6 +861,12 @@ static int fd_init_prot(struct se_device *dev)
+ 		ret = PTR_ERR(prot_file);
  		return ret;
  	}
++
++	if (file_check_backing(prot_file, FMODE_READ | FMODE_WRITE, 0)) {
++		pr_err("FILEIO: %s can't be used as a protection file\n", buf);
++		filp_close(prot_file, NULL);
++		return -EINVAL;
++	}
+ 	fd_dev->fd_prot_file = prot_file;
  
--	if (!ns->file->f_op->read_iter || !ns->file->f_op->write_iter) {
--		ret = -EINVAL;
-+	ret = file_check_backing(ns->file, FMODE_READ | FMODE_WRITE, S_IFBLK);
-+	if (ret)
- 		goto err;
--	}
- 
- 	nvmet_file_ns_revalidate(ns);
- 
+ 	return 0;
 
 -- 
 2.53.0
