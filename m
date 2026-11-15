@@ -1,83 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.43
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.45
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794765848;
-	b=OinSgEloSsS85hikTvBqOtSht6nmxuNl8/D6ZpDpELk8b4+qcz+KIXp8EF453wcQVdLV
-	 /r9oPziADduv4IUKom44gqtuUKMWy5WRMfmPul+bK4xXwerDKM9L3YiZDP2PkfI/a5vEF
-	 uqgCXfarqevkgLj5HIRsW+9n0wOS2TfXMCsHiLstaYVOhBIlWr16x9cnAtzWNioHKf1NA
-	 QxULuvQyoougb8ReeZ/BNxh+yEFQzKu2Cbfi3fKmKFXqBfBSnT3C76l9g/0PTJz3j3f4R
-	 Dk/4bYo813CGvXvqUkqOipjFfsCXSfRiy4DcV29vCZDpspaLaJ87ATbJL5v16wiMmUA==
+	t=1794765850;
+	b=mU1iQiQSGucG1eb5IoBJi44XcLWqIdouu2GmClWW8/SKzrWyz79gDOu/QBIQjwmIOCM3
+	 Mul7UyaPOm7nbGdC9xfY0q4XnbTVX+1DgOCy1hSsM8+xxZjitMTs0VsZ+6cTEB+dA9UTV
+	 zBX49S6UQKwiWCfm79WMwdLzsywcEL3pdP8SwX28VVhNzQpK70FgUwf+07o9wuJ3962mt
+	 661kyi/88/j1DAxExu2ZPYyRRMw+7lR8tOOlKe8t0a//+3in1LJsNj9FWD2w5STaMNfL9
+	 ukHlD3suMMpC1i2Aefp4/GRSxufadrKKaavZ61eJ63ENiJ3qrxCLXXzjO49NuvUPWQg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794765848;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794765850;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 MIME-Version:Content-Transfer-Encoding;
-	bh=2ER6/NO7zpzo2Xjo4XaIJ1M2igxcKQmZBMoJ1KN6Ri4=;
-	b=ZddykzAeL92Ikdu+GR/YAZkQOJ44wXfG/JcN2FfFTZGerkmw9VFtt3nProbVwqh71sOX
-	 js8Fo2Uag+uUi+iEU99szNQn60DPScDYTbJP/URXYHhxFUIM8QUgoJ628lKq5jjuAEIn7
-	 aibvcnHaDWpygVx3KZo+vVhGI/kBQOlJYaBBle42c0sbRc1GbopEjvlJtc4UkD3MYBIih
-	 f0NY639TFvc6QUxsC0tz+/QvGoXjp74aECUIWI64uL39QEd2GqlcJK0BuXAgcbwqNUsbK
-	 aUdiHnvMS8DRJGvadkaPCG3gvh9PHwEQ1FAi8WyuVlNB1k3x7mUTOviEV46Vq+1mmZQ==
+	bh=UA38+n7c+RqbQlIN4Q8phpqWE0RWPQHALE9HzRQmyvE=;
+	b=q4+KqOFt3tkeG3nCPBNvq4NAquagff/jcJtRxPEkKCrERx0iAQFuhOxQ3Zqt9l5B0jkr
+	 aLEFLNzhQbvqN+dKIZd8N5PO/hThW9UEK+f5pUsCwpFdrSrK8TPlh7yYCjhc4fK3v/Fk0
+	 sLI38JUTHGZeoAonF1y9FczZk/V0R8qmXdNAAFGfHbh0jQ+U95QScRt1QVfABc0MVLkqC
+	 N3NHcTBWwlaYVZsZ/LRMNklJyT/jhJySghwWBnOpD1I8NnisOWU6qsWhVyERvY5AVos+Y
+	 eKoeTyqMventxPja0azJuRVy8n1u3Zkw72t7sjuyv31l0duapnhqczxBVEfTP/8XvgA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=DaS9K5UI;
-	arc=none smtp.remote-ip=209.85.221.43
-Received: from mail-wr1-f43.google.com (mail-wr1-f43.google.com [209.85.221.43])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=vWsT5qNH;
+	arc=none smtp.remote-ip=209.85.221.45
+Received: from mail-wr1-f45.google.com (mail-wr1-f45.google.com [209.85.221.45])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B884C60A2620
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 18:04:07 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B884C60A2620
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA5FF60A3802
+	for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 18:04:09 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DA5FF60A3802
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=DaS9K5UI
-Received: by mail-wr1-f43.google.com with SMTP id ffacd0b85a97d-491971ac844so2446065f8f.2
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 10:04:07 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=vWsT5qNH
+Received: by mail-wr1-f45.google.com with SMTP id ffacd0b85a97d-492fcbfaa88so1332822f8f.3
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 10:04:09 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794765846; x=1795370646; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1794765848; x=1795370648; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=2ER6/NO7zpzo2Xjo4XaIJ1M2igxcKQmZBMoJ1KN6Ri4=;
-        b=DaS9K5UI5vQ6cDAdOmD7Qt3vqAgjmmAL4TB7Qob7Ng6lFn86kSu0BmRP5k0gSrPuzh
-         AT8oBolUXoZcsBs5Is3ZCZ1j+CoUO4AunmNzyKR8loHZYVnNt778jycfOpIPt7Uh1pH6
-         u3pf5xD9Q7+GgA5uziBNNrwaX6hOcWbglNJ+6upcxAua3CvwaNDG2ypPTlu9IUXH/qs8
-         STMRY09KkjIKkcMndQZ9bo8+h0BzzdH2NS486mWjKnNoAtq1VanBD5+yuk3zIGmO8Fjh
-         f/Z5bO08dOxs1qXW64JZbnwNHneAHab7ml/o6RGA5F2zOt/0d4xpWgMDucuXBXmHYpof
-         ZXXg==
+        bh=UA38+n7c+RqbQlIN4Q8phpqWE0RWPQHALE9HzRQmyvE=;
+        b=vWsT5qNHBHS1DVwii+PWCaUBbHAppQCmj2gOj682zzeHiV/k+DiOVZTV4Zl2ufwliV
+         XcMy5JwYQTOOTrflDWHklMKFP0ooIAzTXmcrljZcbXEBcGgQJ8AuhPrA2Kdo4FY+A5sq
+         RFhUdhdmB/HnkpDHfaoEqGopcQTyaUw/BkwbFNx/miBcx95zanVxTEo04YAIEeC/HESP
+         VTbUAbTYu4JhjZfi4+Q1P2yCrswvDMacYAFanAg5eyigD2bOBBTTJke+hK+xYQgFlnL9
+         BoGEzGfJ3RScREWw+h4ers02dYcW83csAclxW+91LVfFDsMDpf8UySKYC2UjgIBdPzYJ
+         P8PA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794765846; x=1795370646;
+        d=1e100.net; s=20260707; t=1794765848; x=1795370648;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=2ER6/NO7zpzo2Xjo4XaIJ1M2igxcKQmZBMoJ1KN6Ri4=;
-        b=UC3fo5+25/tQMvO5YwnauPtAJZOpyXSxUW8dShRR2nTZKOIb1nMJSSrNHfG9Wsz9pQ
-         4rYqDbEsHP7ZIPd9boXjOs6+7iHVVENSAfjUCQzav1oSG6L+MHGpVYL9h4X32WVdgtYV
-         wMTCv+EyDyeHukenCkZnNp5FrNnKeLY9JkNTBmWidCXg9CxwSaq1UpczxEJLh82z9OEC
-         ZtE9zQ5Z8bdOL0iHKbEIlyCdfeHJ4sscyF7PWM470Kl1msn+6mZpTgN8rPf8LH/OJlHi
-         dVb76fJk84lLdb03PR9c7n3PoKBNH1PJZp1paez+/JOa9yrVGFbvUF6Mom+qL327Plud
-         CgvQ==
-X-Forwarded-Encrypted: i=1; AL+hErFNXUmckhRWIHiATgUbHEhovDmM4spqrh8WtTztj7uKccrplpdTA46FagHkvuys7D7L1BVo4LH245Q=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+ejq/s2Jz1dFhANoCxBAjTT4e3larpoQ+yYEGyU8A2BAF4sXcT
-	vY3x+yTsD/8TqrobbGEq0uXDjz055X35d4IWZDhmXq7J+fxfmRjMRKjQ
-X-Gm-Gg: AYBFou04GQGs9H6rTCX+kw0mPnZu+SSlpa+TIY6b3CDZcNT+e6eQg4spybdoxjwgH8l
-	Tl/Cj7ie5b6kYPFhrc4XQfj7RwU1NDjbSYXHHgBNmd3wxtPafQ7TlNY32H66WaBrwcYyfBnz6nu
-	R52ZiYZL4+xn2nXD5IggCgcsIwoycV1I5kUyetVQRdxkBP0d4hKJ2PFEVL/sACfKTkCVYafPdAi
-	tC0VBwNYXN2lbMWVwGlxhijSh+gYbhkkgt+FqZKYwO3eyZvQwy6cDEonhA1/few0z936mpjNn2e
-	JB2p42cIAmzm5W63Rp4b2udb7px4nnfFH6dqZUKh6sfre3/DZpJguvxerSp5hjrRUaSe1Ak6ArG
-	mbtb9Lxtpkz67xPgkO0sZXsUXQ/CRhofyQ7x2/0fNbKJuBd/TFWPY17FaNHJIsyXjqMtmqt+CqK
-	TW9WdTjdzRouUE7KLakIdstjdEfjJ30tGzI36RCMFftcMgajnra1a30BXXXccvpxohnbBiSNWMe
-	7wf0K27I4imcc6HiLXa7gfnb1wRH+Y047AjKXtZNfPzuD7JicEHBMiZ1TXY8gAsg16VbbbBbFUT
-	WZ0CKRztIxMcs0CX3Z4v7GrA
-X-Received: by 2002:a5d:5d88:0:b0:48b:1296:52ec with SMTP id ffacd0b85a97d-49c70ed8eaamr19692466f8f.18.1794765845937;
-        Sun, 15 Nov 2026 10:04:05 -0800 (PST)
+        bh=UA38+n7c+RqbQlIN4Q8phpqWE0RWPQHALE9HzRQmyvE=;
+        b=xNzn8GeRFH97rLaN/711LH53Q7hAZMFt2f1xrIRY+8X1pQmHv1nZtOm6cVypDVKYc0
+         HDNc+mE+h1Mk66ELo7+6VHZ6t8APhxC+Eeag3jAv+y0k+2It4aOg4gIPv8FlJjPmYcgw
+         3/iwJRHgjP1WHjqNpziuV3zwPeDycn9KEb3K72wn6n0rSycPcC1l8MIZKqNaYaIkJehc
+         HLBiQ5QQCvyVDW7U5A1xbhwMJf64Mw0T1IORX2q4LkugdmT6mzk4JgGsp+ZJXbQ97BJO
+         +lWnicsBzzoKTKl3CcA5+WDaSOpuokDPM5sF8Yf9YXzMHTxpYQeILS8nQDa5bIF5Ehrf
+         3bFg==
+X-Forwarded-Encrypted: i=1; AL+hErFgdtMBaqsZbXZQix2SfM27+OWRQBpJti8q2YZHkrNM3VhmPNsirNFh1LA3spHxehVRRWESXXmcQJ4=@vger.kernel.org
+X-Gm-Message-State: APuU4Z8kz6WnA6m4tP0S4BKItgFjBHLyyIt9N80yAv9+CFnZlLeq3fmD
+	zKIHW0Hkgg+y//g3HbK2sURoPx6BYkjpYg5Bb60bvJ8cFfOQJK+oDbHV
+X-Gm-Gg: AYBFou0Thl+1WzuoUyLhUpU7JxOwW4Ur215lyZXsIzlZij/GDNQ68gZnmSTvIykYSTs
+	YIcg6RehzwwpXeDkGTQauzPfx2FrI4csxeVDp+UoSSlQzf3tsfvDdQx77osJ/mKsAZA2QJo4iTZ
+	Os2XGF9ZhGkTCqLpCvp0fkHwqdu7cREFXBMhEvxpt+MA8pQ0EV5xDONQWM4yZI1hKk+UTFSmXAr
+	GgZhknBnDVrYYOH91GQNffMT6NJd2nvM7TwgBKUDlh5lyk+WnLjiO+6NtAZGIfBZawC1uX3JE9S
+	eyeHD7YLQa1BGzWugm5wCPSVm5G536Ko+e8Q8FYYtF67gkErBcMJUYHJiwLFKp6/RfNQKllDWyT
+	W6L3bWhpPQPG/TxOtQ+rFr5SqpiVCsZCaOu42Kztrx9FfCDUZ1V/6VDcnd5zMABrWEaXTwzbQpd
+	q26TdDq3B/nPL2WoTEgOgWKP0ODLlOZbC+sJVjd4B0hs+aHIMiH7p7lTovun2zj6teynsvdZ33J
+	SsGRhCKoBY6kaX25Zqzmbrh4OT9uF5zyayvMe4f4ggScs2m+CmGXAcnN1An1tV4OmDQU3fnnZtN
+	HWuMinBFpfbud34FBcqkxZ2YTiBRKHVUjUp7YBc3gmorNw==
+X-Received: by 2002:a05:6000:455c:b0:48f:bcf0:2026 with SMTP id ffacd0b85a97d-49c73259e6bmr12985016f8f.13.1794765848134;
+        Sun, 15 Nov 2026 10:04:08 -0800 (PST)
 Received: from infinity ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-49c60f8c248sm17980448f8f.58.2026.11.15.10.04.03
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-49c60f8c248sm17980448f8f.58.2026.11.15.10.04.06
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 15 Nov 2026 10:04:05 -0800 (PST)
+        Sun, 15 Nov 2026 10:04:07 -0800 (PST)
 From: koraynilay <koray.fra@gmail.com>
 To: David Sterba <dsterba@suse.com>,
 	Namjae Jeon <linkinjeon@kernel.org>,
@@ -117,9 +117,9 @@ Cc: Chris Mason <mason@kernel.org>,
 	linux-nfs@vger.kernel.org,
 	linux-api@vger.kernel.org,
 	koraynilay <koray.fra@gmail.com>
-Subject: [RFC PATCH v4 03/10] ntfs3: make crtime user-settable using ptime
-Date: Sun, 15 Nov 2026 19:03:36 +0100
-Message-ID: <20261115180343.576773-4-koray.fra@gmail.com>
+Subject: [RFC PATCH v4 04/10] exfat: make crtime user-settable using ptime
+Date: Sun, 15 Nov 2026 19:03:37 +0100
+Message-ID: <20261115180343.576773-5-koray.fra@gmail.com>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261115180343.576773-1-koray.fra@gmail.com>
 References: <20261115180343.576773-1-koray.fra@gmail.com>
@@ -134,13 +134,14 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Since NTFS supports user-settable file creation timestamps, map
-provenance time (ptime) to NTFS file creation time (crtime) by using the
+Since exFAT supports user-settable file creation timestamps, map
+provenance time (ptime) to exFAT file creation time (crtime) using the
 newly introduced ptime API (in commit "vfs: add provenance time
 (ptime)").
 
-To do this, update ntfs_fileattr_[gs]et(), ntfs_getattr() and make it
-persist to disk in ni_write_inode().
+To do this, implement exfat_fileattr_set(), set .fileattr_set to it for
+both file_inode and dir_inode operations and update exfat_fileattr_get()
+and exfat_getattr().
 
 The timestamp is now retrievable by using file_getattr() or statx(), and
 is settable by using file_setattr() with the FS_XFLAG_PTIME flag.
@@ -148,96 +149,114 @@ is settable by using file_setattr() with the FS_XFLAG_PTIME flag.
 Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.4.7
 Signed-off-by: koraynilay <koray.fra@gmail.com>
 ---
- fs/ntfs3/file.c    | 20 ++++++++++++++++++--
- fs/ntfs3/frecord.c |  8 +++++++-
- 2 files changed, 25 insertions(+), 3 deletions(-)
+ fs/exfat/exfat_fs.h |  2 ++
+ fs/exfat/file.c     | 42 +++++++++++++++++++++++++++++++++++++++++-
+ fs/exfat/namei.c    |  1 +
+ 3 files changed, 44 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
-index 6c84a3e1c7fe..1a9301006154 100644
---- a/fs/ntfs3/file.c
-+++ b/fs/ntfs3/file.c
-@@ -90,6 +90,8 @@ static int ntfs_ioctl_fitrim(struct ntfs_sb_info *sbi, unsigned long arg)
+diff --git a/fs/exfat/exfat_fs.h b/fs/exfat/exfat_fs.h
+index eee573d1697c..aff96afa258a 100644
+--- a/fs/exfat/exfat_fs.h
++++ b/fs/exfat/exfat_fs.h
+@@ -619,6 +619,8 @@ int exfat_getattr(const struct mnt_idmap *idmap, const struct path *path,
+ 		  unsigned int query_flags);
+ struct file_kattr;
+ int exfat_fileattr_get(struct dentry *dentry, struct file_kattr *fa);
++int exfat_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dentry,
++		       struct file_kattr *fa);
+ int exfat_file_fsync(struct file *file, loff_t start, loff_t end, int datasync);
+ long exfat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+ long exfat_compat_ioctl(struct file *filp, unsigned int cmd,
+diff --git a/fs/exfat/file.c b/fs/exfat/file.c
+index 435bbef288b8..02390b03eecd 100644
+--- a/fs/exfat/file.c
++++ b/fs/exfat/file.c
+@@ -384,15 +384,22 @@ int exfat_getattr(const struct mnt_idmap *idmap, const struct path *path,
+ 
+ 	generic_fillattr(idmap, request_mask, inode, stat);
+ 	exfat_truncate_atime(&stat->atime);
+-	stat->result_mask |= STATX_BTIME;
++	stat->result_mask |= (STATX_BTIME | STATX_PTIME);
+ 	stat->btime.tv_sec = ei->i_crtime.tv_sec;
+ 	stat->btime.tv_nsec = ei->i_crtime.tv_nsec;
++	stat->ptime.tv_sec = ei->i_crtime.tv_sec;
++	stat->ptime.tv_nsec = ei->i_crtime.tv_nsec;
+ 	stat->blksize = EXFAT_SB(inode->i_sb)->cluster_size;
  	return 0;
  }
  
-+#define NTFS_SUPPORTED_XFLAGS		(FS_XFLAG_PTIME)
++#define EXFAT_SUPPORTED_XFLAGS		(FS_XFLAG_PTIME)
 +
- /*
-  * ntfs_fileattr_get - inode_operations::fileattr_get
-  */
-@@ -124,6 +126,11 @@ int ntfs_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
- 
- 	fileattr_fill_flags(fa, flags);
- 
-+	fa->fsx_ptime.tv_sec = ni->i_crtime.tv_sec;
-+	fa->fsx_ptime.tv_nsec = ni->i_crtime.tv_nsec;
+ int exfat_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
+ {
++	struct inode *inode = d_backing_inode(dentry);
++	struct exfat_inode_info *ei = EXFAT_I(inode);
++
+ 	/*
+ 	 * exFAT compares filenames through an upcase table, so lookup
+ 	 * is always case-insensitive. Long names are stored in UTF-16
+@@ -400,6 +407,12 @@ int exfat_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
+ 	 */
+ 	fa->fsx_xflags |= FS_XFLAG_CASEFOLD;
+ 	fa->flags |= FS_CASEFOLD_FL;
++
++	fa->fsx_ptime.tv_sec = ei->i_crtime.tv_sec;
++	fa->fsx_ptime.tv_nsec = ei->i_crtime.tv_nsec;
 +	fa->fsx_xflags |= FS_XFLAG_PTIME;
 +	fa->fsx_xflags_mask |= FS_XFLAG_PTIME;
 +
  	return 0;
  }
  
-@@ -142,7 +149,10 @@ int ntfs_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (unlikely(is_bad_ni(ni)))
- 		return -EINVAL;
+@@ -485,6 +498,32 @@ int exfat_setattr(const struct mnt_idmap *idmap, struct dentry *dentry,
+ 	return error;
+ }
  
--	if (fileattr_has_fsx(fa))
-+	if (fileattr_has_fsx_mask(fa, NTFS_SUPPORTED_XFLAGS))
++int exfat_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dentry,
++		      struct file_kattr *fa)
++{
++	struct inode *inode = d_backing_inode(dentry);
++	struct exfat_inode_info *ei = EXFAT_I(inode);
++
++	if (fileattr_has_fsx_mask(fa, EXFAT_SUPPORTED_XFLAGS))
 +		return -EOPNOTSUPP;
 +
-+	if (fa->fsx_xflags_mask & ~NTFS_SUPPORTED_XFLAGS)
- 		return -EOPNOTSUPP;
- 
- 	if (flags & ~(FS_IMMUTABLE_FL | FS_APPEND_FL | FS_NODUMP_FL))
-@@ -154,6 +164,11 @@ int ntfs_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (flags & FS_APPEND_FL)
- 		new_fl |= S_APPEND;
- 
++	if (fa->fsx_xflags_mask & ~EXFAT_SUPPORTED_XFLAGS)
++		return -EOPNOTSUPP;
++
++	if (fa->flags & ~FS_CASEFOLD_FL)
++		return -EOPNOTSUPP;
++
 +	if (fa->fsx_xflags_mask & FS_XFLAG_PTIME) {
-+		ni->i_crtime.tv_sec = fa->fsx_ptime.tv_sec;
-+		ni->i_crtime.tv_nsec = fa->fsx_ptime.tv_nsec;
++		ei->i_crtime.tv_sec = fa->fsx_ptime.tv_sec;
++		ei->i_crtime.tv_nsec = fa->fsx_ptime.tv_nsec;
 +	}
 +
- 	inode_set_flags(inode, new_fl, S_IMMUTABLE | S_APPEND);
- 
- 	/* Save nodump flag to return in ntfs_getattr. */
-@@ -275,8 +290,9 @@ int ntfs_getattr(const struct mnt_idmap *idmap, const struct path *path,
- 	if (unlikely(is_bad_ni(ni)))
- 		return -EINVAL;
- 
--	stat->result_mask |= STATX_BTIME;
-+	stat->result_mask |= (STATX_BTIME | STATX_PTIME);
- 	stat->btime = ni->i_crtime;
-+	stat->ptime = ni->i_crtime;
- 	stat->blksize = ni->mi.sbi->cluster_size; /* 512, 1K, ..., 2M */
- 
- 	if (inode->i_flags & S_IMMUTABLE)
-diff --git a/fs/ntfs3/frecord.c b/fs/ntfs3/frecord.c
-index 16ac847de48d..5e4f743a5930 100644
---- a/fs/ntfs3/frecord.c
-+++ b/fs/ntfs3/frecord.c
-@@ -3215,6 +3215,13 @@ int ni_write_inode(struct inode *inode, int sync, const char *hint)
- 		}
- 
- 		/* Update the access times if they have changed. */
-+		ts = ni->i_crtime;
-+		dup.cr_time = kernel2nt(&ts);
-+		if (std->cr_time != dup.cr_time) {
-+			std->cr_time = dup.cr_time;
-+			modified = true;
-+		}
++	inode_set_ctime_current(inode);
++	mark_inode_dirty(inode);
 +
- 		ts = inode_get_mtime(inode);
- 		dup.m_time = kernel2nt(&ts);
- 		if (std->m_time != dup.m_time) {
-@@ -3250,7 +3257,6 @@ int ni_write_inode(struct inode *inode, int sync, const char *hint)
- 		    (modified || (ni->ni_flags & NI_FLAG_UPDATE_PARENT))
- 		    /* Avoid __wait_on_freeing_inode(inode). */
- 		    && (sb->s_flags & SB_ACTIVE)) {
--			dup.cr_time = std->cr_time;
- 			/* Not critical if this function fail. */
- 			re_dirty = ni_update_parent(ni, &dup, sync);
- 
++	return 0;
++}
++
+ /*
+  * modified ioctls from fat/file.c by Welmer Almesberger
+  */
+@@ -1110,4 +1149,5 @@ const struct inode_operations exfat_file_inode_operations = {
+ 	.setattr	= exfat_setattr,
+ 	.getattr	= exfat_getattr,
+ 	.fileattr_get	= exfat_fileattr_get,
++	.fileattr_set	= exfat_fileattr_set,
+ };
+diff --git a/fs/exfat/namei.c b/fs/exfat/namei.c
+index 68ddb9c5504f..15ec7f1942c8 100644
+--- a/fs/exfat/namei.c
++++ b/fs/exfat/namei.c
+@@ -1349,4 +1349,5 @@ const struct inode_operations exfat_dir_inode_operations = {
+ 	.setattr	= exfat_setattr,
+ 	.getattr	= exfat_getattr,
+ 	.fileattr_get	= exfat_fileattr_get,
++	.fileattr_set	= exfat_fileattr_set,
+ };
 -- 
 2.56.0
 
