@@ -1,83 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.47
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794765861;
-	b=g3x/5zWoixIOgSLSrUhYjOzNkpBxEuF5jpS5tfoQYYgN39xdTgqba2RsvvQy39oeAcNd
-	 J4jHJLndNxZinp8P9AZWXAhlANxP2SFTFSM7hGLGGlITK+BUCSNVdAtgjXk5N4pJUrn39
-	 PoLx5Yjl5U0A+LmwamvPHRrhulAB9AKSmOWqKUSUWr4hqPoaFlxdJkGKDgC5opa2oNwe7
-	 IMbAdz3sdM6g0TGnBPxjOoxvVC2FICcL+Bl3SsMFtonpr5VKg2rES//xWp3B5TaOTTLm1
-	 /bOYjyADKPC7Oupod3q6LgtjbaXy8hXql1cAITno/pVx0jnICrPeZ88Ikxg9kD4Qqkg==
+	t=1794765857;
+	b=ZZlGnswlTrTo8hjDn+rV3EiC0d7RVJA0h72nfdEXKtzg8Q68C04PIddg5D9T3cj08bV4
+	 CeJSSdj1TzERGrQjPCiPb3EgdPtf5LB4r9pEMki43mpL91orcK3ubbyaQzXqlDSRnieLj
+	 k1HuwCQTpVaQ9KH4AeR6Yc+8AJNIO9vvyWzgBgGVWwrXl5wTKGc4gucTQaeRm1xzlG541
+	 QogosqUnjAshFaDDDZ+UYN0KqD+Mx5PGduZeHDjGHQmSYLzMOGFMeP325gTARqKy+ddsY
+	 Dt6uIoHQlev5uzXcxTDSlFsNinh756iWDRQ/EnLd2mDYjZxQc45+J+5ozstP82zhFBg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794765861;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794765857;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 MIME-Version:Content-Transfer-Encoding;
-	bh=9exNlCCX4l2rTtwsvuunv8f6XU42014IC0sk6D9rr+c=;
-	b=TtalFblTsWoB4TeiZnZSaW4tENbBBS87goLqDdn9IahdH8XctFXB/kR6wV0ecuHsAtnN
-	 I/X0nmOBWl40LnDcy6eOUvlj2aBqo9TLhhhtZoL6c00Mw2GGrhrL7zcwaTbSFP05m3hKE
-	 1PkSiiSf/mA4CsRXB/oMPFV7r1beaByt0pfT1vlDcDCnlkBpkBzJFoTRqCHXCkoXGOtmw
-	 BYDuzwzPWH+6sZyLahSxIpdudHPcJRTg1KS2VPiIvEyVCsLNWbTzmST8VHM9mX8lq1DfT
-	 S+WJvbs+Q6uUGuSirR6Q2Es4OaoKTmWDXc7e3nEBlwnC0EbQ/ZpSRO2pTfB76AvxiIA==
+	bh=xB0aGae+0N7Qh6IxNBA7KeNJxluraojMhTHNGzXsPds=;
+	b=jnh/Po0P3xn4N0UDIqUcnOVEVWjyRdauTJptJUHBY9T+bkMP/1t7PHjy/AH+6OZHIzZ6
+	 0WfamHZqVaHSlXn+mrgB4PumN9T8ySeLBA6IXfHwFrd1ytSuT0acWboSFegXmMYNgFSov
+	 BPAwywg8sZhAw9uWpyhvu5PmVEePuzkOgNSHiUFLF+lqFl4Yxl2wlMgciVNDsRxwsQouo
+	 ZC1tM9WZKOnXN2MiOdiILnLwPdbrdY6ShWvxAJCYSTkejkJxXVlEz4PEEhcRIvAXVwmqt
+	 vkSv/6D88kmEAtmoiCitEt+DTidCGfPtH/my4DETqf1Se05D5MKTxnjDDUfbzRhu9kA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="Tjhblw/z";
-	arc=none smtp.remote-ip=209.85.128.41
-Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BaP5GLCO;
+	arc=none smtp.remote-ip=209.85.221.47
+Received: from mail-wr1-f47.google.com (mail-wr1-f47.google.com [209.85.221.47])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E8D960A6F5B
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 18:04:20 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4E8D960A6F5B
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48DD260A5BE8
+	for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 18:04:16 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 48DD260A5BE8
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Tjhblw/z
-Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-4ac95761c85so15654425e9.2
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 10:04:20 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=BaP5GLCO
+Received: by mail-wr1-f47.google.com with SMTP id ffacd0b85a97d-492f0a1b685so1962214f8f.0
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 10:04:16 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1794765859; x=1795370659; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1794765855; x=1795370655; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=9exNlCCX4l2rTtwsvuunv8f6XU42014IC0sk6D9rr+c=;
-        b=Tjhblw/zNDrCTUsnmg+QTliqsOiTPBtjSSvhZNwngJTmxt/3eD2ylLhtrmi7zyK23m
-         cVQ6RDXSZaGQ762m8Kc3kKWwp++aJdLjuV6d81oRiZiscyXgPupsgoie1DECpCqGKAQY
-         1zLh72cvLQVBGUgb5TQWquyNIR4Gjva0aEtGMhy176JXLT3en9EQ4WHkxDGrgawtcL1J
-         hnEwsjCZY9U/hWGnWK3nCqkTdCyIbiz7xGLEzjiA/xoViDgAbtcK7cVE5YnfuGg0/hhE
-         gFda4b9blg47lLk/TsvljJgAsINoIkrkECP++sk8xIHYzJVlTsXn/hMc684pkU11hmpp
-         +eIA==
+        bh=xB0aGae+0N7Qh6IxNBA7KeNJxluraojMhTHNGzXsPds=;
+        b=BaP5GLCOzZs6hrpMCjo6a/iFP3AhAS9vV6ZBcuz5EHHTRGZk1uUFDljCWDlo9MVxn9
+         UYJvbEa8R7HIndjUFJ3j0ZDsVx2xCpBgdHvpYmYmWXKWuRdXVw3wJ8rOaASPso9uGk8v
+         IDJJIxaKcUnTuOfjP49Iv6Z885rhJl2eJhR6Y95L8RE8Cb9RYGHFiS5a00kX40wfzgk8
+         HEE5WD84/qx62WDedaX4VvT2eSJZgtfrI1dRYI8q64jg2KnZQx3I6xVGyQITD9+fiZo+
+         lZlKXI3a+n3CpDd5okvNK/t0O3p6HEOj+PmzLxoY1qyy3r4G9cIR1IR9yk7o9qKY32WT
+         lGmA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794765859; x=1795370659;
+        d=1e100.net; s=20260707; t=1794765855; x=1795370655;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=9exNlCCX4l2rTtwsvuunv8f6XU42014IC0sk6D9rr+c=;
-        b=Z9rIlj0B9HYYMfzbj71lxZJu0wlI56KEuGnuzGhTeFyydh3wK054msB8QGiJXf/FWS
-         XTh46z749mvDViQ0Jzh0V9tPwbL437MysFLbBxEs1jNa/iEa0S3QkSQLXir8AgdFKaYS
-         jAUc2N3htN2W9ikFvUbJzo6vBme9Ka6f1fZ+7PnNcyMGgOqTD7HOLI+c6clPJ8aTQYEm
-         ZAOYPUoOJYQKkzcSEI0qEEOCa4IW4DmivtujcvyZ1ILXSbZmPYZpf7Pm2kYxo+wMr2ad
-         A2CNJWhiSZZuogJ18yvpi/a3qffnggBlJgG9DWEjpfVuIBhWog7KK+TuV54+gpTwIjYs
-         ALOw==
-X-Forwarded-Encrypted: i=1; AL+hErGTZnqiXEzdDuYZWXQw3I0kn3BI9p1Wcg9zMLca/0PVrJT3Urvz9/Xo78S2RAMhNGlRIRVScAjxiC8=@vger.kernel.org
-X-Gm-Message-State: APuU4Z9auUvdf5qMMh7mUMArhbljpRxCvgLWuhDTO+Pa/XT6lsjDjuzV
-	KZpsGJLmfEDLmCYQBP+yLe+q+1jOF6kRm5Q9kzDBOrKxXhieQ13tKYeP
-X-Gm-Gg: AYBFou3JlGCHlq/fUPWCeIN5e3VlRqIr5nSlWoXhEaWTSuIYt9tOhhw5na7fYNfLUxB
-	GZquR5QeNuBzYtdd5URI7oyCiEv3dypizFRPS/XRvTXT6OuzVnqvwqriEmQYdqPnoYYTONCHyhm
-	3ueG1QeKUoGgGsKeozrybSD8hks2aoftCN9JtAZl73ocn03mQg419C7US1wpeZj3Uhh5HYrdFHr
-	EJMj890ddDpXSJ7C5Sfx0jkzC9aymv+kh9XwfzauWtXr9WjudWExMtHmGtCeQFVHsP8Mnw2OIq7
-	N3nGAfyLwwFoGqlc0XbxNyLZh76L3KLWkFFxX+zS+p6CkwurH3fgLuCPrYDNZbDYuKDAtxFdorE
-	uS7+K4FSeQP4BkrOoN6SOnf2gA5YfDXHAQLfpSVjx1yVtgUB7C2AGx4G1VUf0Znd/w531NijIIQ
-	+fIHcrZm3gB79QFN8JPwfEQGz0KjYt6Ya2iJQQuEO829Mx6nxD3iRxjkz6RZ6CNRK2UEySIjcLX
-	TZS/zgvRTV+eUlU9GYLyEwD6m1mQHQ0OJMHkM7ZhWH0rft3AHP95AzwEPbZ2GPoqKn0UEAnuV3C
-	t3hcv+jdghpwTsJ6uZzZgRSP
-X-Received: by 2002:a05:600c:698d:b0:4a1:88de:9e8b with SMTP id 5b1f17b1804b1-4bb55a3e341mr170083755e9.5.1794765858611;
-        Sun, 15 Nov 2026 10:04:18 -0800 (PST)
+        bh=xB0aGae+0N7Qh6IxNBA7KeNJxluraojMhTHNGzXsPds=;
+        b=k+qQEdU5oySM/HXMCG7sB1+4nBZUIfhMWtFoqwdmPAmk7Akm/3kCFrkEnkGcDfsgq/
+         iYOvnH0eg3TH4X9dwgxaeCgK+ZTnHZNt5QgQ76QqqdNcOX1CAF6NjCAcr8+AiPIVfdlc
+         H1T5aUeE1VtulP3tcJVqKSa1CErX5PMeteNdmOlndxLVwSgOoy/9cPmaZKdZ/W7yLCT4
+         8XP6/RRG0CbUuCDCX+qgPa2iXURwDba/N0AGKRD8cVXIWINTySOD7rbr925YhBrm0Nfu
+         77xzkg/7YyqhHDAXEYhYQBUpI2gdjxv4DXPvWgWSfBYxaZzsdStuwxbvemME7PVP9Qka
+         /hIw==
+X-Forwarded-Encrypted: i=1; AL+hErH0SWWzpJy82rGBPhKoQEBNd6qDaykUvRu6LkFtSI0nY/vtS8Oc8sxlVCchOEudVYheCMUSeuD0v0s=@vger.kernel.org
+X-Gm-Message-State: APuU4Z9ZaPsHYJB1JoOE5GKeSSf436riJItEBhyL0Ytl+9/lqRI+n+aN
+	xhP8MIdSwoIW4USveSaFNtXYBIUfoeXg0+bCAXh9fv53zzM0rv2NqwSk
+X-Gm-Gg: AYBFou1ADv0aB7zz1oXQZ4ZHwgf/E4H3KoWVKE8Wo5GMomcJa1qG8t5JX7gE8c0O/dj
+	UzDcibSLVO7Kc5gZvPebQYCBqSLqOg2Qa4kiiyKDKweUkawAK0Ejr7jcNEfEek4DxDZsl+GB2CX
+	E//O6HwVu3oHI/WBIbhvEIHlr1U65kx2RVLF69Yk5FVvM/HUzv04sNjDuCuCiIBtkJQtyqkL6IG
+	BIXRWUhQ5JOG3nyqaB5fvFwE7K8AWaIzKYJ5sLYoBzRkSWg2fWjSdP6H+qc7F5TVEWR3jhQoY0c
+	hZ76/8AA2jATAeFI77xjGTmV4Rp5mde1rw0oNEK3YqsRXO4OlKRn2aVDlddoo/h0F6wUZ1l1Kya
+	Z0WNHnhn13BZlv/L7DJ7U2z89iFysnbw5eJOOF98uB8Q0vS48Kwzz3pJjKDTxaaI6HsYHsa3i6Q
+	1anhvhGeNhkegsJcVHKf3gQtf48uclxWr6wkqXetp7hVPDEJ6/BtEVhePjcup+X8plNu1KX8Zus
+	aVfTQTcACDn6PzYJQ7FNYFitxTaXySYgDqsO42Cm83eOqZFuMrP2qUr6OmFS4zCDcLR4QtRSRLj
+	SUqkcp1Wctjf1OZd3GE4D117z+36owYpagm5d2uSpO6+SA==
+X-Received: by 2002:a5d:5f90:0:b0:48e:7e15:406d with SMTP id ffacd0b85a97d-49c70de3563mr18264821f8f.11.1794765854474;
+        Sun, 15 Nov 2026 10:04:14 -0800 (PST)
 Received: from infinity ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-49c60f8c248sm17980448f8f.58.2026.11.15.10.04.16
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-49c60f8c248sm17980448f8f.58.2026.11.15.10.04.12
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 15 Nov 2026 10:04:18 -0800 (PST)
+        Sun, 15 Nov 2026 10:04:13 -0800 (PST)
 From: koraynilay <koray.fra@gmail.com>
 To: David Sterba <dsterba@suse.com>,
 	Namjae Jeon <linkinjeon@kernel.org>,
@@ -117,9 +117,9 @@ Cc: Chris Mason <mason@kernel.org>,
 	linux-nfs@vger.kernel.org,
 	linux-api@vger.kernel.org,
 	koraynilay <koray.fra@gmail.com>
-Subject: [RFC PATCH v4 09/10] ksmbd: add provenance time (ptime) and map it to CreationTime
-Date: Sun, 15 Nov 2026 19:03:42 +0100
-Message-ID: <20261115180343.576773-10-koray.fra@gmail.com>
+Subject: [RFC PATCH v4 07/10] nfsd: add provenance time (ptime) via FATTR4_TIME_CREATE
+Date: Sun, 15 Nov 2026 19:03:40 +0100
+Message-ID: <20261115180343.576773-8-koray.fra@gmail.com>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261115180343.576773-1-koray.fra@gmail.com>
 References: <20261115180343.576773-1-koray.fra@gmail.com>
@@ -134,240 +134,257 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Implement provenance time (ptime) in ksmbd, as introduced in a
+Implement provenance time (ptime) in NFSD, as introduced in a
 previous commit ("vfs: add provenance time (ptime)").
 
-Map it to SMB's CreationTime, making it settable by SMB clients. When
-reporting CreationTime to clients, prioritize ptime over da.create_time
-memorized in the user.DOSATTRIB xattr.
+Map ptime to FATTR4_TIME_CREATE, allowing clients to set it across
+CREATE, OPEN and SETATTR compounds.
 
-Update smb2_new_xattrs() and smb2_update_xattrs() to accept a stat
-argument so they can check whether ptime is supported or already set and
-behave accordingly. When ptime is natively supported and saved to the
-filesystem, skip storing da.create_time in user.DOSATTRIB to avoid
-redundant and desynchronized metadata, while falling back to the xattr
-for filesystems without ptime.
+If the underlying filesystem supports it, use __vfs_fileattr_set_locked()
+to set it, returning -EOPNOTSUPP in case it's not supported (i.e. when
+__vfs_fileattr_set_locked() returns -ENOIOCTLCMD).
 
-Finally, add the ksmbd_vfs_set_ptime() helper to persist ptime to the
-underlying filesystem, if supported.
+When querying FATTR4_TIME_CREATE, request both STATX_PTIME and
+STATX_BTIME, preferring ptime over btime if available, and advertise
+FATTR4_TIME_CREATE support if either ptime or btime is available.
 
 Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.5.7
 Signed-off-by: koraynilay <koray.fra@gmail.com>
 ---
- fs/smb/server/smb2pdu.c | 37 ++++++++++++++++++++++-------------
- fs/smb/server/vfs.c     | 43 +++++++++++++++++++++++++++++++++++++----
- fs/smb/server/vfs.h     |  1 +
- 3 files changed, 64 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4proc.c |  9 +++++++++
+ fs/nfsd/nfs4xdr.c  | 40 +++++++++++++++++++++++++---------------
+ fs/nfsd/vfs.c      | 17 +++++++++++++++++
+ fs/nfsd/vfs.h      |  4 +++-
+ fs/nfsd/xdr4.h     |  3 +++
+ 5 files changed, 57 insertions(+), 16 deletions(-)
 
-diff --git a/fs/smb/server/smb2pdu.c b/fs/smb/server/smb2pdu.c
-index 63dfbffbb575..f389025dc518 100644
---- a/fs/smb/server/smb2pdu.c
-+++ b/fs/smb/server/smb2pdu.c
-@@ -3814,7 +3814,7 @@ static int smb2_create_truncate(const struct path *path)
- }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3a82af381a8d..06074a7f213e 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -322,6 +322,9 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	__be32 status, create_status;
+ 	int want_write_err;
  
- static void smb2_new_xattrs(struct ksmbd_tree_connect *tcon, const struct path *path,
--			    struct ksmbd_file *fp)
-+			    struct ksmbd_file *fp, struct kstat *stat)
- {
- 	struct xattr_dos_attrib da = {0};
- 	int rc;
-@@ -3825,9 +3825,12 @@ static void smb2_new_xattrs(struct ksmbd_tree_connect *tcon, const struct path *
++	if (open->op_bmval[1] & FATTR4_WORD1_TIME_CREATE)
++		attrs.na_time_create = &open->op_time_create;
++
+ 	if (name_is_dot_dotdot(open->op_fname, open->op_fnamelen))
+ 		return nfserr_exist;
+ 	if (!(iap->ia_valid & ATTR_MODE))
+@@ -929,6 +932,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status;
+ 	dev_t rdev;
  
- 	da.version = 4;
- 	da.attr = le32_to_cpu(fp->f_ci->m_fattr);
--	da.itime = da.create_time = fp->create_time;
--	da.flags = XATTR_DOSINFO_ATTRIB | XATTR_DOSINFO_CREATE_TIME |
--		XATTR_DOSINFO_ITIME;
-+	da.itime = fp->create_time;
-+	da.flags = XATTR_DOSINFO_ATTRIB | XATTR_DOSINFO_ITIME;
-+	if (!(stat->result_mask & STATX_PTIME)) {
-+		da.create_time = fp->create_time;
-+		da.flags |= XATTR_DOSINFO_CREATE_TIME;
-+	}
++	if (create->cr_bmval[1] & FATTR4_WORD1_TIME_CREATE)
++		attrs.na_time_create = &create->cr_time_create;
++
+ 	fh_init(&resfh, NFS4_FHSIZE);
  
- 	rc = ksmbd_vfs_set_dos_attrib_xattr(mnt_idmap(path->mnt), path, &da, true);
- 	if (rc)
-@@ -3859,7 +3862,8 @@ static bool smb2_parent_compressed(struct ksmbd_tree_connect *tcon,
- }
- 
- static void smb2_update_xattrs(struct ksmbd_tree_connect *tcon,
--			       const struct path *path, struct ksmbd_file *fp)
-+			       const struct path *path, struct ksmbd_file *fp,
-+			       struct kstat *stat)
- {
- 	struct xattr_dos_attrib da = {};
- 	bool store_dos_attrs = test_share_config_flag(tcon->share_conf,
-@@ -3879,7 +3883,8 @@ static void smb2_update_xattrs(struct ksmbd_tree_connect *tcon,
- 			 * or compression updates. Fall back to using a non-zero stored time
- 			 * for backwards compatibility.
- 			 */
--			if ((da.flags & XATTR_DOSINFO_CREATE_TIME) || da.create_time > 0)
-+			if (!(stat->result_mask & STATX_PTIME) &&
-+			    ((da.flags & XATTR_DOSINFO_CREATE_TIME) || da.create_time > 0))
- 				fp->create_time = da.create_time;
- 			fp->itime = da.itime;
- 		} else {
-@@ -5505,7 +5510,9 @@ int smb2_open(struct ksmbd_work *work)
- 	if (rc)
- 		goto err_out1;
- 
--	if (stat.result_mask & STATX_BTIME)
-+	if (stat.result_mask & STATX_PTIME)
-+		fp->create_time = ksmbd_UnixTimeToNT(stat.ptime);
-+	else if (stat.result_mask & STATX_BTIME)
- 		fp->create_time = ksmbd_UnixTimeToNT(stat.btime);
- 	else
- 		fp->create_time = ksmbd_UnixTimeToNT(stat.ctime);
-@@ -5517,12 +5524,12 @@ int smb2_open(struct ksmbd_work *work)
- 			cpu_to_le32(smb2_get_dos_mode(&stat, le32_to_cpu(req->FileAttributes)));
- 
- 	if (!created)
--		smb2_update_xattrs(tcon, &path, fp);
-+		smb2_update_xattrs(tcon, &path, fp, &stat);
- 	if (need_truncate && req->FileAttributes) {
- 		dos_attr = le32_to_cpu(req->FileAttributes);
- 		fp->f_ci->m_fattr =
- 			cpu_to_le32(smb2_get_dos_mode(&stat, dos_attr));
--		smb2_new_xattrs(tcon, &path, fp);
-+		smb2_new_xattrs(tcon, &path, fp, &stat);
- 	}
- 
- 	ksmbd_vfs_update_compressed_fattr(path.dentry, &fp->f_ci->m_fattr);
-@@ -5544,7 +5551,7 @@ int smb2_open(struct ksmbd_work *work)
- 	}
- 
- 	if (created)
--		smb2_new_xattrs(tcon, &path, fp);
-+		smb2_new_xattrs(tcon, &path, fp, &stat);
- 
- 	fp->create_action = cpu_to_le32(file_info);
- 
-@@ -8995,6 +9002,7 @@ static int set_file_basic_info(struct ksmbd_file *fp,
- 	const struct mnt_idmap *idmap;
- 	__le32 attrs_mask = FILE_ATTRIBUTE_DIRECTORY_LE |
- 		FILE_ATTRIBUTE_COMPRESSED_LE;
-+	bool ptime_saved = false;
- 	s64 crtime, time;
- 	int rc = 0;
- 
-@@ -9016,8 +9024,11 @@ static int set_file_basic_info(struct ksmbd_file *fp,
- 		return rc;
- 
- 	crtime = (s64)le64_to_cpu(file_info->CreationTime);
--	if (crtime > 0)
-+	if (crtime > 0) {
- 		fp->create_time = crtime;
-+		if (ksmbd_vfs_set_ptime(idmap, filp, crtime) == 0)
-+			ptime_saved = true;
-+	}
- 
- 	time = (s64)le64_to_cpu(file_info->LastAccessTime);
- 	if (time > 0) {
-@@ -9053,7 +9064,7 @@ static int set_file_basic_info(struct ksmbd_file *fp,
- 	}
- 
- 	if (test_share_config_flag(share, KSMBD_SHARE_FLAG_STORE_DOS_ATTRS) &&
--	    (crtime > 0 || file_info->Attributes)) {
-+	    ((!ptime_saved && crtime > 0) || file_info->Attributes)) {
- 		struct xattr_dos_attrib da = {0};
- 
- 		rc = ksmbd_vfs_get_dos_attrib_xattr(idmap, fp->filp->f_path.dentry, &da);
-@@ -9066,7 +9077,7 @@ static int set_file_basic_info(struct ksmbd_file *fp,
- 		 * itime gets preserved when reading the xattr if already present
- 		 * otherwise don't write it as it wasn't asked for by the client
- 		 */
--		if (crtime > 0) {
-+		if (!ptime_saved && crtime > 0) {
- 			da.create_time = fp->create_time;
- 			da.flags |= XATTR_DOSINFO_CREATE_TIME;
- 		} else if (da.create_time > 0) {
-diff --git a/fs/smb/server/vfs.c b/fs/smb/server/vfs.c
-index da13f13f8980..63453f5d02b9 100644
---- a/fs/smb/server/vfs.c
-+++ b/fs/smb/server/vfs.c
-@@ -602,7 +602,8 @@ int ksmbd_vfs_getattr(const struct path *path, struct kstat *stat)
- {
+ 	status = fh_verify(rqstp, &cstate->current_fh, S_IFDIR, NFSD_MAY_NOP);
+@@ -1347,6 +1353,9 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status = nfs_ok;
  	int err;
  
--	err = vfs_getattr(path, stat, STATX_BASIC_STATS | STATX_BTIME,
-+	err = vfs_getattr(path, stat,
-+			STATX_BASIC_STATS | STATX_BTIME | STATX_PTIME,
- 			AT_STATX_SYNC_AS_STAT);
- 	if (err)
- 		pr_err("getattr failed, err %d\n", err);
-@@ -1909,12 +1910,14 @@ int ksmbd_vfs_fill_dentry_attrs(struct ksmbd_work *work,
- 	};
++	if (setattr->sa_bmval[1] & FATTR4_WORD1_TIME_CREATE)
++		attrs.na_time_create = &setattr->sa_time_create;
++
+ 	deleg_attrs = setattr->sa_bmval[2] & (FATTR4_WORD2_TIME_DELEG_ACCESS |
+ 					      FATTR4_WORD2_TIME_DELEG_MODIFY);
  
- 	rc = vfs_getattr(&path, ksmbd_kstat->kstat,
--			 STATX_BASIC_STATS | STATX_BTIME,
-+			 STATX_BASIC_STATS | STATX_BTIME | STATX_PTIME,
- 			 AT_STATX_SYNC_AS_STAT);
- 	if (rc)
- 		return rc;
- 
--	if (ksmbd_kstat->kstat->result_mask & STATX_BTIME)
-+	if (ksmbd_kstat->kstat->result_mask & STATX_PTIME)
-+		time = ksmbd_UnixTimeToNT(ksmbd_kstat->kstat->ptime);
-+	else if (ksmbd_kstat->kstat->result_mask & STATX_BTIME)
- 		time = ksmbd_UnixTimeToNT(ksmbd_kstat->kstat->btime);
- 	else
- 		time = ksmbd_UnixTimeToNT(ksmbd_kstat->kstat->ctime);
-@@ -1941,7 +1944,8 @@ int ksmbd_vfs_fill_dentry_attrs(struct ksmbd_work *work,
- 			 * or compression updates. Fall back to using a non-zero stored time
- 			 * for backwards compatibility.
- 			 */
--			if ((da.flags & XATTR_DOSINFO_CREATE_TIME) || da.create_time > 0)
-+			if (!(ksmbd_kstat->kstat->result_mask & STATX_PTIME) &&
-+			    ((da.flags & XATTR_DOSINFO_CREATE_TIME) || da.create_time > 0))
- 				ksmbd_kstat->create_time = da.create_time;
- 		} else {
- 			ksmbd_debug(VFS, "fail to load dos attribute.\n");
-@@ -2524,3 +2528,34 @@ int ksmbd_vfs_set_compression_create(struct ksmbd_work *work,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 84161dbecd1c..faca3b9b58b8 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -509,7 +509,8 @@ static __be32
+ nfsd4_decode_fattr4(struct nfsd4_compoundargs *argp, u32 *bmval, u32 bmlen,
+ 		    struct iattr *iattr, struct nfs4_acl **acl,
+ 		    struct xdr_netobj *label, int *umask,
+-		    struct posix_acl **dpaclp, struct posix_acl **paclp)
++		    struct posix_acl **dpaclp, struct posix_acl **paclp,
++		    struct timespec64 *time_create)
  {
- 	return __ksmbd_vfs_set_compression(work, fp, fmt, false);
+ 	unsigned int starting_pos;
+ 	u32 attrlist4_count;
+@@ -603,11 +604,10 @@ nfsd4_decode_fattr4(struct nfsd4_compoundargs *argp, u32 *bmval, u32 bmlen,
+ 		}
+ 	}
+ 	if (bmval[1] & FATTR4_WORD1_TIME_CREATE) {
+-		struct timespec64 ts;
++		if (!time_create)
++			return nfserr_bad_xdr;
+ 
+-		/* No Linux filesystem supports setting this attribute. */
+-		bmval[1] &= ~FATTR4_WORD1_TIME_CREATE;
+-		status = nfsd4_decode_nfstime4(argp, &ts);
++		status = nfsd4_decode_nfstime4(argp, time_create);
+ 		if (status)
+ 			return status;
+ 	}
+@@ -1013,7 +1013,8 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, union nfsd4_op_u *u)
+ 				    ARRAY_SIZE(create->cr_bmval),
+ 				    &create->cr_iattr, &create->cr_acl,
+ 				    &create->cr_label, &create->cr_umask,
+-				    &create->cr_dpacl, &create->cr_pacl);
++				    &create->cr_dpacl, &create->cr_pacl,
++				    &create->cr_time_create);
+ 	if (status)
+ 		return status;
+ 
+@@ -1165,7 +1166,8 @@ nfsd4_decode_createhow4(struct nfsd4_compoundargs *argp, struct nfsd4_open *open
+ 					     ARRAY_SIZE(open->op_bmval),
+ 					     &open->op_iattr, &open->op_acl,
+ 					     &open->op_label, &open->op_umask,
+-					     &open->op_dpacl, &open->op_pacl);
++					     &open->op_dpacl, &open->op_pacl,
++					     &open->op_time_create);
+ 		if (status)
+ 			return status;
+ 		break;
+@@ -1184,7 +1186,8 @@ nfsd4_decode_createhow4(struct nfsd4_compoundargs *argp, struct nfsd4_open *open
+ 					     ARRAY_SIZE(open->op_bmval),
+ 					     &open->op_iattr, &open->op_acl,
+ 					     &open->op_label, &open->op_umask,
+-					     &open->op_dpacl, &open->op_pacl);
++					     &open->op_dpacl, &open->op_pacl,
++					     &open->op_time_create);
+ 		if (status)
+ 			return status;
+ 		break;
+@@ -1512,7 +1515,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, union nfsd4_op_u *u)
+ 				   ARRAY_SIZE(setattr->sa_bmval),
+ 				   &setattr->sa_iattr, &setattr->sa_acl,
+ 				   &setattr->sa_label, NULL, &setattr->sa_dpacl,
+-				   &setattr->sa_pacl);
++				   &setattr->sa_pacl, &setattr->sa_time_create);
  }
+ 
+ static __be32
+@@ -3646,7 +3649,14 @@ static __be32 nfsd4_encode_fattr4_time_access(struct xdr_stream *xdr,
+ static __be32 nfsd4_encode_fattr4_time_create(struct xdr_stream *xdr,
+ 					      const struct nfsd4_fattr_args *args)
+ {
+-	return nfsd4_encode_nfstime4(xdr, &args->stat.btime);
++	const struct timespec64 *ts;
 +
-+/**
-+ * ksmbd_vfs_set_ptime() - set provenance time on filesystem
-+ * @idmap:	mount idmap
-+ * @filp:	open file pointer
-+ * @crtime:	creation time in NT time
-+ *
-+ * Return:	0 on success, otherwise error
-+ */
-+int ksmbd_vfs_set_ptime(const struct mnt_idmap *idmap, struct file *filp, u64 crtime)
-+{
-+	struct file_kattr fa = {
-+		.fsx_valid = true,
-+		.fsx_xflags = FS_XFLAG_PTIME,
-+		.fsx_xflags_mask = FS_XFLAG_PTIME,
-+		.fsx_ptime = ksmbd_NTtimeToUnix(cpu_to_le64(crtime)),
-+	};
-+	const struct cred *saved_cred;
-+	int rc;
++	if (args->stat.result_mask & STATX_PTIME)
++		ts = &args->stat.ptime;
++	else
++		ts = &args->stat.btime;
 +
-+	saved_cred = override_creds(filp->f_cred);
-+	rc = mnt_want_write_file(filp);
-+	if (rc)
-+		goto out;
++	return nfsd4_encode_nfstime4(xdr, ts);
+ }
+ 
+ /*
+@@ -4089,8 +4099,8 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	}
+ 
+ 	err = vfs_getattr(&path, &args.stat,
+-			  STATX_BASIC_STATS | STATX_BTIME | STATX_CHANGE_COOKIE,
+-			  AT_STATX_SYNC_AS_STAT);
++			  STATX_BASIC_STATS | STATX_BTIME | STATX_PTIME |
++			  STATX_CHANGE_COOKIE, AT_STATX_SYNC_AS_STAT);
+ 	if (dp) {
+ 		struct nfs4_cb_fattr *ncf = &dp->dl_cb_fattr;
+ 
+@@ -4113,8 +4123,8 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	if (err)
+ 		goto out_nfserr;
+ 
+-	if (!(args.stat.result_mask & STATX_BTIME))
+-		/* underlying FS does not offer btime so we can't share it */
++	if (!(args.stat.result_mask & (STATX_BTIME | STATX_PTIME)))
++		/* underlying FS does not offer ptime or btime so we can't share it */
+ 		attrmask[1] &= ~FATTR4_WORD1_TIME_CREATE;
+ 	if ((attrmask[0] & (FATTR4_WORD0_FILES_AVAIL | FATTR4_WORD0_FILES_FREE |
+ 			FATTR4_WORD0_FILES_TOTAL | FATTR4_WORD0_MAXNAME)) ||
+@@ -4434,7 +4444,7 @@ nfsd4_setup_notify_entry4(struct notify_entry4 *ne, struct xdr_stream *xdr,
+ 		if (!setup_notify_fhandle(dentry, dp, nf, &args))
+ 			attrmask[0] &= ~FATTR4_WORD0_FILEHANDLE;
+ 
+-		if (!(args.stat.result_mask & STATX_BTIME))
++		if (!(args.stat.result_mask & (STATX_PTIME | STATX_BTIME)))
+ 			attrmask[1] &= ~FATTR4_WORD1_TIME_CREATE;
+ 	}
+ 	attrmask[2] = 0;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 56c49b5bc5bb..286ed7c98d91 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -621,6 +621,23 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (attr->na_seclabel && attr->na_seclabel->len)
+ 		attr->na_labelerr = security_inode_setsecctx(dentry,
+ 			attr->na_seclabel->data, attr->na_seclabel->len);
 +
-+	rc = vfs_fileattr_set(idmap, filp->f_path.dentry, &fa);
-+	mnt_drop_write_file(filp);
-+out:
-+	revert_creds(saved_cred);
-+	return rc;
-+}
-diff --git a/fs/smb/server/vfs.h b/fs/smb/server/vfs.h
-index 21b0d29a3db0..5925d63841f2 100644
---- a/fs/smb/server/vfs.h
-+++ b/fs/smb/server/vfs.h
-@@ -187,4 +187,5 @@ int ksmbd_vfs_get_compression(struct ksmbd_file *fp, u16 *fmt);
- int ksmbd_vfs_set_compression(struct ksmbd_work *work, struct ksmbd_file *fp, u16 fmt);
- int ksmbd_vfs_set_compression_create(struct ksmbd_work *work,
- 				     struct ksmbd_file *fp, u16 fmt);
-+int ksmbd_vfs_set_ptime(const struct mnt_idmap *idmap, struct file *filp, u64 crtime);
- #endif /* __KSMBD_VFS_H__ */
++	if (attr->na_time_create) {
++		struct file_kattr fa = {
++			.fsx_valid = true,
++			.fsx_xflags = FS_XFLAG_PTIME,
++			.fsx_xflags_mask = FS_XFLAG_PTIME,
++			.fsx_ptime = *attr->na_time_create,
++		};
++
++		host_err = __vfs_fileattr_set_locked(&nop_mnt_idmap, dentry, &fa);
++		if (host_err) {
++			if (host_err == -ENOIOCTLCMD)
++				host_err = -EOPNOTSUPP;
++			goto out_fill_attrs;
++		}
++	}
++
+ 	if (IS_ENABLED(CONFIG_FS_POSIX_ACL) && attr->na_dpacl) {
+ 		if (!S_ISDIR(inode->i_mode))
+ 			attr->na_dpaclerr = -EINVAL;
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 38f7d36bd4da..24c2c22b3e72 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -100,6 +100,7 @@ struct nfsd_attrs {
+ 	struct xdr_netobj	*na_seclabel;	/* input */
+ 	struct posix_acl	*na_pacl;	/* input */
+ 	struct posix_acl	*na_dpacl;	/* input */
++	struct timespec64	*na_time_create; /* input */
+ 
+ 	int			na_labelerr;	/* output */
+ 	int			na_dpaclerr;	/* output */
+@@ -118,7 +119,8 @@ static inline bool nfsd_attrs_valid(struct nfsd_attrs *attrs)
+ 
+ 	return (iap->ia_valid || (attrs->na_seclabel &&
+ 		attrs->na_seclabel->len) ||
+-		attrs->na_pacl || attrs->na_dpacl);
++		attrs->na_pacl || attrs->na_dpacl ||
++		attrs->na_time_create);
+ }
+ 
+ struct nfsd_net;
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index ec198993429e..a495a20e5889 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -123,6 +123,7 @@ struct nfsd4_create {
+ 	struct posix_acl *cr_dpacl;
+ 	struct posix_acl *cr_pacl;
+ 	struct xdr_netobj cr_label;
++	struct timespec64 cr_time_create;
+ };
+ #define cr_datalen	u.link.datalen
+ #define cr_data		u.link.data
+@@ -277,6 +278,7 @@ struct nfsd4_open {
+ 	struct posix_acl *op_dpacl;
+ 	struct posix_acl *op_pacl;
+ 	struct xdr_netobj op_label;
++	struct timespec64 op_time_create;
+ 	struct svc_rqst *op_rqstp;
+ };
+ 
+@@ -378,6 +380,7 @@ struct nfsd4_setattr {
+ 	struct xdr_netobj sa_label;
+ 	struct posix_acl *sa_dpacl;
+ 	struct posix_acl *sa_pacl;
++	struct timespec64 sa_time_create;
+ };
+ 
+ struct nfsd4_setclientid {
 -- 
 2.56.0
 
