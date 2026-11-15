@@ -1,58 +1,65 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794735028;
-	b=b/TCEgmp3b8beD8k89ZUpwm9oWCZL1/bRAEkAGfSeWQ2HLrg/3UZPX/l6wom0B0Ynn1R
-	 0SWspLz2cpPr1bpAnNxLzwmpY61DqYOgkzT7diN82j9e+dZF/eQaP3qYA3rQFEFPF1RHq
-	 5i9zefvHp99ybr0uFpmEJ+A5JYpngfonZrZjJ6og9oRPIP5+3CxKtk+E7rQzO4BXerRT3
-	 mcbVBzEYFazT8Pdu8brQ55Ak8h4xo/KX9XhD+lNGSqfSYip7PuieEduD+U5MIbI/9IJRP
-	 qmdd3jnSy5YVd3YCjS5UWSJ47AWfr7gAmi2AOJJLE9bvhQtaOCO8g+orr7A72T0t5SQ==
+	t=1794743271;
+	b=BdK9H1y+HNRqD/jOpQfiJ8CK50RxEZMCjwgIS48DNkylfGZf+h7yYt+dLR/rohWShFPk
+	 wfY+Vi1XUiR4xQoz/9dl0reIiXKOG5wLW7gkB4jYbbvKAp0onbjRpWAq3h6DDbAxHfbTR
+	 5/PaQlaVaf7TtFwba6zsHiW9KlQbLjzo0EerdKKIi48ZFuJLc3WH+ltRAnMLBo+gAqRpL
+	 ov61lFfeKEVmTbros4bY5hLqTBfdHKhysZz363XUX2UJKA7MroJWDEdJE++rHrOfqDHYG
+	 NlZSY4qxT1OqOgEdTD541oNseZI8+FDCzpXM+gOKg5I+2qmGEiQp5Da0bFa+VHsozfA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794735028;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794743271;
 	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=e7MOyX724bqCWJsCrd4OjXjEcyjDNuCUpHqJ3uJvgjY=;
-	b=if4FE9mFZTimctrs8840DtaN3sZa3U65goiDLRxCaxLrrGG05+K09f75mJt1KNYo5vyI
-	 O5dCT/Hic+q+T1XD7UCX7MVyAutR5Qc92gulcGwWMERame5Lm15sdIBoPu9nWv3XgVlCs
-	 Nnm37prBB4V4Gu7dWMaksZDeerVlIzOl1cG1qE7u348alPfdcZtj2EeyB3Qesf8YS3XEC
-	 xmTmLgTQH20wjAr1UXlsImKTO9Rwf5x1WfVbs2Njxbk9fd5fx/HAqdnY+s4gmnMgofWKt
-	 gn7NxbV1ReTRxc6Qvb6mIGrj0xk3CrDM3xMqKm+EyCQgLTdSzQpsKz3ngW55UEMxubw==
+	 References:MIME-Version:Content-Type:Content-Disposition:
+	 Content-Transfer-Encoding:In-Reply-To;
+	bh=dUUoDFkPJkBg6tiiX+gwUNqdlWB0vRGU4J1TlhHh7ZE=;
+	b=iuKSIOwNdjXAi2+nKsqu7pIfpzXuLtuj3wXCa1g9MN5BFnFnH+efqOzfUtJXvT2zUGGl
+	 V9IfHEzKQzynFa9Fuo1ssXUF+7C+Eoevg9R/uDVp3b207QzEgfuu6a4+z5JoRhmzh2QN0
+	 9vJY2NJZgqRfrAE94UuSb7lSNUhcz8q8wGqjWRw5n7k7BXCLYZBSkg22ZgvSiHJnnwpNY
+	 2bXzqhTqJYzU82V3hEswRLXZDMXOPwMPocN2bf1yYrFAEINhs1DN1LNIND4gakdX7BwOF
+	 /NBQXI11IeC+qk96wRGrOuIRB815lx2fweUabl5k2cTyNpurMwEGTlfjb0o79097iFQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D4BDbSLF;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=O5UCROmp;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6CF2A606A327;
-	Sun, 15 Nov 2026 09:30:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5C6D606A32E;
+	Sun, 15 Nov 2026 11:47:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=D4BDbSLF
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 926E11F000C4;
-	Sun, 15 Nov 2026 09:30:24 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=O5UCROmp
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0FF671F000C4;
+	Sun, 15 Nov 2026 11:47:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794735028;
-	bh=e7MOyX724bqCWJsCrd4OjXjEcyjDNuCUpHqJ3uJvgjY=;
+	s=k20260515; t=1794743270;
+	bh=dUUoDFkPJkBg6tiiX+gwUNqdlWB0vRGU4J1TlhHh7ZE=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=D4BDbSLFVk4e+fV6ihG6kKryjFjt03+TIbG64DUmJoPCcOlP1b9vDrUdSBoHvEXxJ
-	 ldj3rhO3iRDntZCKRLkvsUOAmXeS1mHMkR0qC9TiqDgSaT+m9Owk/1bZbmBLJxsQh8
-	 PTW4FfSElqmIKtraDSDebgIUuu6ZZR0FCa8QmYQBAfd2LN1q3XSnlHSyVEPHKMl5eJ
-	 F533fyUtOVcdvUYNq3jrnkuV3ByRLnh+ry56M4lSxZ6/Hp1rYOL4urCykZ2AAfXMp6
-	 K11q3gPNCNfLg9bjJG+AqAl+3I8V2sWY6Pv15+bcu15Ch7utqYTM9Huq11ly4MDsvE
-	 LbISVNk4ZZhuw==
-Date: Sun, 15 Nov 2026 10:30:22 +0100
+	b=O5UCROmpYOxPof//EVMXlzhE8CwpBAuLxySuhjVJTwgdWIcUjDEHfxQDjag+uTRua
+	 Z+qDIjnj4mqHBNrUw8Ko1zjkZMcqAeFq8ldvZlzCVbByFB+ptCuml13g6R68XiAcOc
+	 tTmUPUcRTu4mDvyiHtXFi/q4pZoMhhtkVDTdv1WqLRxEzoDBelkcsk5jYXJt2EAUob
+	 xjg6qsjtw4gR2WGGuYhHVN3Y9VjEoACQTHM3FtneMm5yNVilA99bE1xWageT1rHDiS
+	 UNAqlNNFNjgatsQNOofsxEUu3m18tcJw6JldfrHIojxyBAVmlXl979klg5KOmmNJfI
+	 Ivyq26TJMKVYg==
+Date: Sun, 15 Nov 2026 12:47:41 +0100
 From: Christian Brauner <brauner@kernel.org>
-To: Jan Kara <jack@suse.cz>
-Cc: Shakeel Butt <shakeel.butt@linux.dev>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, Jens Axboe <axboe@kernel.dk>, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, io-uring@vger.kernel.org, Christoph Hellwig <hch@lst.de>, 
-	linux-block@vger.kernel.org, linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org, 
-	target-devel@vger.kernel.org, linux-unionfs@vger.kernel.org, bpf@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH 04/12] target: fileio: don't free the aio command under
- the filesystem
-Message-ID: <20261115-rasch-haltbar-gebrechen-faac5fad7805@brauner>
-References: <20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org>
- <20261114-work-fs-frozen_writes-v1-4-f5ae61c898b1@kernel.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Chris Down <chris@chrisdown.name>, linux-fsdevel@vger.kernel.org, 
+	Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>, 
+	Josef Bacik <josef@toxicpanda.com>, Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, linux-nvme@lists.infradead.org, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>, linux-scsi@vger.kernel.org, 
+	target-devel@vger.kernel.org, driver-core@lists.linux.dev, linux-mm@kvack.org, 
+	bpf@vger.kernel.org, linux-security-module@vger.kernel.org, selinux@vger.kernel.org, 
+	apparmor@lists.ubuntu.com, linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
+	fuse-devel@lists.linux.dev, linux-efi@vger.kernel.org, xen-devel@lists.xenproject.org, 
+	ocfs2-devel@lists.linux.dev, linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+	linux-usb@vger.kernel.org, linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
+Subject: Re: [PATCH RFC v2 33/42] fs: add file_check_backing()
+Message-ID: <20261115-boxen-mundschutz-jacht-0ab871beca58@brauner>
+References: <20261114-work-loop-pseudo-v2-0-98639a2286fb@kernel.org>
+ <20261114-work-loop-pseudo-v2-33-98639a2286fb@kernel.org>
+ <20261114120557.4bc1eb6e57218cdc@chrisdown.name>
+ <CAOQ4uxhGxpBtMZ5kfuzR1tQAewiecoX7UjXQRo91QjJHH9T_Yw@mail.gmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -64,157 +71,68 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20261114-work-fs-frozen_writes-v1-4-f5ae61c898b1@kernel.org>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAOQ4uxhGxpBtMZ5kfuzR1tQAewiecoX7UjXQRo91QjJHH9T_Yw@mail.gmail.com>
 
-On Sat, Nov 14, 2026 at 11:47:11AM +0100, Christian Brauner wrote:
-> The read completed and freed the command before ext4_dio_read_iter() got
-> to file_accessed(iocb->ki_filp).
+On Sun, Nov 15, 2026 at 12:19:57AM +0100, Amir Goldstein wrote:
+> On Sat, Nov 14, 2026 at 9:06 PM Chris Down <chris@chrisdown.name> wrote:
+> >
+> > Hi Christian,
+> >
+> > Christian Brauner writes:
+> > >+      /* Look through stacking filesystems at the inode with the data. */
+> > >+      if (d_real_inode(file->f_path.dentry)->i_sb->s_iflags & SB_I_PSEUDO)
+> > >+              return -EINVAL;
+> >
+> > This looks good in general, but what the bots said about O_PATH files
+> > here is real. With FMODE_PATH this is reached for a file that was never
+> > opened, so on overlayfs nothing has been through ovl_open() to look up
+> > the lowerdata of a metacopy file yet. ovl_d_real() then does the lookup
+> > itself, and when that fails it hits the WARN(1) at its end and returns
+> > the overlayfs dentry, so the check passes as well.
+> >
+> > Only fuse passes FMODE_PATH, so it takes CAP_SYS_ADMIN to get there, but
+> > it's easy to trigger with that. From a quick test with a metacopy file
+> > whose redirect into a data-only layer points at nothing, registering an
+> > O_PATH fd of it with FUSE_DEV_IOC_BACKING_OPEN gives
+> >
+> >      ovl_d_real(/f, 0): real dentry not found
+> >      WARNING: fs/overlayfs/super.c:79 at ovl_d_real+0xc9/0x210
+> >      [...]
+> >       file_check_backing+0x308/0x5e0
+> >       fuse_backing_new+0x219/0x4a0
+> >       fuse_backing_open+0xe8/0x390
+> >       fuse_dev_ioctl+0x53a/0x7d0
+> >
+> > and the ioctl still succeeds. A normal open of that file fails with
+> > ENOENT, so nothing could have used it as a backing file anyway, but with
+> > panic_on_warn this is now a panic.
+> >
+> > Maybe ovl_d_real() should just stop warning when the lookup fails, now
+> > that it has a caller that isn't trace_uprobe?
 > 
-> Do what loop, zloop and fs/backing-file.c do and hold a reference to the
-> command until the I/O is submitted.
+> Yeh I guess that this needs to be a Fixes for lazy data lookup.
 
-As sashiko pointed out (cf. [1]) the completion callback still completes
-the command. That drops the LUN reference while ->read_iter() or
-->write_iter() may still be running. The device and its backing file
-can go away underneath the filesystem. So we must complete the command
-on the final put as well. I've folded:
+I have a fix for that.
 
-5/12 gets simpler on top of this. kiocb_end_write() just moves into
-cmd_rw_aio_complete() which is now called exactly once for every I/O.
-I've folded both.
+> The correct fix would be to teach all the callers to deal with an error.
 
-[1]: https://lore.kernel.org/r/sashiko-outbox-214401@kernel.org
+I've also implemented that. It wasn't that hard and it's also a bug. Not
+a bad one but still.
 
--- >8 --
-Subject: [PATCH] target: fileio: don't free the aio command under the filesystem
+> > The check would still pass
+> > for an O_PATH file whose lowerdata couldn't be looked up at that point,
+> > though.
+> 
+> One observation relevant to this patch set is that a datadir layer has no
+> business being a pseudo fs and that can and should be blocked explicitly
+> at overlayfs mount time.
 
-With fd_async_io=1 the fileio backend allocates a command that holds the
-kiocb for every read and write and frees it in the completion callback.
-Nothing keeps the command alive until ->read_iter() or ->write_iter()
-return. But a filesystem may use the kiocb after it queued the I/O. ext4
-does that for direct reads:
+I agree.
 
-  BUG: KASAN: slab-use-after-free in ext4_dio_read_iter+0x5e1/0x690
-  Workqueue: target_submission target_queued_submit_work
-  Call Trace:
-   <TASK>
-   dump_stack_lvl+0x5d/0x80
-   print_report+0x14b/0x4b0
-   kasan_report+0x108/0x130
-   ext4_dio_read_iter+0x5e1/0x690
-   fd_execute_rw+0xd30/0x1700
-   __target_execute_cmd+0x53/0x190
-   transport_generic_new_cmd+0x65a/0xdb0
-   __target_submit+0x12c/0x380
-   target_queued_submit_work+0x73/0x270
-   process_one_work+0x946/0x1820
-   worker_thread+0x4f1/0xd60
-   kthread+0x364/0x460
-   ret_from_fork+0x525/0x770
-   ret_from_fork_asm+0x1a/0x30
-   </TASK>
+> The other observation is that fuse_passthrough_open() should probably
+> check the backing_file that was opened for io in addition to checking
+> in fuse_backing_open(), which could have different FMODE and specifically
+> could be FMODE_PATH.
 
-  Allocated by task 59:
-   __kmalloc_noprof+0x223/0x830
-   fd_execute_rw+0x766/0x1700
-   __target_execute_cmd+0x53/0x190
-   transport_generic_new_cmd+0x65a/0xdb0
-   __target_submit+0x12c/0x380
-   target_queued_submit_work+0x73/0x270
-
-  Freed by task 14:
-   kfree+0x267/0x6a0
-   blk_update_request+0x3f5/0x1260
-   blk_mq_end_request+0x59/0x450
-   blk_complete_reqs+0xb0/0x130
-   handle_softirqs+0x20c/0x860
-   run_ksoftirqd+0x31/0x60
-
-The read completed and freed the command before ext4_dio_read_iter() got
-to file_accessed(iocb->ki_filp).
-
-Do what loop, zloop and fs/backing-file.c do and hold a reference to the
-command until the I/O is submitted. Only complete the target command
-when the last reference is dropped as well. Otherwise the command drops
-its LUN reference while the filesystem still uses the kiocb and the
-device and with it the backing file can go away underneath it.
-
-Fixes: 769031c92c8b ("scsi: target: target/file: Add support of direct and async I/O")
-Cc: stable@vger.kernel.org
-Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
----
- drivers/target/target_core_file.c | 25 +++++++++++++++++++------
- 1 file changed, 19 insertions(+), 6 deletions(-)
-
-diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
-index ab9824a4852f1..4b23fadd7bb88 100644
---- a/drivers/target/target_core_file.c
-+++ b/drivers/target/target_core_file.c
-@@ -15,6 +15,7 @@
- #include <linux/timer.h>
- #include <linux/blkdev.h>
- #include <linux/slab.h>
-+#include <linux/refcount.h>
- #include <linux/spinlock.h>
- #include <linux/module.h>
- #include <linux/vmalloc.h>
-@@ -243,25 +244,34 @@ static void fd_destroy_device(struct se_device *dev)
- 
- struct target_core_file_cmd {
- 	unsigned long	len;
-+	long		ret;
- 	struct se_cmd	*cmd;
-+	refcount_t	ref;
- 	struct kiocb	iocb;
- 	struct bio_vec	bvecs[];
- };
- 
--static void cmd_rw_aio_complete(struct kiocb *iocb, long ret)
-+static void cmd_rw_aio_put(struct target_core_file_cmd *cmd)
- {
--	struct target_core_file_cmd *cmd;
--
--	cmd = container_of(iocb, struct target_core_file_cmd, iocb);
-+	if (!refcount_dec_and_test(&cmd->ref))
-+		return;
- 
--	if (ret != cmd->len)
-+	if (cmd->ret != cmd->len)
- 		target_complete_cmd(cmd->cmd, SAM_STAT_CHECK_CONDITION);
- 	else
- 		target_complete_cmd(cmd->cmd, SAM_STAT_GOOD);
--
- 	kfree(cmd);
- }
- 
-+static void cmd_rw_aio_complete(struct kiocb *iocb, long ret)
-+{
-+	struct target_core_file_cmd *cmd;
-+
-+	cmd = container_of(iocb, struct target_core_file_cmd, iocb);
-+	cmd->ret = ret;
-+	cmd_rw_aio_put(cmd);
-+}
-+
- static sense_reason_t
- fd_execute_rw_aio(struct se_cmd *cmd, struct scatterlist *sgl, u32 sgl_nents,
- 	      enum dma_data_direction data_direction)
-@@ -288,6 +298,8 @@ fd_execute_rw_aio(struct se_cmd *cmd, struct scatterlist *sgl, u32 sgl_nents,
- 
- 	iov_iter_bvec(&iter, is_write, aio_cmd->bvecs, sgl_nents, len);
- 
-+	/* The filesystem may still use the kiocb after it queued the I/O. */
-+	refcount_set(&aio_cmd->ref, 2);
- 	aio_cmd->cmd = cmd;
- 	aio_cmd->len = len;
- 	aio_cmd->iocb.ki_pos = cmd->t_task_lba * dev->dev_attrib.block_size;
-@@ -305,6 +317,7 @@ fd_execute_rw_aio(struct se_cmd *cmd, struct scatterlist *sgl, u32 sgl_nents,
- 
- 	if (ret != -EIOCBQUEUED)
- 		cmd_rw_aio_complete(&aio_cmd->iocb, ret);
-+	cmd_rw_aio_put(aio_cmd);
- 
- 	return 0;
- }
-
--- 
+Sounds good.
