@@ -1,49 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1794872659;
-	b=De6EJGe1w4fRP2loYBS/bWvw1sQyCdIkC+QOTO53DZT9GGDu1p+6DA0A9YcFaoA0EfF8
-	 2/j1ShSKAfm1smuYsAXI1OvCa8unbbdJd2D8CKZMo4YQtWdNCF8FTtHUPoFThG7v+yGA+
-	 TtWhWVT/6oKTOWgWRHQFdtldA9SMwjrZV20vHrV6eFPF3zUEpXuKvMSk5NoCx7OU+x6Gw
-	 6h2PjmPmoKsqhskPqsS4dKb27JCcshYXi5G4J5mTI8ew7jXija9zjyhOsd30x4exmAKch
-	 a8+L+lHpvpLi7HZxPgfXE7H+2JFd0wJ7pXgPWKOXO/MhcVLD5XeGg9fVR96Z8sfSKLw==
+	b=G313P93qsnRW0DqbKOaHttnlTLw39jXZLkh38AnP+wX9dcBGv/jk8eHh7znZv6/U0ilK
+	 lcz/jpZgnaXcYeXb5K6pWBJsmP6BGIeGKNyuiZBNx0WuMmJevFqTMhYiwYqoGWKCaKsaa
+	 RIIzrvVCr4Hr7YhY+yrdmW3HRUPFKp4QYi+ULlencyd1X1qUxnHPDuagQed6ZkGxNGrJY
+	 U5nsOJXSA2ZJ2+nPBXLGvY+GKr9Dobkl/gGlwM3CSd+5spGAkwpVDFSE1sso1wLJ2WI4y
+	 ly7b82mjTEvzz6AeY3DwJ9HsNlWs+HKGpWzZ1aRFgQyLk0znlEe3QveAk/aWWzoqRkg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1794872659;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=oq04MjNhELpGuF0k+tLwpv13GqhFrq1vFkt03giRItc=;
-	b=lIPcgF598dSKpYE79NcZux1KzBgOzTi1F7+Zb8Go8e2klPRO8Gr4ZfndmmuvIdYIQbsz
-	 Elh+LekIxTgKL87n1YjI37avCN8LJoOMnj08cHksakWZMxlifPqli0ZUM4hqU9c13efk3
-	 JZ8Wo09etUOROhW0ol86k4EErqIH0Wiu35IuT8dgZc6eCn3uSmBr0QLnSRguXRmMeq852
-	 kqOhMZ5JkIEzCtpZQhSWq6yQS45tb/4hZogsq57HJsPnITWWOSepE+Wv+Ywph3dTWIEPK
-	 OYhnoez/osjVbV0QVGcTYuLAOAfs6hTajZg2x3O90hJNmNeUoK52aK5ktc2tcbgi8bA==
+	bh=GzlttPCZd0oivZ52eyJ34l9GxIdnEi12d7eFysdLyr0=;
+	b=E4Ud1E6zpKgbFLzk9lqyicwinNsCQDPPmXHzoTw4xygwFfqXONJvlF8GcmQ+5ilCxnQs
+	 KozPa15GMcewxsNyDvtUAeWt+jJeu8j9Th8XFywCD3spJtREZfV5tO574kL6kxsgxyy0D
+	 VRDXz4G/bCLxLYxu8bxkmWEOfoG1WAj9g4JwwQjDPtcgv1eSScUXlapWYg0hFa6f6em8+
+	 IQkvX7hA0sKWsxhr23rmhMgI7/5EVvoIP1m2rIUJKhOxmdK0rfwp9+VffUIYTiuo8ggJd
+	 R+5BaLRUsga8Yknxzaz8HIa+Km5AiOJg7aEreUNvUHh/ezMi+XNMWsr1gxiFWAN7DGQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LhWoQjL+;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ESmfbEk/";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EDDB606A334
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF0ED606A885
 	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 23:44:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LhWoQjL+
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 142361F000C6;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ESmfbEk/
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 990261F000C4;
 	Mon, 16 Nov 2026 23:44:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1794872659;
-	bh=oq04MjNhELpGuF0k+tLwpv13GqhFrq1vFkt03giRItc=;
+	bh=GzlttPCZd0oivZ52eyJ34l9GxIdnEi12d7eFysdLyr0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=LhWoQjL+qBmwev8C9INbIsyegG3cIR40c2AgAhxR/BJ84E1eeQDjNL5S11sWBGnj2
-	 slD1mqKRA727AD2kzoLF6hdKZbcnEnJa/ZqHSaWYAQqWvF/fQViJWm5VYWXRmzSpmt
-	 suZM/LeJdMD7CE4VCi963d8bESNZA5AAUMZlMIjHTav722S5x+mip11QzDemOOoSIH
-	 X1viHqAK95rROkiI0DtD8sziM90BGJBubur24LlvPCcR7g3wTgtLkb+ZMX6buR8lv+
-	 CxbQJTxrGhichjneMzj2cxx4yE4uZfWlLhaehIesp2MENbgsSn9IYMDSoJHJTtPVm2
-	 /L1WELAQ32PmQ==
+	b=ESmfbEk/eSMYj/a/+lZbjAzuERJn3Fyao+5hVwKp9V2bGqHlc2AugZncyoqKXgd68
+	 S6XTwY9KfsyWNjoTnbvTZ5xbPTBUODY5XEMmQpmhyXaO+SMdO32GJkHEr68dwwOuJ1
+	 nXvKfer0U0kaE4PgcB5p++Nolgg3J8gTq1R82vGx1DJl+DLjjlqTbKBdbWfdsJNwHY
+	 uhg8wUO0Sl7p5vhODG4VVYxfJMS5FJWfUNZ9O+B93iYixS6QdVDfnVHbgdDKcspu3t
+	 TAotwa/TRjztvxy/OEo0qW4YJzAeJ3gDwETU+qF8jqjQEzdW52H8ADj8VGUkcLjcRG
+	 Ot3swQy7VeoeA==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 16 Nov 2026 18:44:13 -0500
-Subject: [PATCH 5/7] NFS: Discard a partial callback result when encoding
- fails
+Date: Mon, 16 Nov 2026 18:44:15 -0500
+Subject: [PATCH 7/7] SUNRPC: Bound a backchannel reply by its buffer length
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,86 +54,87 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-quinn-v1-5-f05258cab8e4@kernel.org>
+Message-Id: <20261116-quinn-v1-7-f05258cab8e4@kernel.org>
 References: <20261116-quinn-v1-0-f05258cab8e4@kernel.org>
 In-Reply-To: <20261116-quinn-v1-0-f05258cab8e4@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Quinn Grant <leograntquinn@gmail.com>, 
+ Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2258; i=cel@kernel.org;
- h=from:subject:message-id; bh=4lzV89ZMkr78TnubpEWsk0nHKYhcBG4jJoeTgDQLeu0=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq+5VRBV8SQm45bSLaADuX118A5TzzL9JRRGN8T
- RPH3IacvhuJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavuVUQAKCRAzarMzb2Z/
- l4bjEAC2XGqiOh6EBkV4G40kc0C6xx8kMfuzPcBO/ZIIL9Bo31D9Yd76hoJqRxRgK9XQ6lZt8Rw
- cLZTt2PV3UB8R3YD4+2gs3s6VkmZXJYOC8FNf5uxUcs6ovSL4/2udfP5t/fX04VFXz9idc32bN0
- LEC3WITGDDQzsqTmy0ePi6A15CzzQra5EMlxqbT00RyrA+ykZ7RhymjQgFs4NIESwEEhZhRFnJj
- +wmjRvPEX8NOngabe0r4jfEht/fegfAmxYIFp0GTwiRC5DcOl0q6VbDvCBwP8Xswiayf+K5SG48
- YpptEIHkG8ovsudj/vikcysKHDLXSaCADP5wyvjpSeOzErm376kVErhVpg3zCMdgHjHgwOkDmsK
- 2xI7e486VJfYHCPeeRNA0KKuoVripliRlebxhXBHgvqpINQf/wbyONIlib0I/9P/YxmjcLhVXIY
- q8IjtSyL+dAz9mrWZa+b6R4201Q9e3nF7jB5IYdcWv7UkKR5d3Zi5Uxx5uc9Y/xAdAmMmUpmQ2U
- LXVXY/+tYLQviOR7lQLPGdFLNTqfFGH/pQ85TrS97lP21vDzRX/H8gm5vVMXFmY4sLooXWAiiyF
- sMokWa2TdLgcmc9ycY1T4We1DT3mU/99Z+MVrbLRBHNfBaR+Gp9agK5IYqyM6TKwyV1YPUgq+n4
- 7yUeWFQ035jLEgQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2481; i=cel@kernel.org;
+ h=from:subject:message-id; bh=Trv10/aS51nxs30hPPlToq1k4NJwfZSPrO0E0bg7CXc=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq+5VR2xuN5fTEthYS/JZDPIdQwwBx/7kXIkp6d
+ jg1Xj9c39OJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavuVUQAKCRAzarMzb2Z/
+ lyP0D/9M7cLZQZa62S9LNXTVotXQ+93k10Giv+dP3qvo+efPPcL5yRJqU+FG4L+mV84gIV0v+dP
+ nylCvr/oBRSXNgCESCxnvHz5esjY+lDXASiq8MTRZ0Em8d3CpDTZvAq3+k+Uc58nJ1c5JfAFban
+ v/nsdDsnJT2prJpCLgkvHxCZDtr72KaFnBcCLfYEwJZ5Yjo6bM2BMm9MbVQPr19+GkeW55yhDpx
+ BVUXu8iESvx4VaHmdYpIewEHB8Qc8/0YjE8U/Ex7wwCza2uRUA0mck4eEKwr16idjyJGk2Q9ex7
+ 1yQmmb6mcklrG2zECut3xoyirlSefnDjavP/AF1RDYxSuZY3PlC7C4VlevPKFyHHwa5dDi+Q9OQ
+ QlaDtkiTA15XxIhePbCpscCVbepgmlLxTl8ZACbraXKCSC0XRW5pfK8K/EaARjtLWpQ+CK/KruJ
+ LcaSPwjMOurXzulPqlaeQkQEFrLSbwS+uNMVxjnr+tLaAhMKNvy6YEh2XMEJ5fCy3j6Y3Jc7RZC
+ VzJMK2nQXpuJkb580sWlGQwgk0mMY7H8qHvfR3qF5QKp3zd6P/PUYcW5MwtoRt7ujfMXqur3Naa
+ XtZi7bhIYD/a1kytagxZSSZpVkFSFmjzJcPJUhiRsaG46RJJ80R+UzigvLpDSl+kXRr/FEB2Gji
+ Gc8I0vEbq0zqDuw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-process_op() encodes an operation's result header, with status
-NFS4_OK, before it calls the operation's encode_res method. When
-encode_res fails partway, the partial result stays in the reply. The
-operation reports NFS4_OK with a truncated body, while the compound
-status reports the error. For CB_GETATTR the partial result also
-carries stale bytes. encode_getattr_res() reserves the attribute
-length word before it encodes the attributes and fills the word in
-only after the last attribute fits. A failure in between sends
-whatever four bytes the reused backchannel reply buffer held.
+svc_process_bc() hands the encoder an rq_res with one head kvec, a
+NULL page array, and a buflen sized to the transport's buffer.
+svcxdr_init_encode() ignores that buflen. It ends the head at
+PAGE_SIZE and recomputes buflen from the NULL page array, yielding a
+meaningless length.
 
-The encode_res methods do not fail in the backchannel today because
-the reply stream does not stop at the end of the transport's buffer.
-Once the stream stops there, a server can reach the failure with a run
-of CB_GETATTR operations.
+A CB_COMPOUND reply larger than the transport's buffer is written
+past the end of the buffer, which on xprtrdma can be smaller than a
+page. Once the reply fills the head, page_ptr steps to NULL and
+page_address(*page_ptr) faults. A malicious NFS server can crash the
+NFS client over TCP or RDMA with a run of CB_GETATTR operations on a
+write-delegated file.
 
-When encode_res fails, truncate the reply to the start of the
-operation's result header and encode the header again with the error
-status.
+When rq_res carries no page array, end the stream at the transport's
+buflen and keep that buflen. xdr_reserve_space() then fails at the
+end of the buffer, and the NFS client replies with
+NFS4ERR_REP_TOO_BIG. The forward channel always supplies rq_respages
+and is unaffected.
 
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
+Reported-by: Quinn Grant <leograntquinn@gmail.com>
+Fixes: 89ef17b6636f ("NFS: Extract the xdr_init_encode/decode() calls from decode_compound")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfs/callback_xdr.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/svc.h | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 5a77487f9481..8d6f5d65e7fc 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -898,7 +898,7 @@ static __be32 process_op(int nop, struct svc_rqst *rqstp,
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index cfb5ab17dabd..7f584787f6bd 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -557,6 +557,9 @@ static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
+  *
+  * The stream records @rqstp, so a codec running on it reaches the
+  * transaction with svcxdr_rqst().
++ *
++ * When @rqstp->rq_res has no page array, the caller sets rq_res.buflen
++ * to the size of the head kvec, and the stream ends there.
+  */
+ static inline void svcxdr_init_encode(struct svc_rqst *rqstp)
  {
- 	struct xdr_stream *xdr_out = &rqstp->rq_res_stream;
- 	struct callback_op *op = &callback_ops[0];
--	unsigned int op_nr;
-+	unsigned int op_nr, hdr_start;
- 	__be32 status;
- 	long maxlen;
- 	__be32 res;
-@@ -942,13 +942,18 @@ static __be32 process_op(int nop, struct svc_rqst *rqstp,
- 		status = cb_reply_too_big(cps);
- 
- encode_hdr:
-+	hdr_start = xdr_out->buf->len;
- 	res = encode_op_hdr(xdr_out, op_nr, status);
- 	if (unlikely(res))
- 		return res;
- 	if (op->encode_res != NULL && status == 0) {
- 		status = op->encode_res(rqstp, xdr_out, rqstp->rq_resp);
--		if (unlikely(status))
-+		if (unlikely(status)) {
- 			status = cb_reply_too_big(cps);
-+			/* A partial result can hold unwritten words */
-+			xdr_truncate_encode(xdr_out, hdr_start);
-+			encode_op_hdr(xdr_out, op_nr, status);
-+		}
- 	}
- 	return status;
+@@ -569,10 +572,15 @@ static inline void svcxdr_init_encode(struct svc_rqst *rqstp)
+ 	xdr->buf = buf;
+ 	xdr->iov = resv;
+ 	xdr->p   = resv->iov_base + resv->iov_len;
+-	xdr->end = resv->iov_base + PAGE_SIZE;
+ 	buf->len = resv->iov_len;
+ 	xdr->page_ptr = buf->pages - 1;
+-	buf->buflen = PAGE_SIZE * (rqstp->rq_page_end - buf->pages);
++	if (buf->pages) {
++		xdr->end = resv->iov_base + PAGE_SIZE;
++		buf->buflen = PAGE_SIZE * (rqstp->rq_page_end - buf->pages);
++	} else {
++		/* svc_process_bc() passes the transport's send buffer */
++		xdr->end = resv->iov_base + buf->buflen;
++	}
+ 	xdr->rqst = NULL;
+ 	xdr->xdrgen_ctx = rqstp;
  }
 
 -- 
