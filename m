@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827330;
-	b=tlKxa/4U5ZGe8BfioPo6OJLeKEw96l8J8jNj/0f+bWNj2zpiOoPRF523FLdTKK3lSNzB
-	 BKDOm0RQlcm7WXKNYXzxQ6D5/YoDIxcbe5Kr5ZKi5V9RJNV7DrSlmm4bq1PeX8eNEge1S
-	 fP1hwVWMMKMEZaxGUlvbNzyW/jKG6m5YNFk0kJj0p2LoEXhPbedar2IM+Jp1y2cz5rBZr
-	 aiIj5nFnjJXtZznoOjJKUIwRCnEU/fS9+Fhb0uLOUukkWRJzJ25IrFGu2G8BIQ81TNp3S
-	 IN0BAGxIG6L4qek5QaN4D49h5QITwHGjxCIoikYeu+pu3+YSUQlfWqtSvZA6KsEuPDw==
+	t=1794827338;
+	b=pqqBVwwtV++V8c6JHaDr5xyb6xDPgqSmCryEyWGeXtNyZ1Rp95xNnIsf5GSXjiWzSatv
+	 p7GP/LQxD6m1dY4x6P846Fz/iIksU8pCcpzsV4j3h9qtoiyx6Bo21nTM3ovYiPzETCqnY
+	 VFfuB+59pXXh0OauApzs51RDwNLZUpC8QddOvSC7mXrgNg7GAx2sqJ9yurDNfHfNKlJh4
+	 ab1a4TyqnBnRI+YAXLCILeBBnP3aakTg3/dsLKbkwjt+N0CU3ZqFr+CjJet/ePNB41N4z
+	 8LzSAaXInktjjmeazxd635/m803jrYxpe6Q7REdvcAh1O3z9SA8inbxMkCzcb/YQKpA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827330;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827338;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=KgbqG9Caw/hRTAbhKcrEqjiiAiXfjhN0P7+uUEzG5mo=;
-	b=3gEVfLfh6MgaNeSJYrEiTeJMEtJuBFpkccv2FN1b9vgIrdUgFbFf4XiLr12ccdvrwJq9
-	 UY0r/yoj4dTONyYmsX4Ksvmg+H2gv0hNSYnIebLUXGuaXkvDCtgmYsEIxAS5OBIOq3vjw
-	 7bcEZNyupSQ/WgGBSmo85Bskvuff1xJska71X0oDCAj3jmt0HD/ZjHbJEwDsHRSyF1pTD
-	 PRzdcZgiJichhIRMflfxqlbeVSxDWeevVO/YSGxh2qJuiPxRKWlbzMCmAuIFyDFihZiGt
-	 7xPbBRn1ay3Pd++o2XUrhVPYHKhN3M7mcVA1K58llddkb4n9Fdo5BGdKfFg/vWDnntQ==
+	bh=ek7FYduULSVbUq5arr3ZrFc9sF73FP4dcX9AYxY+9Ag=;
+	b=spm9xRWIGySKP653RGjcL7oaLRdsjK4Oj1JmHtPIlSqUW2unhI3cIfcpxFFeupkLkkSf
+	 FEvcVWaRh8YZYiwHyqTJB5RTHbVRFQY3aEf2eq1LfgDxgHR+ocQUGC5MqB02oUzbZm5nh
+	 M8haX/b3khDChaylXYH6FLbAqdTbBQrlGYKvi4ijc0niEZBu3jFpSN2dwFAM9pmrCLWU8
+	 IJWOPWhQMbVdH4JQ6HPtLf/ZvEy3UmlfCYQhMzEhpv11wCEopE6E+5VJ8Z6aBMRj3bEWV
+	 XkhlP8zvt2td95JibSyP/MFLGq9CiZ2mdrdV0kW8Rw8aYNp2y4DSilGlWPKTqq/NwGA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=a0UaCeV2;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hqVGQD92;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EE3060A6F7B;
-	Mon, 16 Nov 2026 11:08:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4766F606BE2D;
+	Mon, 16 Nov 2026 11:08:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=a0UaCeV2
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 768641F000C5;
-	Mon, 16 Nov 2026 11:08:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hqVGQD92
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DDB211F000C4;
+	Mon, 16 Nov 2026 11:08:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794827330;
-	bh=KgbqG9Caw/hRTAbhKcrEqjiiAiXfjhN0P7+uUEzG5mo=;
+	s=k20260515; t=1794827337;
+	bh=ek7FYduULSVbUq5arr3ZrFc9sF73FP4dcX9AYxY+9Ag=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=a0UaCeV2WV+QFgrwTGF9+hKqhdNQa9dgGmQSp/rRjo/bQXyy72SriaLw6dWnEcymV
-	 8DP21DNooZ/yHbfrIGqsgMkSLRPQyEkzc0OzcnwWFeuA4kk3ur891oAbusm+Y5TqgI
-	 A9UKuEQLGl22KaXB9J3QM0jgvZ6QZyEhJ1LX5mgmJK+zWSZanNlhUpMAk94F0KldS3
-	 ZAEOkyjJa37fqTHwFK10oUMUYuBTYBoT8ldVJlKKulVTVEcQ6KH6VUczbJeY4+jyMO
-	 SGxWgT7t/Kx8U0Zx7i/0tMnR4OehS/kQiPQrAND2KNfoR/OUuKG2pj8/dQzNF6kliw
-	 coFLuVxRgzfuA==
+	b=hqVGQD92ptf9qqnybXZsjl1lBXLy25LXcD3qck0h3II6D1+uj2w0UCe7AnC8yfuUK
+	 DBvlP7U/ezRfWQ8Rs5suLaGriT1BSlssZ9axHhjPhAuXDlS1Y/K2QWswiS2nf0hd15
+	 mgNz1M9WUrIByUmgj4LNTVaef0wBQawvbuFhB9JsfbJP+PbGz3/XCoYokswy4kK25Q
+	 X2hrdX3tY06xzdGLazSIumYwZqYdKkoPSnb1hfbzQy+wt09vb/IMMve/bJQLAIa6F1
+	 vAjADxJuDTMP4T1sHKG0OZOaWsM6OFV3enjzvFavLrjqm3CNNR7zTo5aWyeLsdFncs
+	 cnHuExJ0EguVA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 16 Nov 2026 12:04:55 +0100
-Subject: [PATCH RFC v3 22/44] sunrpc: use fc_init_pseudo() for rpc_pipefs
+Date: Mon, 16 Nov 2026 12:04:56 +0100
+Subject: [PATCH RFC v3 23/44] fuse: use fc_init_pseudo() for fusectl
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-work-loop-pseudo-v3-22-8cbbea1cf34f@kernel.org>
+Message-Id: <20261116-work-loop-pseudo-v3-23-8cbbea1cf34f@kernel.org>
 References: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 In-Reply-To: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -77,44 +77,44 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  Alexander Mikhalitsyn <alex@amutable.com>, 
  Chris Down <chris@chrisdown.name>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1040; i=brauner@kernel.org;
- h=from:subject:message-id; bh=MpmJ+CmuhOGqFr/rEz4RCZnO8Dm+lCmdYI7UNn+2hFA=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9elwRn1592q8/9Ebu9EUG4e+0Z+x4JNaS4GRWxbRWa
- I/o/GkXO0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACZy8hfDbzaJKycFfq3aMa+A
- /w/npnojOb4g9kWmP5bcj73ysOj+316GPxwVXDnXi12WCXs1r75bJrnrxYX8JK+ld+pbrvadl9F
- W5wMA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=999; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=7AmoNzP4UOKW+VKhMYMUlDwuPOwZV6Om3UBU1WIAvFs=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9elx50rnV4OoK6YIK/Q26axukqwxsMu5p3Jl8d71vu
+ a5nhWt/RykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwEQ6NRj+qb3+utWQ88yGsDn1
+ fz35NzrGiu+9VZp3a+fs5gueVgtSwhj+Sh5vPv5J8uPZIynqDy8WReRO0+3vnPshjGGN0vOzJl/
+ fMwAA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize rpc_pipefs as a pseudo filesystem. This raises SB_I_PSEUDO and
-also SB_I_NOEXEC and SB_I_NODEV. rpc_pipefs never holds executables or
+Initialize fusectl as a pseudo filesystem. This raises SB_I_PSEUDO and
+also SB_I_NOEXEC and SB_I_NODEV. fusectl never holds executables or
 device nodes.
 
 Reviewed-by: Alexander Mikhalitsyn <alex@amutable.com>
 Reviewed-by: Chris Down <chris@chrisdown.name>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- net/sunrpc/rpc_pipe.c | 2 ++
+ fs/fuse/control.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 9d349cfbc4831..37277a6d24156 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -15,6 +15,7 @@
- #include <linux/pagemap.h>
- #include <linux/mount.h>
+diff --git a/fs/fuse/control.c b/fs/fuse/control.c
+index 21ffde596d611..4497362e7df06 100644
+--- a/fs/fuse/control.c
++++ b/fs/fuse/control.c
+@@ -10,6 +10,7 @@
+ #include <linux/init.h>
+ #include <linux/module.h>
  #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
  #include <linux/namei.h>
- #include <linux/fsnotify.h>
- #include <linux/kernel.h>
-@@ -1181,6 +1182,7 @@ static int rpc_init_fs_context(struct fs_context *fc)
+ 
+ #define FUSE_CTL_SUPER_MAGIC 0x65735543
+@@ -334,6 +335,7 @@ static const struct fs_context_operations fuse_ctl_context_ops = {
+ 
+ static int fuse_ctl_init_fs_context(struct fs_context *fsc)
  {
- 	put_user_ns(fc->user_ns);
- 	fc->user_ns = get_user_ns(fc->net_ns->user_ns);
-+	fc_init_pseudo(fc);
- 	fc->ops = &rpc_fs_context_ops;
++	fc_init_pseudo(fsc);
+ 	fsc->ops = &fuse_ctl_context_ops;
  	return 0;
  }
 
