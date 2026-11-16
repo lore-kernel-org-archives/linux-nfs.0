@@ -1,100 +1,98 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794830291;
-	b=4yqD5Jw9KEn8/LCgtHMiHIh0A+kBQJdKEdVyeIj+0tgrPYUXe13Z24cZHsQqGgoFCJSk
-	 eh6suYTQ0LSc3knSB+BTTzqShCVj300zErFNHp5z5wHC0HiQiSfQ0hbuVBheNHzY1hP9T
-	 DsZbG5j52JxJuX4AQUnBJZCIL1/v3cWZQmnQbJ3BHMo/BGsIZgSY7NudX/gHs/p8unzLO
-	 5Pw+wXO/oraKzHD3oRc5OKSNspzwwGBRyQAxhp9Ofhw7U1Rfn+onNLpiXwrWCBXW3RuuB
-	 AnrqNRxjQJPu6RzrdCpMpaU5AKOGQm5a5aPT+yAj+jYGjI3Hkeui979EgySuyqPlrmA==
+	t=1794830362;
+	b=Ake2umOeOqU+RNiRzW40Vdk0Kv8iUdj23/AcwsR97qGdEVU4cPEJPVwUdtJiTCuJaDTe
+	 iT8ZZCLAYvx00kBazssPXrD2Mt7fbgu/JJu5avNKdT8L+aZofEXFQXXipCJmW/x1DD+ry
+	 8feC1XnlskSk/2Qnej1Rjz/bJ2kxdGRXxeX0wLlq4uxll4AxUIWu+2eg0QtICF1/6yJbh
+	 ut4RRRSw89ChCtyQ9p5VtONT4bRanSSbJr3/nPnsLfwx4xSrse0b3MDJe8Hgiypg3/Pt3
+	 sEBbqoXZBUDCWWrHs7Gquy7nNNNCIg10mFmafzqbxyOUOA/jsm6jAMRPKnaVv03mJoA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794830291;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794830362;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Rspamd-Queue-Id:X-Spam-Level:X-Rspamd-Server:
-	 X-Rspamd-Action:X-Spam-Flag:X-Spamd-Result:X-Spam-Score;
-	bh=O3kyFYNZEO98BGa5AYi7ZBKt28oh7YsdECVSE9jZkTU=;
-	b=vBQLIDqsmICSwERhrlVaucOoZtA8Zme5TxY/91iTsD6tII9rvYAJ0NQHlMEqNTNIm29N
-	 OclumJIy8ZcamvFmTHJ0JpLIAs3AOJbTOtOZvcZvC2uAR0aIksg8SA4EHUNqPcRcbDE8q
-	 eyxA3APlRjPwutau3D/18M7hAOlLoVNDXxuLUDVQ0C9Kmc3Evo+5n5VIvfwcRIa/Xyjkv
-	 WPbT7Ld6BipCd5H248U8GY0xpCFwnU6hcZg1Ho6zjCBvzLnbbEkTO75ghzpazvjcvpVxl
-	 MtwlXRAYE33m+WQqnDoOBQpPnEYGmCVWmSGS+m4d5I+CXKvEBj3iUQkwfoXBG+xfNnQ==
+	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
+	bh=m+MSrAqEZVeGiRYWzVvdWVxYsWhCX93lP+R84odRzMg=;
+	b=48HYheV3VHbMHj2uTUR187BNSmEKbfvaSJcuRomlc2i1fvRCMR9fyy1B5xIBvkNnvvT3
+	 qNkVbDd74xQBkuHkcU9rkf3wiR9hskB9ZBKobvr5afoViSKkckH6TUYKWy2tAkr3yEuv5
+	 Wq61rxYrA5CIvlkiqj8EbAE9mJxw3BtzlnoAY4znqbU7HrPjG4N2SuZSrFS1+xOr+ipAI
+	 KeNKCmAIxDnAk7n6cW2ZtawVTrbS5k7j/0WAi+m+1CQDiQCjsSc4DhKLVk0mIc8uYfDYB
+	 vY/XmSgw75oPbnDSDLlGqjio0jGz7D7t9QNINU5gVkklVBrlSTVq/NImTnwpvZXcUCg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=2+ywiZyW;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QNEtN+F7;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=1GgTnund;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=4kJ0IcoK;
-	arc=none smtp.remote-ip=195.135.223.130
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=w9UbCaXu;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=2jwVNDcA;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=g4vMACQr;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=caRSVl6C;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B63C8606A31C;
-	Mon, 16 Nov 2026 11:58:10 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B63C8606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1C96606A32F;
+	Mon, 16 Nov 2026 11:59:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D1C96606A32F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=2+ywiZyW;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QNEtN+F7;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=1GgTnund;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=4kJ0IcoK
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=w9UbCaXu;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=2jwVNDcA;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=g4vMACQr;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=caRSVl6C
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id A3E6422262;
-	Mon, 16 Nov 2026 11:58:07 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id EE0101FD69;
+	Mon, 16 Nov 2026 11:59:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794830289; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794830360; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=O3kyFYNZEO98BGa5AYi7ZBKt28oh7YsdECVSE9jZkTU=;
-	b=2+ywiZyWPDD66lUhrpPh325/MJEmNQNKxPcFlIf572S72HqpVpHwWTnXh77PlW9IMu4qOQ
-	6f08im9gEa6Ry+r2fLmj67zFVOL91dxN69raBB8c+By/I46nrysLLtWOzOLwU4NCTQSLnM
-	Roy5P1/Sbj6zQkP/CSi3gDSquZ2ki9I=
+	bh=m+MSrAqEZVeGiRYWzVvdWVxYsWhCX93lP+R84odRzMg=;
+	b=w9UbCaXuysYMtCIxOa132sEBAfLLV3g9wdb1P7GKdWn/KBZf0xmX7OUV+ry36tyRgtBwUS
+	4JPmU/S88K0Op27fmaA7V6goV7N2yNsSNSQIpoYQaj+dstfcE8cabCg3iBG0CJKceovJdZ
+	Kkbrv96x3HQpafle84sXhPdn8ej/ry8=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794830289;
+	s=susede2_ed25519; t=1794830360;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=O3kyFYNZEO98BGa5AYi7ZBKt28oh7YsdECVSE9jZkTU=;
-	b=QNEtN+F7Bw2apRLsIJiYbvvfaZw08vBRO3H2yCKYgvRibrXTVTjkLPTikJmhQ8VutuDxOG
-	6Bhl6seErk05ZYAw==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=1GgTnund;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=4kJ0IcoK
+	bh=m+MSrAqEZVeGiRYWzVvdWVxYsWhCX93lP+R84odRzMg=;
+	b=2jwVNDcA0m8yAXkVNIaEcYrvMMOpVTPtYSZdQJ07T4BxiUwkJUf6TP91tqXL1n7+tEfQJH
+	xqMjVZqR9XeIW3AQ==
+Authentication-Results: smtp-out2.suse.de;
+	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794830287; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794830359; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=O3kyFYNZEO98BGa5AYi7ZBKt28oh7YsdECVSE9jZkTU=;
-	b=1GgTnunddjz5p25LSqSEj0+KbWLyLPG+Yl1IKKnWGMPCTMnTYVPnozxysh4TySv5TQOpLx
-	M0u1BK6eSgfsG7wjdXgKZCez8iL4agiXQZSvfimaJZvWM/3h6EeWT6fjNHA6p2horaTkhQ
-	TleuzQ6pOhywOoinZPloBMJe2xPdpyg=
+	bh=m+MSrAqEZVeGiRYWzVvdWVxYsWhCX93lP+R84odRzMg=;
+	b=g4vMACQr/XoNhb2D6Tfs8OcqkvXsZpLJDqPYvATm26ZFdE6vvhBB3vGbNqlOEgJ8uYa/la
+	EjnuXJUwsQoDxaCQsQo8Ri2QffqhE6VsQot9a1SMyU2VlnjOVWNJ7nPTjn627vClCwaFSo
+	Xhxkv9s8KDC8PybbLZk1gMZbBLRP4qU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794830287;
+	s=susede2_ed25519; t=1794830359;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=O3kyFYNZEO98BGa5AYi7ZBKt28oh7YsdECVSE9jZkTU=;
-	b=4kJ0IcoKE9WktJYlwJFcoT0LMqinoXxjDZ/Yj5TzSLNr5LynLDUvTngtqcJFIT/jfTtRvI
-	9CrNxifZG8VuzlAA==
+	bh=m+MSrAqEZVeGiRYWzVvdWVxYsWhCX93lP+R84odRzMg=;
+	b=caRSVl6Coo+XYxmVsbKV6C63GdJ2akNXbWZXWZfrt4t4jRCHnf+Y6z+dO/xYN8ZQi/I6AH
+	3E8s8YYRMhGwO9Bg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 79CEE1334C;
-	Mon, 16 Nov 2026 11:58:07 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id C5405134B8;
+	Mon, 16 Nov 2026 11:59:19 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id iSbtFc/v+mroRwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 16 Nov 2026 11:58:07 +0000
+	id NmvtJxfw+mreSAAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 16 Nov 2026 11:59:19 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id 2397D24DD4; Mon, 16 Nov 2026 12:57:59 +0100 (CET)
-Date: Mon, 16 Nov 2026 12:57:59 +0100
+	id 6BADD24DD6; Mon, 16 Nov 2026 12:59:19 +0100 (CET)
+Date: Mon, 16 Nov 2026 12:59:19 +0100
 From: Jan Kara <jack@suse.cz>
 To: Christian Brauner <brauner@kernel.org>
 Cc: Jan Kara <jack@suse.cz>, Shakeel Butt <shakeel.butt@linux.dev>, 
@@ -103,10 +101,11 @@ Cc: Jan Kara <jack@suse.cz>, Shakeel Butt <shakeel.butt@linux.dev>,
 	linux-block@vger.kernel.org, linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org, 
 	target-devel@vger.kernel.org, linux-unionfs@vger.kernel.org, bpf@vger.kernel.org, 
 	linux-nfs@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH 01/12] fs: add kiocb_start_write_trylock()
-Message-ID: <xhmgs4lntq2mnzrj27ec2ldsqsoxx7osvhrrwpmqecp3gotm7m@5pkboz23vwjj>
+Subject: Re: [PATCH 06/12] loop: take freeze protection for discard and write
+ zeroes
+Message-ID: <wpcg3f2t6onllwx4qd42n6epkqaw4huwhurwc5xf3hbnjjo43a@2fwxzz4khwxe>
 References: <20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org>
- <20261114-work-fs-frozen_writes-v1-1-f5ae61c898b1@kernel.org>
+ <20261114-work-fs-frozen_writes-v1-6-f5ae61c898b1@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -118,51 +117,58 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261114-work-fs-frozen_writes-v1-1-f5ae61c898b1@kernel.org>
-X-Rspamd-Queue-Id: A3E6422262
-X-Spam-Level: 
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-13.01 / 50.00];
+In-Reply-To: <20261114-work-fs-frozen_writes-v1-6-f5ae61c898b1@kernel.org>
+X-Spamd-Result: default: False [-12.80 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
+	RCVD_COUNT_THREE(0.00)[3];
 	MIME_TRACE(0.00)[0:+];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	ARC_NA(0.00)[];
 	RCPT_COUNT_TWELVE(0.00)[17];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email];
-	RCVD_COUNT_THREE(0.00)[3];
+	FROM_HAS_DN(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	TO_DN_SOME(0.00)[];
 	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCVD_TLS_LAST(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	DKIM_TRACE(0.00)[suse.cz:+]
-X-Spam-Score: -13.01
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
+X-Spam-Score: -12.80
+X-Spam-Level: 
+X-Spam-Flag: NO
 
-On Sat 14-11-26 11:47:08, Christian Brauner wrote:
-> kiocb_start_write() waits until a frozen filesystem is thawed. A
-> nonblocking submission can't use it. io_uring open-codes the trylock
-> variant for its IOCB_NOWAIT writes.
+On Sat 14-11-26 11:47:13, Christian Brauner wrote:
+> Discard and write zeroes requests end up in lo_fallocate() which calls
+> ->fallocate() of the backing file directly. That skips the freeze
+> protection vfs_fallocate() would have taken. So they go straight
+> through to a filesystem that is frozen. With the backing file on ext4:
 > 
-> Add kiocb_start_write_trylock() next to kiocb_start_write() and use it
-> in io_uring. The nvme target's file backend is going to need it as
-> well.
+>   WARNING: fs/ext4/ext4_jbd2.c:90 at ext4_journal_check_start+0x1f6/0x2d0, CPU#3: kworker/u16:1/44
+>   Workqueue: loop1 loop_rootcg_workfn
+>   Call Trace:
+>    <TASK>
+>    __ext4_journal_start_sb+0x7a/0x470
+>    ext4_dirty_inode+0xa1/0x120
+>    __mark_inode_dirty+0x154/0x1110
+>    file_update_time_flags+0x3ab/0x4b0
+>    ext4_fallocate+0x286/0x3440
+>    lo_fallocate+0x13e/0x290
+>    loop_process_work+0x486/0xe70
+>    process_one_work+0x946/0x1820
+>    worker_thread+0x4f1/0xd60
+>    kthread+0x364/0x460
+>    ret_from_fork+0x525/0x770
+>    ret_from_fork_asm+0x1a/0x30
+>    </TASK>
 > 
-> No functional changes.
+> Take freeze protection around ->fallocate() like vfs_fallocate() does.
 > 
+> Fixes: dfaa2ef68e80 ("loop: add discard support for loop devices")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 
@@ -173,70 +179,23 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  include/linux/fs.h | 22 ++++++++++++++++++++++
->  io_uring/rw.c      |  9 +--------
->  2 files changed, 23 insertions(+), 8 deletions(-)
+>  drivers/block/loop.c | 2 ++
+>  1 file changed, 2 insertions(+)
 > 
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 99caef43ff3c4..eefc2c9d4af19 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -2801,6 +2801,28 @@ static inline void kiocb_start_write(struct kiocb *iocb)
->  	__sb_writers_release(inode->i_sb, SB_FREEZE_WRITE);
->  }
+> diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+> index a3325ceab484a..77f0601475bb9 100644
+> --- a/drivers/block/loop.c
+> +++ b/drivers/block/loop.c
+> @@ -259,7 +259,9 @@ static int lo_fallocate(struct loop_device *lo, struct request *rq, loff_t pos,
+>  	if (!bdev_max_discard_sectors(lo->lo_device))
+>  		return -EOPNOTSUPP;
 >  
-> +/**
-> + * kiocb_start_write_trylock - try to get write access to a superblock for
-> + *			       async file io
-> + * @iocb: the io context we want to submit the write with
-> + *
-> + * This is kiocb_start_write() for a submission that must not wait until a
-> + * frozen filesystem is thawed. Should be matched with a call to
-> + * kiocb_end_write() if it succeeds.
-> + *
-> + * Return: true if write access was acquired, false if it wasn't.
-> + */
-> +static inline bool kiocb_start_write_trylock(struct kiocb *iocb)
-> +{
-> +	struct inode *inode = file_inode(iocb->ki_filp);
-> +
-> +	if (!sb_start_write_trylock(inode->i_sb))
-> +		return false;
-> +	/* Fool lockdep just like kiocb_start_write() does. */
-> +	__sb_writers_release(inode->i_sb, SB_FREEZE_WRITE);
-> +	return true;
-> +}
-> +
->  /**
->   * kiocb_end_write - drop write access to a superblock after async file io
->   * @iocb: the io context we sumbitted the write with
-> diff --git a/io_uring/rw.c b/io_uring/rw.c
-> index 3a8559ff4dc66..a0a16fc521455 100644
-> --- a/io_uring/rw.c
-> +++ b/io_uring/rw.c
-> @@ -1095,9 +1095,6 @@ int io_read_mshot(struct io_kiocb *req, unsigned int issue_flags)
+> +	file_start_write(file);
+>  	ret = file->f_op->fallocate(file, mode, pos, blk_rq_bytes(rq));
+> +	file_end_write(file);
+>  	if (unlikely(ret && ret != -EINVAL && ret != -EOPNOTSUPP))
+>  		return -EIO;
 >  
->  static bool io_kiocb_start_write(struct io_kiocb *req, struct kiocb *kiocb)
->  {
-> -	struct inode *inode;
-> -	bool ret;
-> -
->  	if (!(req->flags & REQ_F_ISREG))
->  		return true;
->  	if (!(kiocb->ki_flags & IOCB_NOWAIT)) {
-> @@ -1105,11 +1102,7 @@ static bool io_kiocb_start_write(struct io_kiocb *req, struct kiocb *kiocb)
->  		return true;
->  	}
->  
-> -	inode = file_inode(kiocb->ki_filp);
-> -	ret = sb_start_write_trylock(inode->i_sb);
-> -	if (ret)
-> -		__sb_writers_release(inode->i_sb, SB_FREEZE_WRITE);
-> -	return ret;
-> +	return kiocb_start_write_trylock(kiocb);
->  }
->  
->  int io_write(struct io_kiocb *req, unsigned int issue_flags)
 > 
 > -- 
 > 2.53.0
