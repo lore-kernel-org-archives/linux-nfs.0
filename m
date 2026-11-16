@@ -1,106 +1,106 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794841556;
-	b=vc5sNIu3DDSQmmKFMEX71jl5Y5ZqQKhG7mDgi2uPEHQvbRj4TbWOu5M1U+tVwnhjVtnv
-	 9/T5xEqxBTlvFxTmUIa129d1yMAEoHfdK5GHugXou8zreVvHtULn0IiSjqwGgayZ1tohl
-	 ttmACKUHHBDOCgQ+x2OB71xOGW+nxkq+bS1Z+bqgoOhPE/fNVwFFm9b2d+EJz3FlJC4VV
-	 43NATXf3vKQnRC6Mp36EL3qlc2DNVua9UFEbY4O3Ldw47c/ATvBc4CVdShkQFnUtEArOr
-	 ijrNu0pnOWiE802m3i2vxjwVpzMXAWXaXokzsX8ODRaE6sk1/qY32/iCnvGTtMwtC9A==
+	t=1794841676;
+	b=bKR33OUTu5+5lFBqDYqwngFXGS5gXwz4bmPB6J0fSSP9IVmKRYaUvVjNHp+tKjnyM1LS
+	 R/q36wag0++0LNCYkhf3zpTUPwBl/rpPSUn0CI67sH/XlFwb5AtKaNbqHz+chjmwygxHK
+	 2xFwny5VTX/M4eYoeExCpkBwMwZ+0pMt/O6QSttA7W+xzdhtY9tA03DWX1nWYwY8CkEK/
+	 0UrAthorQDBKOp5xMldH6S4XTFnXb/aFz6a7PaLfwvS+ZuyC3C4629ivRDe36RTz7QzwU
+	 OUh5drHJqeQ77NEnHGvnDQ9jlif1wnTFu7uM2hlSY+DudT+cFyNT41wB46Vw2ksHdWw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794841556;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794841676;
 	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
 	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:Message-ID:
 	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
 	 Content-Language:From:In-Reply-To:Content-Type:
 	 Content-Transfer-Encoding;
-	bh=GshjUkVFwFINfqlZSJ4uRGe88l6TmbD7OIlti+2Bc/4=;
-	b=nICOGUXNV+C7zTobnntm5M4QNeT2Cml2Pzfk8TwdqL8H+EM9fuZIUznWTNR+psWgrCQf
-	 SBFhBleyUVq//gv3ekrjlgYrfE0MMF7dAuxEv2FoKyVwI5jnd83iVlM2p9t1H7h4aIw26
-	 YHIl9sgpr+D3M2OFzYN3mqSw+FiCTStlOZ4AKPB4mwX8Bxjj3Sn1TbZ04sB29iSDc5+xE
-	 /7y37SRhhtMpmoD4OrDboTATl0SlMXYbrnUOThPzk5R7Fsn6kpZBIiuKLHC5spuN1QQMm
-	 qXb/bFF9lLFsNOrUBhwgbsPLaux/P1YuPIuZyONXhk5g+Nk1vD9hnK52ixZQQP90EKw==
+	bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
+	b=1ww8tkb+sH42HcmI+XVfVEUMWRhzXcAao4/Ot0VGpFoD0XW5eSqALfP6tupVm9o9v7Pi
+	 Y8JrFXzdDjGPwunKE6rQ4ZjZq47dRu65STReFJHqy/YW8fc/FkGlHsjhpm6sQVwAzMcB2
+	 XYmcsCzqyg113r+8ZG+kr1N9pd0HtPJcoVRiwOpnD2OopD3Ts8nnpb020L5B+f4aJ+lls
+	 GiDvrUPxKM80plD7vMY3KdZTXAbdZa7sK6PetxeSrLKz5bBg27UgvlkGWC+2nT7ci+Bwk
+	 WBq+5RqnWz5n9DoL49IoN4gvgxq7/68Fe7T/88r/jTULuQDO+g6iAHDoDG3HbT3PIMA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=redhat.com;
 	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=QfRI8cs3;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=F7xKpJVd;
-	arc=none smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=cFj+8y89;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=BJFeHx0m;
+	arc=none smtp.remote-ip=170.10.129.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 19871606A333
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 15:05:55 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 19871606A333
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E330606A880
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 15:07:55 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2E330606A880
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=QfRI8cs3;
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=F7xKpJVd
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=cFj+8y89;
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=BJFeHx0m
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794841555;
+	s=mimecast20190719; t=1794841675;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=GshjUkVFwFINfqlZSJ4uRGe88l6TmbD7OIlti+2Bc/4=;
-	b=QfRI8cs3Fwlc9Uhy1MknQodn2RQfXYLAl27ca/InviNZ91ploaiqRqq4aDFDOhe8AIYuG6
-	IxRa1jExvUYJ4b+NUx4G47VyKxGzn+lPnqVvyBr+1jFkKNxN7e1vupgfb+/HmJSkGcoL8J
-	Go/O9oOkQvGcwI6IZOH0OxutTmr+I7Y=
-Received: from mail-yw1-f199.google.com (mail-yw1-f199.google.com
- [209.85.128.199]) by relay.mimecast.com with ESMTP with STARTTLS
+	bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
+	b=cFj+8y89eWwT4ZdbMYci6Lf/kImkZQWFEWPSjpMtf2BesZ465amiHLR5WR6Kv++WStLRiX
+	krprWLolTqXstFetnfVhqa3zkmrijcdLltoCFxSlmjdD/4v0r+ZreG/9dwHOBSac2zVb6s
+	s2XRyliKOo8tjbA3YI3DzXmUMqu7eAg=
+Received: from mail-vs1-f69.google.com (mail-vs1-f69.google.com
+ [209.85.217.69]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-510-3QGGVJoHN7KO0rirI-qTRw-1; Mon, 16 Nov 2026 10:05:53 -0500
-X-MC-Unique: 3QGGVJoHN7KO0rirI-qTRw-1
-X-Mimecast-MFC-AGG-ID: 3QGGVJoHN7KO0rirI-qTRw_1794841553
-Received: by mail-yw1-f199.google.com with SMTP id 00721157ae682-8b4bb8bf464so38461157b3.2
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 07:05:53 -0800 (PST)
+ us-mta-137-OQi-SrJoMROZy3PCveXbPA-1; Mon, 16 Nov 2026 10:07:53 -0500
+X-MC-Unique: OQi-SrJoMROZy3PCveXbPA-1
+X-Mimecast-MFC-AGG-ID: OQi-SrJoMROZy3PCveXbPA_1794841673
+Received: by mail-vs1-f69.google.com with SMTP id ada2fe7eead31-7cc36b97a77so567143137.0
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 07:07:53 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1794841553; x=1795446353; darn=vger.kernel.org;
+        d=redhat.com; s=google; t=1794841673; x=1795446473; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=GshjUkVFwFINfqlZSJ4uRGe88l6TmbD7OIlti+2Bc/4=;
-        b=F7xKpJVdTFKhi2NCLZu0o/7oNH+/lF15aYvwJl8r+ykMoK0Ux5I1sXCh6u2qx5wVUv
-         ay7wClxZNCkJL7WjqfDMLkVvhdzNFqUCobMdz1nJwsl640yA7Fe/MPcAtSDja45tpZiw
-         BKdNpn+6qyKUWkoy1LxEcsbWMGuAnNrHXWMHGDaI7KulM07N5iGh5mRJg9ihhROSkp9O
-         5/Pknrwip2Eb5p/1eop9SCTaBx84/rZB2acpQhDitpdCN3P/oWcX97zWiZ8a7OofUfy7
-         Nc0LJq27XEJT7cNPwwwW9dXEU27Uq+tD/9JldXqOdFPVntBD8CsQpkvkOOlgh8rK0qcG
-         8Qvg==
+        bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
+        b=BJFeHx0mE32qmkRm2mc748EzLyeMD+BJrqkPoYMleXjkMV3uwcd6iNiMextnGynfQn
+         CF9EXnOiu4YyGaGSYLD58nRejrjOoGbzeTXwuN8QfB42vUOsuGaxIIF3NnEkjofzSwIv
+         rzYBacnh2ayd0aCGYbXnuCDzjk0ugcuZ8KNfIWu39vSVtEPsk8kHEzJzJwK6pH5j/NGw
+         pFYAuZQW6GNO8OjK8C2CQxuZvt46wKzkCki2ikNsZ7uvzVsPOVyR3oOkkUG9DAwlAYWO
+         q4pj/taFPqLxCnh8JYTOjKHzqIexZcTjpKvPWOb5yP5Y+9wHdECLb0C8Nalg/iKTZfuR
+         RV/A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794841553; x=1795446353;
+        d=1e100.net; s=20260707; t=1794841673; x=1795446473;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=GshjUkVFwFINfqlZSJ4uRGe88l6TmbD7OIlti+2Bc/4=;
-        b=RPZ+Kh16bDkaB7LJMp6BfWqJszUXUoBQXRAdLwXI95uteSx4rvbK12C6aQ9skktsSh
-         4vZwCLXD/ubKK0eK5lrwjsQiRfMUAU3aJ2RDh6SMl/YCfnd/jSvwaLugD9QKgWOUZAu5
-         t04Er6fJCngPgMWQtn+yJ/nAaef/Br+UeSf4L1vy4f161R0MzIJRKtTl4m8nk/HesARb
-         k8Bd8kHArcUHyPO4kIhck9AuH1+Ty+4dDg60T5Yxt7Z2M3O0KAACrLXk/sKC7h4aYeNe
-         Yd9m0L2jyqDET4JJrFo5WMTTEG0s44Woj2brduFEhu9eMD3HGCbavG/rMWkcM4mPYGAm
-         eEow==
-X-Gm-Message-State: APuU4Z+qxewU5k/u8oh8+9UY+cYrp8zL+ZoViPqHWlXFIfrqH9sV6MWm
-	UCyckvNYqsrxaH6qbc25SaAlboh5sSkbzbMJ6WTCEWY6ZCdGwbDhlutz2eOeZN3r2pSEcZkECt/
-	a3MJgYZul0/1RcFR/c6TPQJ20wfGClz+g6JfCU+wO/sxq8QoO1kAAgmBrksyDOA==
-X-Gm-Gg: AZFdTZfr285VDe9htSa6H6m9G7CTSDK7S0l6N3P3uVAOeH4x4dUuKpAg/PK2RHAwGUP
-	JIEzlwqVUrEPuLExnFLZKzIN2D1YDVdL1R7Xwr+u5AIKx2Eh2gWFFOjOKAKP66Huy3mupd7bsgc
-	+uapawfuK9qoRz790E5CKwnXqlhWjHgnqxb/oqsYHwXe2vYOG5CDtYSE5E0Aytg4Jaflmv/Wrfa
-	+dNupF8T/c+ys6xgo8Cv6ub3rkbd6O39zCA35CBAYaiCEB1SCI5eQo/Utsse+OtLWhHxPXHxkwD
-	HNwCCNTWF9pk0x4pD8cYZdv9/PYbA1mTdHVbq9IyS5Jn4bkmcxLUxaG5x4X37IwQ7p8nXhH6Vp0
-	0Dyvw+Ce7Yqc7Ols791dvgjdvSTR4NaEVLSLTOoH6oGJJWHYr
-X-Received: by 2002:a05:690e:1487:b0:67d:c305:ca1f with SMTP id 956f58d0204a3-67dc305ce0cmr387751d50.53.1794841552759;
-        Mon, 16 Nov 2026 07:05:52 -0800 (PST)
-X-Received: by 2002:a05:690e:1487:b0:67d:c305:ca1f with SMTP id 956f58d0204a3-67dc305ce0cmr387735d50.53.1794841552242;
-        Mon, 16 Nov 2026 07:05:52 -0800 (PST)
+        bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
+        b=eG1teXR9kNSOtJmNbP63qBTMAuX2CpbsaeZC69ythb1G3mVrWkLk2e/TWPBlbm1Qsn
+         gmAlg46jo1JbyjkSPtf+m90Csz4GXgF9oa7SXXUJXjUl9UZEBAUMB9Vvzyzf2v9wl53T
+         iM9SWf3AeyWyI5xVBfkXKLkgiysXV3vf+dpKC8ypGdta8y3UpZxHkwhXGt/aC6bLe81h
+         /5W6M+VeqQaxaCcN6XQtN3qmjBS0SBX/+8Wcdrra45SmqByms8h7bJhfBlrLCTomySjX
+         lG7O85gLdG/dcv4iyk/0BTG5IMSwfxyOdo8dasBVpBUDozodrsmEnXWv2QcbYLJV6ivy
+         4N4Q==
+X-Gm-Message-State: APuU4Z+e56h0jx9tC91bS+vmNQy9+cYETKPPvFBdr2LZct6Idi5lkGkp
+	X+fzTRh2pLliG0oklsFZemB4VwTEFY6jOOgv2KEnWD19UkZvy0dBS5wq2Q5KfW415IF3YXBX72D
+	jhKH8bUBj+7vJ8kpbJpPDjWsraF/314vnXSj02rG8HkQ7PDIAU8Sh7rA+0KcKzA==
+X-Gm-Gg: AYBFou3NPXxJs/jYkKGnp2Qeh6VDwCZJP9bq+8kyI7BOI+dkWlBhM2izkBa5Vbi/4At
+	PPYpdCU9RzJCRROL82vMBK3kwMPS0cEzsBiDRe0XPOChimdclx7SLbs0YoGKSAd/UUAW1+42ODK
+	Rwp30eH1vtQ3+Coi33W4Q3G+JlMYDuRpQEv7YF2+ZB4Bo/ybYpQjN+nrmY7xsohUN61CeQ8laCZ
+	THrvxSDoSQFg6/sPgqU5NR5cYoIrAjjuJzV7/gp35ptNMPNbL2zhJQrMz65fvaDsdu+LvyWHUxb
+	0M12fpzA/1GAUJMnVVAT2Z6Tad6X5zfeuPvVjlZ/8AQP16xuseu/72wQ4v+NPJfP5I3FjZgDvWE
+	p4cBG7+tUvI3eqOc4UUQeKKimg0eDYEEHSQ9w2kTAmVQUbTu8
+X-Received: by 2002:a05:6102:94f:b0:7d2:7f93:7708 with SMTP id ada2fe7eead31-7d64d6d5a23mr3100509137.8.1794841672810;
+        Mon, 16 Nov 2026 07:07:52 -0800 (PST)
+X-Received: by 2002:a05:6102:94f:b0:7d2:7f93:7708 with SMTP id ada2fe7eead31-7d64d6d5a23mr3100426137.8.1794841672189;
+        Mon, 16 Nov 2026 07:07:52 -0800 (PST)
 Received: from [172.31.1.12] ([70.105.240.105])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9494c870f31sm868549985a.27.2026.11.16.07.05.49
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91f23d7b607sm88675606d6.26.2026.11.16.07.07.50
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 16 Nov 2026 07:05:49 -0800 (PST)
-Message-ID: <b28191a0-1bc1-44bd-bf9d-6e4b33953b9c@redhat.com>
-Date: Mon, 16 Nov 2026 10:05:48 -0500
+        Mon, 16 Nov 2026 07:07:51 -0800 (PST)
+Message-ID: <8bbef8bd-396f-4f50-8d65-a23641f84be7@redhat.com>
+Date: Mon, 16 Nov 2026 10:07:50 -0500
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -111,294 +111,112 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] rpc.svcgssd: stop using raw pointers as continuation
- handles
-To: Minsu Kim <gsnake7@naver.com>
-Cc: linux-nfs@vger.kernel.org, bobtobabz@gmail.com
-References: <20261112052054.29215-1-gsnake7@naver.com>
+Subject: Re: [PATCH nfs-utils] nfsdcld: signal readiness only after the pipefs
+ watch is installed
+To: =?UTF-8?B?7YyM656R7IOI?= <lhjnano@gmail.com>
+Cc: linux-nfs@vger.kernel.org, cel@kernel.org
+References: <CAN+dWLYt7=WDO-wGHt5_1K2JcqDgrHs1bX2WBOvaTt-PFi1meg@mail.gmail.com>
 Content-Language: en-US
 From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20261112052054.29215-1-gsnake7@naver.com>
+In-Reply-To: <CAN+dWLYt7=WDO-wGHt5_1K2JcqDgrHs1bX2WBOvaTt-PFi1meg@mail.gmail.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
 
 
-On 11/12/26 12:20 AM, Minsu Kim wrote:
-> rpc.svcgssd currently serializes gss_ctx_id_t itself as the continuation
-> handle when gss_accept_sec_context() returns GSS_S_CONTINUE_NEEDED. A
-> client then sends that value back in a CONTINUE_INIT request, where the
-> daemon converts it directly into a live GSS context.
+On 11/7/26 1:06 AM, 파랑새 wrote:
+> nfsdcld daemonizes with daemon(0, 0) and nfsdcld.service is Type=forking,
+> so systemd considers the service started when the daemonizing parent exits.
+> The child, however, only installs its inotify watch on the rpc_pipefs
+> directory much later, after the sqlite database is prepared and
+> cld_pipe_init() runs. Until the watch is installed, nfsdcld cannot notice
+> that the kernel has (re)created the cld pipe.
 > 
-> This exposes a daemon address and trusts a client-controlled value as a
-> live GSS context pointer. An unauthenticated NFS client can replace or
-> replay the handle before rpc.svcgssd passes it to the GSS implementation.
+> nfs-server.service orders itself After=nfsdcld.service, but that ordering
+> is meaningless with Type=forking: on a busy boot or a restart storm,
+> systemd starts nfsd while nfsdcld is still doing schema migration or legacy
+> record import, and the kernel's one second wait for nfsdcld to open the pipe
+> (see nfs4recover.c:nfsd4_cld_tracking_init()) can expire unused. An observed
+> instance of this race took an NFS server down for 44 minutes when nothing
+> restarted the failed nfsd.
 > 
-> Keep pending contexts in a daemon-owned search tree. Return a random
-> 64-bit ID from /dev/urandom instead of the context pointer. Take the
-> matching entry before processing a continuation, return the same ID if
-> negotiation needs another step, and reject unknown IDs with
-> GSS_S_NO_CONTEXT. Discard the saved context if writing its reply fails.
+> Fix by converting nfsdcld to the daemon_init()/daemon_ready() helpers used
+> by the other nfs-utils daemons: the parent no longer exits until the child
+> signals, and the child signals right after cld_pipe_init() has installed
+> the inotify watch. With that, the existing After=nfsdcld.service ordering
+> means what it claims, and the kernel's one second window is sufficient.
 > 
-> The behavior was introduced in commit 62c4197d5b41 and first shipped in
-> nfs-utils 1.0.8-rc1. It remains present in nfs-utils 3.1.1.
-> rpc.svcgssd is built only when --enable-svcgss is selected, which is
-> disabled by default.
+> The event base is now created after daemonizing: daemon_init() renumbers fds
+> (its status pipe takes fd 3) and would otherwise clobber the epoll descriptor
+> created before daemonizing. The event base allocation failure is now reported
+> through xlog() instead of fprintf(stderr): stderr is /dev/null after
+> daemonizing, so an fprintf() message would be lost, while xlog() routes it to
+> the syslog.
 > 
-> On an unpatched x86_64 build, an INIT request that required another GSS
-> step returned an 8-byte value matching the in-process gss_ctx_id_t
-> address. Modified and stale continuation handles caused invalid memory
-> accesses and daemon termination.
-> 
-> With this patch, an unknown ID and a consumed ID both returned
-> GSS_S_NO_CONTEXT, initial negotiations returned opaque 8-byte IDs, and
-> 63 outstanding negotiations produced 63 distinct IDs. I also completed
-> an NFSv4.2 sec=krb5 mount with the patched daemon, which remained active
-> throughout the tests. The reproducer and complete logs are available
-> privately on request.
-> 
-> The vulnerability research and validation were conducted by members of
-> the Tobabz team as part of the Best of the Best 15th program.
-> 
-> Fixes: 62c4197d5b41 ("Updates from Kevin Coffman at UMich")
-> Assisted-by: LLM
-> Signed-off-by: Minsu Kim <gsnake7@naver.com>
+> Suggested-by: Chuck Lever <cel@kernel.org>
+> Link: https://lore.kernel.org/linux-nfs/20261015114755.33331-1-lhjnano@gmail.com/
+> Signed-off-by: HeonJe Lee <lhjnano@gmail.com>
 Committed... (tag: nfs-utils-2-1-2.rc4)
 
 steved.
 > ---
->   utils/gssd/svcgssd_proc.c | 159 ++++++++++++++++++++++++++++++++++----
->   1 file changed, 145 insertions(+), 14 deletions(-)
+> Hi Steve,
 > 
-> diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-> index 7fecd1aa..81216c38 100644
-> --- a/utils/gssd/svcgssd_proc.c
-> +++ b/utils/gssd/svcgssd_proc.c
-> @@ -42,6 +42,11 @@
->   #include <rpc/rpc.h>
->   
->   #include <pwd.h>
-> +#include <stdint.h>
-> +/* <search.h> and nfs_prot.h both define struct entry. */
-> +#define entry search_entry
-> +#include <search.h>
-> +#undef entry
->   #include <stdio.h>
->   #include <unistd.h>
->   #include <ctype.h>
-> @@ -74,6 +79,109 @@ struct svc_cred {
->   	gid_t	cr_groups[NGROUPS];
->   };
->   
-> +struct pending_context {
-> +	uint64_t id;
-> +	gss_ctx_id_t ctx;
-> +};
-> +
-> +static void *pending_contexts;
-> +
-> +static int
-> +pending_context_compare(const void *a, const void *b)
-> +{
-> +	const struct pending_context *pa = a;
-> +	const struct pending_context *pb = b;
-> +
-> +	return (pa->id > pb->id) - (pa->id < pb->id);
-> +}
-> +
-> +static struct pending_context *
-> +pending_context_find(uint64_t id)
-> +{
-> +	struct pending_context key = { .id = id };
-> +	void *result;
-> +
-> +	result = tfind(&key, &pending_contexts, pending_context_compare);
-> +	return result ? *(struct pending_context **)result : NULL;
-> +}
-> +
-> +static int
-> +pending_context_new_id(uint64_t *id)
-> +{
-> +	unsigned char *p = (unsigned char *)id;
-> +	size_t done = 0;
-> +	ssize_t len;
-> +	int fd;
-> +
-> +	fd = open("/dev/urandom", O_RDONLY);
-> +	if (fd < 0)
-> +		return -1;
-> +	while (done < sizeof(*id)) {
-> +		len = read(fd, p + done, sizeof(*id) - done);
-> +		if (len > 0) {
-> +			done += len;
-> +			continue;
-> +		}
-> +		if (len < 0 && errno == EINTR)
-> +			continue;
-> +		close(fd);
-> +		return -1;
-> +	}
-> +	close(fd);
-> +	return 0;
-> +}
-> +
-> +static struct pending_context *
-> +pending_context_take(uint64_t id)
-> +{
-> +	struct pending_context *pending = pending_context_find(id);
-> +
-> +	if (pending)
-> +		tdelete(pending, &pending_contexts, pending_context_compare);
-> +	return pending;
-> +}
-> +
-> +static struct pending_context *
-> +pending_context_save(struct pending_context *pending, gss_ctx_id_t *ctx)
-> +{
-> +	void *result;
-> +
-> +	if (!pending) {
-> +		pending = calloc(1, sizeof(*pending));
-> +		if (!pending)
-> +			return NULL;
-> +		do {
-> +			if (pending_context_new_id(&pending->id) != 0) {
-> +				free(pending);
-> +				return NULL;
-> +			}
-> +		} while (pending->id == 0 ||
-> +			 pending_context_find(pending->id));
-> +	}
-> +
-> +	result = tsearch(pending, &pending_contexts,
-> +			 pending_context_compare);
-> +	if (!result) {
-> +		free(pending);
-> +		return NULL;
-> +	}
-> +	pending->ctx = *ctx;
-> +	*ctx = GSS_C_NO_CONTEXT;
-> +	return pending;
-> +}
-> +
-> +static void
-> +pending_context_discard(struct pending_context *pending)
-> +{
-> +	OM_uint32 min_stat;
-> +
-> +	tdelete(pending, &pending_contexts, pending_context_compare);
-> +	if (pending->ctx != GSS_C_NO_CONTEXT)
-> +		gss_delete_sec_context(&min_stat, &pending->ctx,
-> +				       GSS_C_NO_BUFFER);
-> +	free(pending);
-> +}
-> +
->   static int
->   do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
->   		gss_OID mech, gss_buffer_desc *context_token,
-> @@ -337,11 +445,13 @@ handle_nullreq(char *cp) {
->   	gss_ctx_id_t		ctx = GSS_C_NO_CONTEXT;
->   	gss_name_t		client_name = NULL;
->   	gss_OID			mech = GSS_C_NO_OID;
-> +	struct pending_context	*pending = NULL;
->   	u_int32_t		maj_stat = GSS_S_FAILURE, min_stat = 0;
->   	u_int32_t		ignore_min_stat;
->   	struct svc_cred		cred;
->   	int32_t			ctx_endtime;
->   	char			*hostbased_name = NULL;
-> +	uint64_t		context_id;
->   
->   	printerr(1, "handling null request\n");
->   
-> @@ -358,15 +468,21 @@ handle_nullreq(char *cp) {
->   #endif
->   
->   	if (in_handle.length != 0) { /* CONTINUE_INIT case */
-> -		if (in_handle.length != sizeof(ctx)) {
-> +		if (in_handle.length != sizeof(context_id)) {
->   			printerr(0, "WARNING: handle_nullreq: "
->   				    "input handle has unexpected length %zd\n",
->   				    in_handle.length);
-> +			maj_stat = GSS_S_NO_CONTEXT;
-> +			goto out_err;
-> +		}
-> +		memcpy(&context_id, in_handle.value, sizeof(context_id));
-> +		pending = pending_context_take(context_id);
-> +		if (!pending) {
-> +			maj_stat = GSS_S_NO_CONTEXT;
->   			goto out_err;
->   		}
-> -		/* in_handle is the context id stored in the out_handle
-> -		 * for the GSS_S_CONTINUE_NEEDED case below.  */
-> -		memcpy(&ctx, in_handle.value, in_handle.length);
-> +		ctx = pending->ctx;
-> +		pending->ctx = GSS_C_NO_CONTEXT;
->   	}
->   
->   	if (svcgssd_limit_krb5_enctypes()) {
-> @@ -380,10 +496,19 @@ handle_nullreq(char *cp) {
->   	if (maj_stat == GSS_S_CONTINUE_NEEDED) {
->   		printerr(1, "gss_accept_sec_context GSS_S_CONTINUE_NEEDED\n");
->   
-> -		/* Save the context handle for future calls */
-> -		out_handle.length = sizeof(ctx);
-> -		memcpy(out_handle.value, &ctx, sizeof(ctx));
-> -		goto continue_needed;
-> +		pending = pending_context_save(pending, &ctx);
-> +		if (!pending) {
-> +			maj_stat = GSS_S_FAILURE;
-> +			goto out_err;
-> +		}
-> +		out_handle.length = sizeof(pending->id);
-> +		memcpy(out_handle.value, &pending->id, out_handle.length);
-> +		if (send_response(&in_handle, &in_tok, maj_stat, min_stat,
-> +				  &out_handle, &out_tok) != 0) {
-> +			pending_context_discard(pending);
-> +			pending = NULL;
-> +		}
-> +		goto out;
->   	}
->   	else if (maj_stat != GSS_S_COMPLETE) {
->   		printerr(1, "WARNING: gss_accept_sec_context failed\n");
-> @@ -402,11 +527,17 @@ handle_nullreq(char *cp) {
->   		goto out_err;
->   	}
->   
-> -	/* Context complete. Pass handle_seq in out_handle to use
-> -	 * for context lookup in the kernel. */
-> -	handle_seq++;
-> -	out_handle.length = sizeof(handle_seq);
-> -	memcpy(out_handle.value, &handle_seq, sizeof(handle_seq));
-> +	/* Preserve the handle throughout a multi-step negotiation. */
-> +	if (pending) {
-> +		out_handle.length = sizeof(pending->id);
-> +		memcpy(out_handle.value, &pending->id, out_handle.length);
-> +		free(pending);
-> +		pending = NULL;
-> +	} else {
-> +		handle_seq++;
-> +		out_handle.length = sizeof(handle_seq);
-> +		memcpy(out_handle.value, &handle_seq, sizeof(handle_seq));
-> +	}
->   
->   	/* kernel needs ctx to calculate verifier on null response, so
->   	 * must give it context before doing null call: */
-> @@ -421,7 +552,6 @@ handle_nullreq(char *cp) {
->   
->   	do_svc_downcall(&out_handle, &cred, mech, &ctx_token, ctx_endtime,
->   			hostbased_name);
-> -continue_needed:
->   	send_response(&in_handle, &in_tok, maj_stat, min_stat,
->   			&out_handle, &out_tok);
->   out:
-> @@ -436,6 +566,7 @@ out:
->   	return;
->   
->   out_err:
-> +	free(pending);
->   	if (ctx != GSS_C_NO_CONTEXT)
->   		gss_delete_sec_context(&ignore_min_stat, &ctx, &ignore_out_tok);
->   	send_response(&in_handle, &in_tok, maj_stat, min_stat,
+> Chuck Lever suggested on linux-nfs that I direct this patch to you as
+> the maintainer of nfs-utils. The thread originated from an NFSD startup
+> race investigation.
 > 
-> base-commit: c2dc3ff598dec9786217d22e40eaca3f295e8b45
+>   utils/nfsdcld/nfsdcld.c | 22 +++++++++++-----------
+>   1 file changed, 11 insertions(+), 11 deletions(-)
+> 
+> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+> index 8551dc9..772cf31 100644
+> --- a/utils/nfsdcld/nfsdcld.c
+> +++ b/utils/nfsdcld/nfsdcld.c
+> @@ -819,12 +819,6 @@ main(int argc, char **argv)
+>   		return 1;
+>   	}
+> 
+> -	evbase = event_base_new();
+> -	if (evbase == NULL) {
+> -		fprintf(stderr, "%s: unable to allocate event base.\n", argv[0]);
+> -		free(progname);
+> -		return 1;
+> -	}
+>   	xlog_syslog(0);
+>   	xlog_stderr(1);
+> 
+> @@ -866,14 +860,18 @@ main(int argc, char **argv)
+> 
+>   	strlcat(pipepath, DEFAULT_CLD_PATH, sizeof(pipepath));
+>   	xlog_open(progname);
+> +	daemon_init(foreground);
+>   	if (!foreground) {
+>   		xlog_syslog(1);
+>   		xlog_stderr(0);
+> -		rc = daemon(0, 0);
+> -		if (rc) {
+> -			xlog(L_ERROR, "Unable to daemonize: %m");
+> -			goto out;
+> -		}
+> +	}
+> +
+> +	/* daemon_init() renumbers fds and would clobber the epoll fd. */
+> +	evbase = event_base_new();
+> +	if (evbase == NULL) {
+> +		xlog(L_ERROR, "unable to allocate event base.");
+> +		free(progname);
+> +		return 1;
+>   	}
+> 
+>   	/* drop all capabilities */
+> @@ -925,6 +923,8 @@ main(int argc, char **argv)
+>   	signal(SIGINT, sig_die);
+>   	signal(SIGTERM, sig_die);
+> 
+> +	daemon_ready();
+> +
+>   	xlog(D_GENERAL, "%s: Starting event dispatch handler.", __func__);
+>   	rc = event_base_dispatch(evbase);
+>   	if (rc < 0)
 
