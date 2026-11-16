@@ -1,50 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794867296;
-	b=XCRB/XWhmqrANx/HTBMYu1lyl9lhcCF57pFTvramOxk+b011PswG/KKry/1iKGR8cN+5
-	 lBBD68t5z9bEADr5thKAfvabI5i8CdTZZ/FkvWfSsmJqdkW4y9Iv8bB3IxS9zSyMlEDT1
-	 /lE7ld4s1cS5e82L5VWme+9+rIv1rd1a57MegbVZtlO9lWuCcisRCAGFotKidphfyUgto
-	 on6T3TjSNoaI2Bfj34rX9Zr8aEe31hE1hmxWtGxWPsuhw/sGPCv8wQ/b+uYvp/HgDPR2a
-	 wUZXVmmmLbpM/pL8jPqriNWZ+I1LS69qfNTu3nzMIAYxsZvYsAfGd5M9k06Dq3vkxMw==
+	t=1794867692;
+	b=aoE6azPcP8R3APpBH+1rZWXCMu2YIPBo/rek9CYoSiI0/MsBZ9bpm9Wik+DmhDUBpVCs
+	 DnXKDr9lZ6BxwaUyAbnaN7rfmuiWt8YDQdfb5BklDOiarxUErHyEe9NEkjoc62sqvTRza
+	 Fp349RCIR+nxgWRbU9ekzjjfDbg1X87r8NzMGB0mEzD/WEphskn02JugFT15NaMqURCcx
+	 c4hNmMOLo/pSRMQx0bSEOrZaPy/U54VRAC7kfCxMd8O4Udkk45O21HZ9oCctldozyTAWN
+	 zalp948q5Ze+fSIZjigDGX0m4XOhTORgZ+c8jDMjyUH0nTvjFydw0SaHWc3rC/9f+EA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794867296;
-	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:Autocrypt:
-	 Content-Type:User-Agent:MIME-Version;
-	bh=6aNjSQAd+AKgsgZcCA++ZIdNTY9q8GmcIrIow03cR7s=;
-	b=fCy7/IpNnzlaKEICVjkcoeT66CAo/kpEW9Z29+cwcxAgfCr4IadpcePjaeZzVCMMfHQM
-	 HpxYsOHbsivXK7j4Rro9RUG99iD+/UJj6GHcaTe4299dBbEHhtCVKglILJiZhZQu+hhZ+
-	 4jnEH9ujRO/bAmW0WO2kSHXpBhjBDXLEN1wyuKXKUUdPev7vkmjCFKDPwe22gojWIfWeZ
-	 vBlHa/zAGu7bYfjp3xNFkIzMOfRnI1kbyOvECFtO79HAO7lL6jmi+Io82uk/p1qr5djVx
-	 v6Hxbi93gA38djLQFvR4/yGlcRbW4PIIa+4fO1mCVt+I3SiXyjCknxCPhg5f7ueYwCQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794867692;
+	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
+	 In-Reply-To:References:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=u1O9fu5I1msXQiIm7JAbWQEFUOg7poqyrFThnd36lnI=;
+	b=wZB+ea1H0TsPWZ4HA9yZ2EOjb2ithMEdEsfNgq34GyWxo0zoX+ncJa2iaFQItEWt1dEK
+	 8SZ0ygUUUMAnnQyQgYWFy8jxPnPfxrARL91XKlTpsgzxdpyJrpFGDBWLMA8DE8vkVX0//
+	 tchoGvW1n0zujYWRu+Vxwgw07yTeqv4OVwp289G7a+HFjbgxjFUOIveNmGCojeZ4fV6hl
+	 Qx8AYcYVVFuQQ8AQg+UQhatBjfzR2vwI5heyUWAyq9zohu8zankulG8zqIXMg4f1Rxidb
+	 c3ICvU3F4YZfAVVPB4cDauEV4BfsCtwmL63+5Ik+pv8a58tAQrAC+TX8f6GaTs2ei7g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aqTit8BL;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BCapUv0J;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55E95606A338
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 22:14:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D4E4606A32C
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 22:21:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=aqTit8BL
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C6F061F000C4;
-	Mon, 16 Nov 2026 22:14:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BCapUv0J
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BB1D61F000C4;
+	Mon, 16 Nov 2026 22:21:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794867295;
-	bh=6aNjSQAd+AKgsgZcCA++ZIdNTY9q8GmcIrIow03cR7s=;
-	h=Subject:From:To:Cc:Date;
-	b=aqTit8BLZKf5UM7E3hmGBc8fhMISfgieds5JYvfrLQRd8eK12mwxDY85wkrhG1Tke
-	 4ZbBw72rOFl2t8lUsTMuZDdyM1pnRBtKBZZxQpltrkpvWH9IS6AXOZpkKnSL+4ZmQC
-	 rHhieNffOrXa3ezHQje+mf59MGtuckV0JoHI5I+nkhrqparfN+LB4c8foa+hzrw0XR
-	 IEtzaE7sFNRQSa0s85pVA03jESyjkfLPSGXUOYpH5K8kfId50l3+ROA9tKqa+Mwg55
-	 bEep5iX9ixqK4E96QKJm6hNpDDc2J5rLhU0RfTUyRHTeHGsHxjOx0TsqzQJa6JUte+
-	 JdbITBCZ5ve9Q==
-Message-ID: <99d4032b341ae5a08b10f059289f21d3dd08079d.camel@kernel.org>
-Subject: NFS client leaks -ERESTARTSYS into userland
+	s=k20260515; t=1794867691;
+	bh=u1O9fu5I1msXQiIm7JAbWQEFUOg7poqyrFThnd36lnI=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=BCapUv0JCZWRrtGtkD0Egaqw2Ia0g53IGlrLomNCVQJ0qkIMBiBaq4Ch+J83jV6QL
+	 wWpbDKOf2ckcEo+UAp3s3k0HOaFjtlNqRulx42Ar/JyuIHZ+ehN0PlstO5CehB5FvP
+	 vrQZZ1r+ZfqyE3TeyAaroizu7xicjx/vze/yVPY+GRT2O9taiqNYVp/45c+sq8BdHF
+	 9cbROSf/S2SllzEuV9uL9bMDDyiFROdeKOKkYy99zhl9kZ0IHN2SmB5LXixU/J5Nl4
+	 NgmxhDViWISkNO8gc8J0YVqRYpnJM9n5PxzOp23+fNZc7KQz3u/yWhLdC62LFDxX/F
+	 EYvgLDYzpgL4Q==
+Message-ID: <7e3535c7b018e205cb34d463890720916797e169.camel@kernel.org>
+Subject: Re: [PATCH] nfsdctl: bound the rpcbind calls to one 1s attempt
 From: Jeff Layton <jlayton@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+To: Benjamin Coddington <ben.coddington@hammerspace.com>, Steve Dickson
+	 <steved@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 16 Nov 2026 14:14:55 -0800
+Date: Mon, 16 Nov 2026 14:21:31 -0800
+In-Reply-To: <2221871feaf9ae6ec4970238fe11805abd2496c6.1794862543.git.bcodding@hammerspace.com>
+References: 
+	<2221871feaf9ae6ec4970238fe11805abd2496c6.1794862543.git.bcodding@hammerspace.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -119,7 +124,8 @@ Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  aEZCiDOq0anx6FmOzs5E6Jqdpo/mtI8beK+BE7Va6ni7YrQlnT0i3vaTVMTiCThbqsB20VrbMjlhp
  f8lfK1XVNbRq/R7GZ9zHESlsa35ha60yd/j3pu5hT2xyy8krV8vGhHvnJ1XRMJBAB/UYb6FyC7S+m
  QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: multipart/mixed; boundary="=-1BBPysfuGXVmvaYBX2L5"
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.60.2 (3.60.2-3.fc44) 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -131,194 +137,363 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
---=-1BBPysfuGXVmvaYBX2L5
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+On Mon, 2026-11-16 at 15:58 -0500, Benjamin Coddington wrote:
+> libtirpc's rpcb_set() and rpcb_unset() create a client for every call
+> and wait 60s for each reply. A local rpcbind that accepts the connection
+> and never answers stalls nfsdctl for a minute per call: five UNSETs when
+> the threads stop, and five UNSETs plus one SET per listener netid and
+> program when they start. libtirpc's setter for that timeout is private.
+>=20
+> Make the SET and UNSET calls on a client of nfsdctl's own, built with
+> nfs_get_rpcclient(): AF_LOCAL on _PATH_RPCBINDSOCK first, then TCP to
+> 127.0.0.1 port 111, as libtirpc's local_rpcb() orders them. Each pass
+> uses one client, and each call is one attempt of 1s, matching
+> 17ceb2fecc7c ("SUNRPC: bound the local rpcbind client timeout to 1s"):
+> "The local rpcbind is on loopback or on an AF_LOCAL socket, and it
+> answers in microseconds."
+>=20
+> A call that gets no answer ends the pass with one warning, as
+> ba8c47f04942 and df1ff8e4e275 do for the kernel's svc_register() and
+> svc_unregister() sweep. A registration pass whose opening UNSET sweep
+> gets no answer makes no SET. A reply of FALSE is logged and the pass
+> continues, as before.
+>=20
+> nfs_svc_unregister() is unchanged, and a build without TI-RPC keeps
+> using it.
+>=20
+> With the local rpcbind SIGSTOPped, on a kernel that leaves the nfsd
+> registration to nfsdctl, "nfsdctl threads 0" returned after 3.4s, where
+> it took 302.7s before. lockd's own registration in the kernel accounts
+> for 2s of that. "nfsdctl autostart" now ends its registration pass after
+> 1s. The THREADS_SET that follows still fails with EIO, because lockd
+> cannot register.
+>=20
+> Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+> ---
+>  utils/nfsdctl/rpcbind.c | 199 +++++++++++++++++++++++++++++++++++-----
+>  1 file changed, 178 insertions(+), 21 deletions(-)
+>=20
+> diff --git a/utils/nfsdctl/rpcbind.c b/utils/nfsdctl/rpcbind.c
+> index 23034097b485..a705c54d8f40 100644
+> --- a/utils/nfsdctl/rpcbind.c
+> +++ b/utils/nfsdctl/rpcbind.c
+> @@ -15,17 +15,23 @@
+> =20
+>  #include <errno.h>
+>  #include <netinet/in.h>
+> +#include <stdio.h>
+> +#include <stdlib.h>
+>  #include <string.h>
+>  #include <sys/socket.h>
+> +#include <sys/un.h>
+> +#include <unistd.h>
+> =20
+>  #include <rpc/rpc.h>
+> =20
+>  #ifdef HAVE_LIBTIRPC
+>  #include <rpc/rpcb_clnt.h>
+> +#include <rpc/rpcb_prot.h>
+>  #include <netconfig.h>
+>  #endif	/* HAVE_LIBTIRPC */
+> =20
+>  #include "nfslib.h"
+> +#include "nfsrpc.h"
+>  #include "rpcmisc.h"
+>  #include "sockaddr.h"
+>  #include "xlog.h"
+> @@ -43,7 +49,7 @@
+> =20
+>  /*
+>   * Programs to clear at shutdown. There is no reply to read at that poin=
+t,
+> - * so clear a superset. rpcb_unset() of an absent entry does nothing.
+> + * so clear a superset. An UNSET of an absent entry does nothing.
+>   */
+>  static const struct {
+>  	rpcprog_t	program;
+> @@ -56,24 +62,135 @@ static const struct {
+>  	{ NFS_ACL_PROGRAM,	3 },
+>  };
+> =20
+> +#ifdef HAVE_LIBTIRPC
+> +
+> +/*
+> + * libtirpc's rpcb_set() and rpcb_unset() wait 60s for each call, and it=
+s
+> + * setter for that timeout is not exported. The local rpcbind answers in
+> + * microseconds, so make the calls on a client of our own with one attem=
+pt
+> + * of 1s, as the kernel's own rpcbind client does.
+> + */
+> +static const struct timeval nfsd_rpcb_timeout =3D { 1, 0 };
+> +
+> +enum nfsd_rpcb_status {
+> +	NFSD_RPCB_OK,
+> +	NFSD_RPCB_DECLINED,
+> +	NFSD_RPCB_NO_ANSWER,
+> +};
+> +
+> +/* AF_LOCAL first, then loopback TCP, as libtirpc's local_rpcb() does. *=
+/
+> +static CLIENT *nfsd_rpcb_client(void)
+> +{
+> +	const struct sockaddr_un sun =3D {
+> +		.sun_family	=3D AF_LOCAL,
+> +		.sun_path	=3D _PATH_RPCBINDSOCK,
+> +	};
+> +	const struct sockaddr_in sin =3D {
+> +		.sin_family	=3D AF_INET,
+> +		.sin_port	=3D htons(111),
+> +		.sin_addr.s_addr =3D htonl(INADDR_LOOPBACK),
+> +	};
+> +	struct timeval timeout =3D nfsd_rpcb_timeout;
+> +	CLIENT *clnt;
+> +
+> +	clnt =3D nfs_get_rpcclient((const struct sockaddr *)&sun, SUN_LEN(&sun)=
+,
+> +				 0, RPCBPROG, RPCBVERS, &timeout);
+> +	if (clnt) {
+> +		xlog(D_GENERAL, "rpcbind: using %s", _PATH_RPCBINDSOCK);
+> +		return clnt;
+> +	}
+> +
+> +	timeout =3D nfsd_rpcb_timeout;
+> +	clnt =3D nfs_get_rpcclient((const struct sockaddr *)&sin, sizeof(sin),
+> +				 IPPROTO_TCP, RPCBPROG, RPCBVERS, &timeout);
+> +	if (clnt)
+> +		xlog(D_GENERAL, "rpcbind: using 127.0.0.1 port 111 over TCP");
+> +	return clnt;
+> +}
+> +
+> +/*
+> + * A transport error means rpcbind accepted the connection and did not
+> + * answer. Every later call on this pass would wait the same, so the cal=
+ler
+> + * stops.
+> + */
+> +static enum nfsd_rpcb_status nfsd_rpcb_call(CLIENT *clnt, rpcproc_t proc=
+,
+> +					    struct rpcb *parms)
+> +{
+> +	enum clnt_stat stat;
+> +	bool_t rslt =3D FALSE;
+> +
+> +	stat =3D CLNT_CALL(clnt, proc, (xdrproc_t)xdr_rpcb, (char *)parms,
+> +			 (xdrproc_t)xdr_bool, (char *)&rslt, nfsd_rpcb_timeout);
+> +	switch (stat) {
+> +	case RPC_SUCCESS:
+> +		return rslt ? NFSD_RPCB_OK : NFSD_RPCB_DECLINED;
+> +	case RPC_TIMEDOUT:
+> +	case RPC_CANTRECV:
+> +	case RPC_CANTSEND:
+> +		xlog(L_WARNING,
+> +		     "rpcbind did not answer %s of program %u version %u: %s. Skipping=
+ the remaining rpcbind calls.",
+> +		     proc =3D=3D RPCBPROC_SET ? "SET" : "UNSET",
+> +		     parms->r_prog, parms->r_vers, clnt_sperrno(stat));
+> +		return NFSD_RPCB_NO_ANSWER;
+> +	default:
+> +		xlog(D_GENERAL, "rpcbind call failed: %s", clnt_sperrno(stat));
+> +		return NFSD_RPCB_DECLINED;
+> +	}
+> +}
+> +
+> +/*
+> + * An empty netid and address unset every netid of [program, version], a=
+s
+> + * rpcb_unset() with no netconfig does.
+> + */
+> +static enum nfsd_rpcb_status nfsd_rpcb_unset_sweep(CLIENT *clnt)
+> +{
+> +	char empty[] =3D "";
+> +	char owner[16];
+> +	struct rpcb parms =3D {
+> +		.r_netid	=3D empty,
+> +		.r_addr		=3D empty,
+> +		.r_owner	=3D owner,
+> +	};
+> +	enum nfsd_rpcb_status status;
+> +	unsigned int i;
+> +
+> +	snprintf(owner, sizeof(owner), "%d", (int)geteuid());
+> +
+> +	for (i =3D 0; i < ARRAY_SIZE(nfsd_rpcb_all); i++) {
+> +		parms.r_prog =3D nfsd_rpcb_all[i].program;
+> +		parms.r_vers =3D nfsd_rpcb_all[i].version;
+> +
+> +		status =3D nfsd_rpcb_call(clnt, RPCBPROC_UNSET, &parms);
+> +		if (status =3D=3D NFSD_RPCB_NO_ANSWER)
+> +			return status;
+> +		if (status =3D=3D NFSD_RPCB_DECLINED)
+> +			xlog(D_GENERAL,
+> +			     "Failed to unregister program %u, version %u",
+> +			     parms.r_prog, parms.r_vers);
+> +	}
+> +	return NFSD_RPCB_OK;
+> +}
+> +
+>  /**
+>   * nfsd_rpcb_unset_all - remove every nfsd entry from the local rpcbind
+>   *
+> - * rpcb_unset() matches [program, version, netid] and takes no address, =
+so
+> - * one call clears every netid. This mirrors the svc_unregister() sweep =
+that
+> - * svc_rpcb_setup() used to run, which an sv_no_rpcbind serv no longer d=
+oes.
+> + * This mirrors the svc_unregister() sweep that svc_rpcb_setup() used to
+> + * run, which an sv_no_rpcbind serv no longer does.
+>   */
+>  void nfsd_rpcb_unset_all(void)
+>  {
+> -	unsigned int i;
+> +	CLIENT *clnt;
+> =20
+> -	for (i =3D 0; i < ARRAY_SIZE(nfsd_rpcb_all); i++)
+> -		nfs_svc_unregister(nfsd_rpcb_all[i].program,
+> -				   nfsd_rpcb_all[i].version);
+> +	clnt =3D nfsd_rpcb_client();
+> +	if (!clnt) {
+> +		xlog(D_GENERAL, "cannot reach rpcbind: %s",
+> +		     clnt_sperrno(rpc_createerr.cf_stat));
+> +		return;
+> +	}
+> +	nfsd_rpcb_unset_sweep(clnt);
+> +	CLNT_DESTROY(clnt);
+>  }
+> =20
+> -#ifdef HAVE_LIBTIRPC
+> -
+>  /*
+>   * Map a transport name and address family to an rpcbind netid.
+>   *
+> @@ -125,32 +242,47 @@ static bool nfsd_rpcb_wildcard(const struct sockadd=
+r_storage *ss,
+>  	return false;
+>  }
+> =20
+> -static bool nfsd_rpcb_set_one(rpcprog_t program, rpcvers_t version,
+> -			      const char *netid,
+> -			      const struct sockaddr_storage *ss)
+> +static enum nfsd_rpcb_status nfsd_rpcb_set_one(CLIENT *clnt,
+> +					       rpcprog_t program,
+> +					       rpcvers_t version,
+> +					       const char *netid,
+> +					       const struct sockaddr_storage *ss)
+>  {
+> +	enum nfsd_rpcb_status status;
+>  	struct sockaddr_storage wild;
+>  	struct netconfig *nconf;
+> +	struct rpcb parms;
+>  	struct netbuf nb;
+> +	char owner[16];
+>  	socklen_t len;
+> -	bool ok;
+> =20
+>  	if (!nfsd_rpcb_wildcard(ss, &wild, &len))
+> -		return false;
+> +		return NFSD_RPCB_DECLINED;
+> =20
+>  	nconf =3D getnetconfigent(netid);
+>  	if (!nconf) {
+>  		xlog(L_WARNING, "no netconfig entry for %s", netid);
+> -		return false;
+> +		return NFSD_RPCB_DECLINED;
+>  	}
+> =20
+>  	nb.buf =3D &wild;
+>  	nb.len =3D len;
+>  	nb.maxlen =3D len;
+> =20
+> -	ok =3D (rpcb_set(program, version, nconf, &nb) =3D=3D TRUE);
+> +	parms.r_addr =3D taddr2uaddr(nconf, &nb);
+>  	freenetconfigent(nconf);
+> -	return ok;
+> +	if (!parms.r_addr)
+> +		return NFSD_RPCB_DECLINED;
+> +
+> +	snprintf(owner, sizeof(owner), "%d", (int)geteuid());
+> +	parms.r_prog =3D program;
+> +	parms.r_vers =3D version;
+> +	parms.r_netid =3D (char *)netid;
+> +	parms.r_owner =3D owner;
+> +
+> +	status =3D nfsd_rpcb_call(clnt, RPCBPROC_SET, &parms);
+> +	free(parms.r_addr);
+> +	return status;
+>  }
+> =20
+>  /**
+> @@ -167,14 +299,25 @@ static bool nfsd_rpcb_set_one(rpcprog_t program, rp=
+cvers_t version,
+>  void nfsd_rpcb_register(const struct server_socket *listeners, int nlist=
+eners,
+>  			const struct nfsd_rpcb_prog *progs, int nprogs)
+>  {
+> +	enum nfsd_rpcb_status status;
+>  	unsigned int failed =3D 0;
+> +	CLIENT *clnt;
+>  	int i, j, k;
+> =20
+> +	clnt =3D nfsd_rpcb_client();
+> +	if (!clnt) {
+> +		xlog(L_WARNING,
+> +		     "cannot reach rpcbind: %s. Clients that look up the server in rpc=
+bind cannot find it.",
+> +		     clnt_sperrno(rpc_createerr.cf_stat));
+> +		return;
+> +	}
+> +
+>  	/*
+>  	 * Clear first. rpcbind cannot express "drop one of two TCP ports",
+>  	 * and the kernel no longer sweeps stale entries at serv creation.
+>  	 */
+> -	nfsd_rpcb_unset_all();
+> +	if (nfsd_rpcb_unset_sweep(clnt) =3D=3D NFSD_RPCB_NO_ANSWER)
+> +		goto out;
+> =20
+>  	for (i =3D 0; i < nlisteners; i++) {
+>  		const struct server_socket *l =3D &listeners[i];
+> @@ -215,9 +358,12 @@ void nfsd_rpcb_register(const struct server_socket *=
+listeners, int nlisteners,
+>  			    !strncmp(netid, "udp", 3))
+>  				continue;
+> =20
+> -			if (nfsd_rpcb_set_one(p->program, p->version, netid,
+> -					      &l->ss))
+> +			status =3D nfsd_rpcb_set_one(clnt, p->program,
+> +						   p->version, netid, &l->ss);
+> +			if (status =3D=3D NFSD_RPCB_OK)
+>  				continue;
+> +			if (status =3D=3D NFSD_RPCB_NO_ANSWER)
+> +				goto out;
+> =20
+>  			xlog(L_WARNING,
+>  			     "cannot register program %u version %u on %s port %u",
+> @@ -230,10 +376,21 @@ void nfsd_rpcb_register(const struct server_socket =
+*listeners, int nlisteners,
+>  	if (failed)
+>  		xlog(L_WARNING,
+>  		     "some rpcbind registrations failed. Clients that look up the serv=
+er in rpcbind cannot find it.");
+> +out:
+> +	CLNT_DESTROY(clnt);
+>  }
+> =20
+>  #else	/* !HAVE_LIBTIRPC */
+> =20
+> +void nfsd_rpcb_unset_all(void)
+> +{
+> +	unsigned int i;
+> +
+> +	for (i =3D 0; i < ARRAY_SIZE(nfsd_rpcb_all); i++)
+> +		nfs_svc_unregister(nfsd_rpcb_all[i].program,
+> +				   nfsd_rpcb_all[i].version);
+> +}
+> +
+>  /*
+>   * rpcb_set() and the netconfig database are TI-RPC only, so a build
+>   * without it cannot own the registration. userspace_rpcbind_supported()
 
-We had a report internally of ERESTARTSYS leaking into userland after
-killing a process stuck waiting for a missing NFS server.
 
-I've got a draft patch, but agentic review keeps finding issues with it
-and I don't have the cycles at the moment to chase this down. I had
-claude put together a reproducer (attached), which seems to work. I've
-attached the draft patch too, but it's still a bit rough.
-
-Cheers,
---=20
-Jeff Layton <jlayton@kernel.org>
-
---=-1BBPysfuGXVmvaYBX2L5
-Content-Type: application/x-shellscript; name="nfs-umount-f-512.sh"
-Content-Disposition: attachment; filename="nfs-umount-f-512.sh"
-Content-Transfer-Encoding: base64
-
-IyEvYmluL2Jhc2gKIyBTUERYLUxpY2Vuc2UtSWRlbnRpZmllcjogR1BMLTIuMAojCiMgUmVwcm9k
-dWNlcjogYSBmb3JjZWQgdW5tb3VudCAodW1vdW50IC1mKSBvZiBhbiBORlMgZmlsZXN5c3RlbSBt
-YWtlcyBhCiMgc3lzY2FsbCB0aGF0IGlzIGJsb2NrZWQgb24gdGhhdCBtb3VudCBmYWlsIHdpdGgg
-IlVua25vd24gZXJyb3IgNTEyIi4KIwojIG5mc191bW91bnRfYmVnaW4oKSBjYWxscyBycGNfa2ls
-bGFsbF90YXNrcygpLCB3aGljaCB0ZXJtaW5hdGVzIGV2ZXJ5CiMgb3V0c3RhbmRpbmcgUlBDIHRh
-c2sgd2l0aCAtRVJFU1RBUlRTWVMuICBObyBzaWduYWwgaXMgcGVuZGluZywgc28gdGhlCiMgc3lz
-Y2FsbCBsYXllciBkb2VzIG5vdCByZXN0YXJ0IHRoZSBjYWxsIGFuZCB0aGUgcmF3IGtlcm5lbC1p
-bnRlcm5hbAojIGVycm5vICg1MTIpIGlzIHJldHVybmVkIHRvIHVzZXJzcGFjZS4KIwojIFRoZSBz
-Y3JpcHQgZXhwb3J0cyBhIHRtcGZzIGZyb20gdGhlIGxvY2FsIGtuZnNkLCBtb3VudHMgaXQgb3Zl
-cgojIGxvb3BiYWNrIChoYXJkIG1vdW50KSwgc3RvcHMga25mc2Qgc28gdGhhdCB0aGUgbmV4dCBS
-UEMgYmxvY2tzLCBzdGFydHMKIyBhIG1rZGlyKDIpIG9uIHRoZSBtb3VudCwgYW5kIHRoZW4gcnVu
-cyAidW1vdW50IC1mIi4KIwojICAgQmFkOiAgbWtkaXI6IGNhbm5vdCBjcmVhdGUgZGlyZWN0b3J5
-ICcuLi4nOiBVbmtub3duIGVycm9yIDUxMgojICAgR29vZDogbWtkaXI6IGNhbm5vdCBjcmVhdGUg
-ZGlyZWN0b3J5ICcuLi4nOiBJbnB1dC9vdXRwdXQgZXJyb3IKIwojIFJlcXVpcmVtZW50czogcm9v
-dCwga25mc2QgKENPTkZJR19ORlNEKSwgdGhlIE5GUyBjbGllbnQsIG5mcy11dGlscwojIChycGNi
-aW5kLCBycGMubmZzZCwgcnBjLm1vdW50ZCwgZXhwb3J0ZnMpIGFuZCB1dGlsLWxpbnV4IHVtb3Vu
-dC4KIwojIFdBUk5JTkc6IHRoaXMgc3RhcnRzIGFuZCBzdG9wcyB0aGUgbG9jYWwga25mc2QuICBS
-dW4gaXQgaW4gYSBkaXNwb3NhYmxlCiMgVk0sIG5vdCBvbiBhIG1hY2hpbmUgdGhhdCBzZXJ2ZXMg
-TkZTLgojCiMgVXNhZ2U6IG5mcy11bW91bnQtZi01MTIuc2ggW25mc3ZlcnNdICAgICAoZGVmYXVs
-dDogMzsgZS5nLiA0LjIpCiMKIyBFeGl0IHN0YXR1czogMCA9IG5vdCByZXByb2R1Y2VkIChFSU8p
-LCAxID0gcmVwcm9kdWNlZCAoNTEyKSwKIyAgICAgICAgICAgICAgMiA9IHNldHVwIGZhaWxlZCBv
-ciB1bmV4cGVjdGVkIHJlc3VsdC4KClZFUlM9JHsxOi0zfQpCQVNFPSQobWt0ZW1wIC1kIC90bXAv
-bmZzLXVtb3VudC1mLlhYWFhYWCkKRVhQT1JUPSRCQVNFL2V4cG9ydApNTlQ9JEJBU0UvbW50CkVS
-Uj0kQkFTRS9ta2Rpci5lcnIKTUtESVJfUElEPQoKbG9nKCkgeyBlY2hvICJbbmZzLXVtb3VudC1m
-LTUxMl0gJCoiOyB9CgpjbGVhbnVwKCkgewoJIyBMZXQgYW55IHN0aWxsLWJsb2NrZWQgdGFzayBm
-aW5pc2gsIHRoZW4gdGVhciBldmVyeXRoaW5nIGRvd24uCglycGMubmZzZCA0ID4vZGV2L251bGwg
-Mj4mMQoJWyAtbiAiJE1LRElSX1BJRCIgXSAmJiBraWxsIC05ICIkTUtESVJfUElEIiAyPi9kZXYv
-bnVsbAoJdW1vdW50IC1pIC1mICIkTU5UIiA+L2Rldi9udWxsIDI+JjEKCXVtb3VudCAtaSAtbCAi
-JE1OVCIgPi9kZXYvbnVsbCAyPiYxCglycGMubmZzZCAwID4vZGV2L251bGwgMj4mMQoJZXhwb3J0
-ZnMgLXUgIjEyNy4wLjAuMTokRVhQT1JUIiA+L2Rldi9udWxsIDI+JjEKCXVtb3VudCAiJEVYUE9S
-VCIgPi9kZXYvbnVsbCAyPiYxCglybSAtcmYgIiRCQVNFIgp9CnRyYXAgY2xlYW51cCBFWElUCgpk
-aWUoKSB7IGxvZyAiU0VUVVAgRkFJTEVEOiAkKiI7IGV4aXQgMjsgfQoKWyAiJChpZCAtdSkiID0g
-MCBdIHx8IGRpZSAibXVzdCBiZSBydW4gYXMgcm9vdCIKZm9yIGNtZCBpbiBycGNiaW5kIHJwYy5u
-ZnNkIHJwYy5tb3VudGQgZXhwb3J0ZnMgbW91bnQubmZzOyBkbwoJY29tbWFuZCAtdiAkY21kID4v
-ZGV2L251bGwgfHwgZGllICIkY21kIG5vdCBmb3VuZCAoaW5zdGFsbCBuZnMtdXRpbHMpIgpkb25l
-Cgpsb2cgImtlcm5lbCAkKHVuYW1lIC1yKSwgTkZTIHZlcnNpb24gJFZFUlMiCgojIC0tLSBORlMg
-c2VydmVyOiBleHBvcnQgYSBwcml2YXRlIHRtcGZzIG92ZXIgbG9vcGJhY2sgLS0tCm1rZGlyIC1w
-ICIkRVhQT1JUIiAiJE1OVCIKbW91bnQgLXQgdG1wZnMgLW8gc2l6ZT0xNm0gbmZzLXVtb3VudC1m
-ICIkRVhQT1JUIiB8fCBkaWUgImNhbm5vdCBtb3VudCB0bXBmcyIKbW9kcHJvYmUgbmZzZCAyPi9k
-ZXYvbnVsbAptb2Rwcm9iZSBuZnMgMj4vZGV2L251bGwKbW91bnRwb2ludCAtcSAvcHJvYy9mcy9u
-ZnNkIHx8IG1vdW50IC10IG5mc2QgbmZzZCAvcHJvYy9mcy9uZnNkIHx8CglkaWUgImNhbm5vdCBt
-b3VudCAvcHJvYy9mcy9uZnNkIgpta2RpciAtcCAvdmFyL2xpYi9uZnMvcnBjX3BpcGVmcyAvdmFy
-L2xpYi9uZnMvdjRyZWNvdmVyeSAyPi9kZXYvbnVsbApwZ3JlcCAteCBycGNiaW5kID4vZGV2L251
-bGwgfHwgcnBjYmluZCAtdyAyPi9kZXYvbnVsbCB8fCBycGNiaW5kIHx8CglkaWUgImNhbm5vdCBz
-dGFydCBycGNiaW5kIgojIEEgc2hvcnQgZ3JhY2UgcGVyaW9kIHNvIE5GU3Y0IGNhbiBjcmVhdGUg
-ZmlsZXMgc29vbiBhZnRlciBtb3VudC4KZWNobyAxMCA+IC9wcm9jL2ZzL25mc2QvbmZzdjRncmFj
-ZXRpbWUgMj4vZGV2L251bGwKZXhwb3J0ZnMgLW8gcncsbm9fcm9vdF9zcXVhc2gsaW5zZWN1cmUs
-bm9fc3VidHJlZV9jaGVjayxmc2lkPTAgXAoJIjEyNy4wLjAuMTokRVhQT1JUIiB8fCBkaWUgImV4
-cG9ydGZzIGZhaWxlZCIKcGdyZXAgLXggcnBjLm1vdW50ZCA+L2Rldi9udWxsIHx8IHJwYy5tb3Vu
-dGQgfHwgZGllICJjYW5ub3Qgc3RhcnQgcnBjLm1vdW50ZCIKcnBjLm5mc2QgNCB8fCBkaWUgImNh
-bm5vdCBzdGFydCBrbmZzZCIKCiMgLS0tIE5GUyBjbGllbnQ6IGhhcmQgbW91bnQgb3ZlciBsb29w
-YmFjayAtLS0KIyBUaGUgZXhwb3J0IGlzIHRoZSBORlN2NCBwc2V1ZG8tcm9vdCAoZnNpZD0wKSwg
-c28gdjQgbW91bnRzICIvIi4KU1JDPSIxMjcuMC4wLjE6JEVYUE9SVCIKWyAiJHtWRVJTJSUuKn0i
-ID0gNCBdICYmIFNSQz0iMTI3LjAuMC4xOi8iCm1vdW50IC10IG5mcyAtbyB2ZXJzPSIkVkVSUyIs
-aGFyZCxwcm90bz10Y3AgIiRTUkMiICIkTU5UIiB8fAoJZGllICJtb3VudCBmYWlsZWQiCmlmIFsg
-IiR7VkVSUyUlLip9IiA9IDQgXTsgdGhlbgoJIyBXYWl0IG91dCB0aGUgTkZTdjQgZ3JhY2UgcGVy
-aW9kOiBDUkVBVEUgaXMgcmVmdXNlZCB1bnRpbCBpdCBlbmRzLgoJZm9yIGkgaW4gJChzZXEgMSAz
-MCk7IGRvCgkJbWtkaXIgIiRNTlQvcHJvYmUiIDI+L2Rldi9udWxsICYmIGJyZWFrCgkJc2xlZXAg
-MQoJZG9uZQoJcm1kaXIgIiRNTlQvcHJvYmUiIDI+L2Rldi9udWxsIHx8IGRpZSAic2VydmVyIG5l
-dmVyIGxlZnQgZ3JhY2UiCmZpCmxzICIkTU5UIiA+L2Rldi9udWxsIHx8IGRpZSAiY2Fubm90IHJl
-YWQgbW91bnQiCmxvZyAibW91bnRlZCAkU1JDIG9uICRNTlQiCgojIC0tLSBNYWtlIHRoZSBzZXJ2
-ZXIgdW5yZXNwb25zaXZlIHNvIHRoZSBuZXh0IFJQQyBibG9ja3MgLS0tCnJwYy5uZnNkIDAgfHwg
-ZGllICJjYW5ub3Qgc3RvcCBrbmZzZCIKbG9nICJrbmZzZCBzdG9wcGVkIgoKIyAtLS0gU3RhcnQg
-YSBzeXNjYWxsIHRoYXQgYmxvY2tzIGluIHRoZSBSUEMgbGF5ZXIgLS0tCm1rZGlyICIkTU5UL25l
-d2RpciIgMj4iJEVSUiIgJgpNS0RJUl9QSUQ9JCEKCiMgV2FpdCB1bnRpbCBta2RpciBpcyBhc2xl
-ZXAgaW4gdGhlIFJQQyBsYXllciAoc3RhdGUgRCksIG5vdCBqdXN0IGZvcmtlZC4KYmxvY2tlZD0K
-Zm9yIGkgaW4gJChzZXEgMSAxMDApOyBkbwoJc3RhdGU9JChhd2sgJ3twcmludCAkM30nIC9wcm9j
-LyRNS0RJUl9QSUQvc3RhdCAyPi9kZXYvbnVsbCkKCVsgLXogIiRzdGF0ZSIgXSAmJiBicmVhawoJ
-aWYgWyAiJHN0YXRlIiA9IEQgXTsgdGhlbgoJCWJsb2NrZWQ9MQoJCWJyZWFrCglmaQoJc2xlZXAg
-MC4xCmRvbmUKWyAtbiAiJGJsb2NrZWQiIF0gfHwgZGllICJta2RpciBkaWQgbm90IGJsb2NrIChz
-dGF0ZSAnJHN0YXRlJykiCnNsZWVwIDEKbG9nICJta2RpciAocGlkICRNS0RJUl9QSUQpIGJsb2Nr
-ZWQgaW4gJChjYXQgL3Byb2MvJE1LRElSX1BJRC93Y2hhbiAyPi9kZXYvbnVsbCkiCgojIC0tLSBG
-b3JjZWQgdW5tb3VudDogYWJvcnRzIGFsbCBvdXRzdGFuZGluZyBSUENzIG9uIHRoaXMgbW91bnQg
-LS0tCiMgLWk6IHNraXAgL3NiaW4vdW1vdW50Lm5mcywgc28gdGhlIGtlcm5lbCBnZXRzIGEgcGxh
-aW4gdW1vdW50MihNTlRfRk9SQ0UpLgojIFRoZSB1bW91bnQgaXRzZWxmIG1heSBmYWlsIHdpdGgg
-RUJVU1k7IG9ubHkgaXRzIGFib3J0IHNpZGUgZWZmZWN0IG1hdHRlcnMuCmxvZyAicnVubmluZzog
-dW1vdW50IC1pIC1mICRNTlQiCnVtb3VudCAtaSAtZiAiJE1OVCIgMj4mMSB8IHNlZCAncy9eLyAg
-ICAvJwoKZm9yIGkgaW4gJChzZXEgMSAxMDApOyBkbwoJa2lsbCAtMCAkTUtESVJfUElEIDI+L2Rl
-di9udWxsIHx8IGJyZWFrCglzbGVlcCAwLjEKZG9uZQppZiBraWxsIC0wICRNS0RJUl9QSUQgMj4v
-ZGV2L251bGw7IHRoZW4KCWxvZyAiVU5FWFBFQ1RFRDogbWtkaXIgc3RpbGwgYmxvY2tlZCAxMHMg
-YWZ0ZXIgdW1vdW50IC1mIgoJZXhpdCAyCmZpCndhaXQgJE1LRElSX1BJRApyYz0kPwpNS0RJUl9Q
-SUQ9Cgpsb2cgIm1rZGlyIGV4aXQgc3RhdHVzICRyYywgc3RkZXJyOiIKc2VkICdzL14vICAgIC8n
-ICIkRVJSIgoKaWYgZ3JlcCAtcSAiVW5rbm93biBlcnJvciA1MTIiICIkRVJSIjsgdGhlbgoJbG9n
-ICJSRVNVTFQ6IEJVRyBSRVBST0RVQ0VEICgtRVJFU1RBUlRTWVMgbGVha2VkIHRvIHVzZXJzcGFj
-ZSkiCglleGl0IDEKZWxpZiBncmVwIC1xICJJbnB1dC9vdXRwdXQgZXJyb3IiICIkRVJSIjsgdGhl
-bgoJbG9nICJSRVNVTFQ6IG5vdCByZXByb2R1Y2VkIChnb3QgRUlPKSIKCWV4aXQgMApmaQpsb2cg
-IlJFU1VMVDogdW5leHBlY3RlZCBvdXRjb21lIgpleGl0IDIK
-
-
---=-1BBPysfuGXVmvaYBX2L5
-Content-Disposition: attachment;
-	filename*0=0001-SUNRPC-report-EIO-not-ERESTARTSYS-for-administrative.pat;
-	filename*1=ch
-Content-Transfer-Encoding: base64
-Content-Type: text/x-patch;
-	name="0001-SUNRPC-report-EIO-not-ERESTARTSYS-for-administrative.patch";
-	charset="UTF-8"
-
-RnJvbSAxNjQxZDRiNzAyZDQ0NTFmMjQ0YTg3NjdjYjE0NGIwNmVlYmFkYzg0IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBKZWZmIExheXRvbiA8amxheXRvbkBrZXJuZWwub3JnPgpEYXRl
-OiBGcmksIDEzIE5vdiAyMDI2IDE0OjAwOjE1IC0wNTAwClN1YmplY3Q6IFtQQVRDSF0gU1VOUlBD
-OiByZXBvcnQgLUVJTywgbm90IC1FUkVTVEFSVFNZUywgZm9yIGFkbWluaXN0cmF0aXZlbHkKIGtp
-bGxlZCB0YXNrcwoKcnBjX2tpbGxhbGxfdGFza3MoKSB0ZXJtaW5hdGVzIGV2ZXJ5IHRhc2sgb24g
-YW4gcnBjX2NsbnQgdGhyb3VnaApycGNfc2lnbmFsX3Rhc2soKSwgd2hpY2ggc2V0cyAtRVJFU1RB
-UlRTWVMuICBUaGF0IGNvZGUgbWVhbnMgImEgc2lnbmFsCmFycml2ZWQsIHJlc3RhcnQgdGhlIHN5
-c2NhbGwiLCBhbmQgdGhlIHN5c2NhbGwgbGF5ZXIgcmVzdGFydHMgdGhlIGNhbGwKb25seSB3aGVu
-IGEgc2lnbmFsIGlzIGFjdHVhbGx5IHBlbmRpbmcuICBJdHMgb25lIGNhbGxlciwKbmZzX3Vtb3Vu
-dF9iZWdpbigpLCBpcyBub3QgYSBzaWduYWw6IGl0IHJ1bnMgb24gYSBmb3JjZWQgdW5tb3VudAoo
-dW1vdW50IC1mKS4gIFRoZXJlIGlzIG5vIHNpZ25hbCB0byByZXN0YXJ0IG9uLCBzbyAtRVJFU1RB
-UlRTWVMgaXMKcmV0dXJuZWQgdG8gdXNlcnNwYWNlIGFzIGVycm9yIDUxMi4KClNlZW4gaW4gcHJv
-ZHVjdGlvbjogYSBmb3JjZWQgdW5tb3VudCBvZiBhbiBORlMgZmlsZXN5c3RlbSBtYWRlCm1rZGly
-KDIpIGZhaWwgd2l0aCAiVW5rbm93biBlcnJvciA1MTIiIGluIGFuIHVucmVsYXRlZCBwcm9jZXNz
-LiAgTm90ZQp0aGF0IG5mc191bW91bnRfYmVnaW4oKSBhYm9ydHMgY2FsbHMgcGVyIHN1cGVyYmxv
-Y2ssIHNvIG9uZSBjb250YWluZXIncwpmb3JjZWQgdW5tb3VudCBoaXRzIGV2ZXJ5IHByb2Nlc3Mg
-dXNpbmcgdGhhdCBmaWxlc3lzdGVtIG9uIHRoZSBob3N0LgoKbmZzX3Vtb3VudF9iZWdpbigpJ3Mg
-b3duIGNvbW1lbnQgYWxyZWFkeSBzYXlzIHdoYXQgc2hvdWxkIGhhcHBlbjoKCgkvKiAtRUlPIGFs
-bCBwZW5kaW5nIEkvTyAqLwoKTWFrZSB0aGUgY29kZSBtYXRjaC4gIFNwbGl0IHRoZSBzdGF0dXMg
-b3V0IG9mIHJwY19zaWduYWxfdGFzaygpIGFuZAphZGQgcnBjX2Fib3J0X3Rhc2soKSwgd2hpY2gg
-cmVwb3J0cyAtRUlPLCBhbmQgdXNlIGl0IGluCnJwY19raWxsYWxsX3Rhc2tzKCkuICBUYXNrcyBp
-bnRlcnJ1cHRlZCBieSBhIHJlYWwgc2lnbmFsIGFyZQp1bmNoYW5nZWQuCgpTaWduZWQtb2ZmLWJ5
-OiBKZWZmIExheXRvbiA8amxheXRvbkBrZXJuZWwub3JnPgotLS0KIGluY2x1ZGUvbGludXgvc3Vu
-cnBjL3NjaGVkLmggfCAgMSArCiBuZXQvc3VucnBjL2NsbnQuYyAgICAgICAgICAgIHwgIDIgKy0K
-IG5ldC9zdW5ycGMvc2NoZWQuYyAgICAgICAgICAgfCAyMyArKysrKysrKysrKysrKysrKysrKyst
-LQogMyBmaWxlcyBjaGFuZ2VkLCAyMyBpbnNlcnRpb25zKCspLCAzIGRlbGV0aW9ucygtKQoKZGlm
-ZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmggYi9pbmNsdWRlL2xpbnV4L3N1
-bnJwYy9zY2hlZC5oCmluZGV4IDBkYmRmMzcyMjUzNy4uNzlhMDgxNzFjNGI4IDEwMDY0NAotLS0g
-YS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5oCisrKyBiL2luY2x1ZGUvbGludXgvc3VucnBj
-L3NjaGVkLmgKQEAgLTIyMiw2ICsyMjIsNyBAQCB2b2lkCQlycGNfcHV0X3Rhc2tfYXN5bmMoc3Ry
-dWN0IHJwY190YXNrICopOwogYm9vbAkJcnBjX3Rhc2tfc2V0X3JwY19zdGF0dXMoc3RydWN0IHJw
-Y190YXNrICp0YXNrLCBpbnQgcnBjX3N0YXR1cyk7CiB2b2lkCQlycGNfdGFza190cnlfY2FuY2Vs
-KHN0cnVjdCBycGNfdGFzayAqdGFzaywgaW50IGVycm9yKTsKIHZvaWQJCXJwY19zaWduYWxfdGFz
-ayhzdHJ1Y3QgcnBjX3Rhc2sgKik7Cit2b2lkCQlycGNfYWJvcnRfdGFzayhzdHJ1Y3QgcnBjX3Rh
-c2sgKik7CiB2b2lkCQlycGNfZXhpdF90YXNrKHN0cnVjdCBycGNfdGFzayAqKTsKIHZvaWQJCXJw
-Y19leGl0KHN0cnVjdCBycGNfdGFzayAqLCBpbnQpOwogdm9pZAkJcnBjX3JlbGVhc2VfY2FsbGRh
-dGEoY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyAqLCB2b2lkICopOwpkaWZmIC0tZ2l0IGEvbmV0
-L3N1bnJwYy9jbG50LmMgYi9uZXQvc3VucnBjL2NsbnQuYwppbmRleCA2Y2VkYzgyNGNmODIuLjkw
-NTVmMDI5OTgzNiAxMDA2NDQKLS0tIGEvbmV0L3N1bnJwYy9jbG50LmMKKysrIGIvbmV0L3N1bnJw
-Yy9jbG50LmMKQEAgLTg5Niw3ICs4OTYsNyBAQCB2b2lkIHJwY19raWxsYWxsX3Rhc2tzKHN0cnVj
-dCBycGNfY2xudCAqY2xudCkKIAl0cmFjZV9ycGNfY2xudF9raWxsYWxsKGNsbnQpOwogCXNwaW5f
-bG9jaygmY2xudC0+Y2xfbG9jayk7CiAJbGlzdF9mb3JfZWFjaF9lbnRyeShyb3ZyLCAmY2xudC0+
-Y2xfdGFza3MsIHRrX3Rhc2spCi0JCXJwY19zaWduYWxfdGFzayhyb3ZyKTsKKwkJcnBjX2Fib3J0
-X3Rhc2socm92cik7CiAJc3Bpbl91bmxvY2soJmNsbnQtPmNsX2xvY2spOwogfQogRVhQT1JUX1NZ
-TUJPTF9HUEwocnBjX2tpbGxhbGxfdGFza3MpOwpkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9zY2hl
-ZC5jIGIvbmV0L3N1bnJwYy9zY2hlZC5jCmluZGV4IDAxNmYxNmNhNTc3OS4uNjYzZDhlMTU3Zjlh
-IDEwMDY0NAotLS0gYS9uZXQvc3VucnBjL3NjaGVkLmMKKysrIGIvbmV0L3N1bnJwYy9zY2hlZC5j
-CkBAIC04NTQsMTQgKzg1NCwxNCBAQCB2b2lkIHJwY19leGl0X3Rhc2soc3RydWN0IHJwY190YXNr
-ICp0YXNrKQogCX0KIH0KIAotdm9pZCBycGNfc2lnbmFsX3Rhc2soc3RydWN0IHJwY190YXNrICp0
-YXNrKQorc3RhdGljIHZvaWQgcnBjX3NpZ25hbF90YXNrX3N0YXR1cyhzdHJ1Y3QgcnBjX3Rhc2sg
-KnRhc2ssIGludCBzdGF0dXMpCiB7CiAJc3RydWN0IHJwY193YWl0X3F1ZXVlICpxdWV1ZTsKIAog
-CWlmICghUlBDX0lTX0FDVElWQVRFRCh0YXNrKSkKIAkJcmV0dXJuOwogCi0JaWYgKCFycGNfdGFz
-a19zZXRfcnBjX3N0YXR1cyh0YXNrLCAtRVJFU1RBUlRTWVMpKQorCWlmICghcnBjX3Rhc2tfc2V0
-X3JwY19zdGF0dXModGFzaywgc3RhdHVzKSkKIAkJcmV0dXJuOwogCXRyYWNlX3JwY190YXNrX3Np
-Z25hbGxlZCh0YXNrLCB0YXNrLT50a19hY3Rpb24pOwogCXF1ZXVlID0gUkVBRF9PTkNFKHRhc2st
-PnRrX3dhaXRxdWV1ZSk7CkBAIC04NjksNiArODY5LDI1IEBAIHZvaWQgcnBjX3NpZ25hbF90YXNr
-KHN0cnVjdCBycGNfdGFzayAqdGFzaykKIAkJcnBjX3dha2VfdXBfcXVldWVkX3Rhc2socXVldWUs
-IHRhc2spOwogfQogCit2b2lkIHJwY19zaWduYWxfdGFzayhzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sp
-Cit7CisJcnBjX3NpZ25hbF90YXNrX3N0YXR1cyh0YXNrLCAtRVJFU1RBUlRTWVMpOworfQorCisv
-KioKKyAqIHJwY19hYm9ydF90YXNrIC0gdGVybWluYXRlIGEgdGFzayBvbiBiZWhhbGYgb2YgYW4g
-YWRtaW5pc3RyYXRpdmUgYWN0aW9uCisgKiBAdGFzazogdGhlIHRhc2sgdG8gdGVybWluYXRlCisg
-KgorICogVW5saWtlIHJwY19zaWduYWxfdGFzaygpLCB3aGljaCByZXBvcnRzIC1FUkVTVEFSVFNZ
-UyBmb3IgYSB0YXNrCisgKiBpbnRlcnJ1cHRlZCBieSBhIHNpZ25hbCwgdGhpcyByZXBvcnRzIC1F
-SU86IHRoZXJlIGlzIG5vIHNpZ25hbCBmb3IKKyAqIHRoZSBzeXNjYWxsIGxheWVyIHRvIHJlc3Rh
-cnQgb24sIHNvIC1FUkVTVEFSVFNZUyB3b3VsZCBiZSByZXR1cm5lZAorICogdG8gdXNlcnNwYWNl
-IGFzIGVycm9yIDUxMi4KKyAqLwordm9pZCBycGNfYWJvcnRfdGFzayhzdHJ1Y3QgcnBjX3Rhc2sg
-KnRhc2spCit7CisJcnBjX3NpZ25hbF90YXNrX3N0YXR1cyh0YXNrLCAtRUlPKTsKK30KKwogdm9p
-ZCBycGNfdGFza190cnlfY2FuY2VsKHN0cnVjdCBycGNfdGFzayAqdGFzaywgaW50IGVycm9yKQog
-ewogCXN0cnVjdCBycGNfd2FpdF9xdWV1ZSAqcXVldWU7Ci0tIAoyLjU2LjEKCg==
-
-
---=-1BBPysfuGXVmvaYBX2L5--
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
