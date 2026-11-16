@@ -1,65 +1,59 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=111.22.67.137
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794816346;
-	b=qW/rOC4AmqmpVniDuCKX0d5xxFegzs4gHRSiDufGuI/tTy6RY1/Qh2nyw18fK4zdy9vK
-	 ToMH6ctJmosHffx1Qh73diOaG8g4vfNBzJAc5F5qFQ0IEt3oPvzMmrYqVXz7vGCA6G3nE
-	 BvwBD4F/QnDMK3tKkgZ65zA/S7JL/LIbpdmsip2YzOS1boRE3Qw805XJ9IfOzZCfv1hSy
-	 +7LoyEIXfVE2g2eQXGG378U2Kh5PvWVs7U/8e40Od5TTqLKflGXVJbH2G4o1I2m4qhACH
-	 oCdzdO+O/xqeZigTQw9GbURZOY5NUldLopmGD7s1p3/zMyvdx/nUbMHjE+ICEEBF2NQ==
+	t=1794822116;
+	b=5Ev03nY4/0uSQ6H/ARijX1NCxcvNyjCBEAnIlYe1PYK4LbbHEblB5ZzpG22ojKEK3IQS
+	 V3zAQ4Rr7cCC/zP88Xq7vGHC3a6YIrwZf59xAKxHRQp/8I+av11yF1wYE94WqrFR85KRO
+	 N/PVKnyd033NIi1RPqWJ84o8yzhdYCHSOfuWr2DFcV2IcVFF1zwiVCjxDwzGCOnD3Gz2T
+	 D1HaNhbMo9EUxjGcJhd4MQRPUVEz6gMKTwxqzCxRGmW+2VcPyM7C4UZipBiJPWoIXkqwf
+	 Sz+nNJs0aXbRILgoMkfnDcA8QNw32M1B0a9CyCtrTXmtWClANat8e/TiKGXIktH5VNQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794816346;
-	h=DMARC-Filter:DKIM-Signature:X-RM-TagInfo:X-RM-SPAM-FLAG:Received:
-	 X-RM-TRANSID:X-RM-TagInfo:X-RM-SPAM-FLAG:Received:X-RM-TRANSID:From:
-	 To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=6Avz1NW7TUudJTX++ez+xj7beQ7E+txia0kyE9b57xc=;
-	b=GSXe+HlZAOqid532lL/FRCyphgRM+H1Sj12sNd/Nq8L0Bn8uMhKHEbw/jArJsE4DIpHk
-	 B1SJYo6ZnNq4MXtEoWTILerp4+yEPpzYjyCKJ/N9dVBJ3iMdqS6iOwn07Bhr90IYHmeVx
-	 Aj0bRKg/0rPxeYXxwNxZMFiqeuKXyvusGufnoqyxTERToYo7aYmpkNRnNpVlKSv1imHNE
-	 aKl74cW6vQFGhl620drOUXhqA/6wppomgPigRqS4d3d+AcjDlHa+t/EdRgE4RMxqYc21m
-	 8M33/KSAumru7pnHeNfAJrDVvCrd8jFTW34aoBlL8/bMVAvN+S+fzh2be7wSMgAuCYA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794822116;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=hXng9hYJH3diUcfIm+3EkeLNi/DrI5XwE9hJbmJZ9MI=;
+	b=oUierVuHroArdb2avcHbgg00z1/++vjuSRFkaEhrt2R8Gh9cFowsD7nKYUNx1l6aBsv1
+	 Ls/1ZJvVOdTnAQkm/k0LFdKjYZHovybI9Nt/4oWC52TDAxQcjK5zWTAnrVf/ZHilN3XVh
+	 vHCstgcUlugf6yZKaY8FNZJw4aFamHtG7IZKUQ+DHfu/tqtNE5sWggMfS0zCPnCcA7629
+	 iNbdpaozy/aQytQG0ArBTa6zUGSV7iUGa2cmBnTyJ0afkDWT39CO6dA7fsZw4fAh6WsAh
+	 po6H9u4aoBp4rfILauspuhaC3beTYR0U4664m9br/ypLwVeu2yG7+ufwjAnIBED14+w==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=cmss.chinamobile.com;
-	spf=pass smtp.mailfrom=cmss.chinamobile.com;
-	dkim=pass header.d=cmss.chinamobile.com header.i=@cmss.chinamobile.com header.a=rsa-sha256 header.s=default header.b=grpOFYAf;
-	arc=none smtp.remote-ip=111.22.67.137
-Received: from cmccmta4.chinamobile.com (cmccmta4.chinamobile.com [111.22.67.137])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id B277E606A31C;
-	Mon, 16 Nov 2026 08:05:44 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B277E606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=cmss.chinamobile.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cmss.chinamobile.com
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kzkbn6tP;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3138C606A329;
+	Mon, 16 Nov 2026 09:41:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=cmss.chinamobile.com header.i=@cmss.chinamobile.com header.a=rsa-sha256 header.s=default header.b=grpOFYAf
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=cmss.chinamobile.com; s=default; l=0;
-	h=from:subject:message-id:to:cc:mime-version;
-	bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;
-	b=grpOFYAf/BGqCy8WbnRkBlQS+K6LyvEA2Bzu8ZRdN5QUZhHfWn6zHkpZ5byLQdpXiQodeQpCB2zPt
-	 D+x8pgBSTDLNPL1/x1ZArqxZgNVkAgG51lmS77RGCNXn3XY0r8EEmFExA95+jFqX9pupiDXM8ApWCY
-	 Bpw3MTw5MwFdTUgQ=
-X-RM-TagInfo: emlType=0                                       
-X-RM-SPAM-FLAG:00000000
-Received:from spf.mail.chinamobile.com (unknown[10.188.0.87])
-	by rmmx-syy-dmz-app04-12004 (RichMail) with SMTP id 2ee46afab95699e-9dbc1;
-	Mon, 16 Nov 2026 16:05:42 +0800 (CST)
-X-RM-TRANSID:2ee46afab95699e-9dbc1
-X-RM-TagInfo: emlType=0                                       
-X-RM-SPAM-FLAG:00000000
-Received:from fedora (unknown[223.108.79.102])
-	by rmsmtp-syy-appsvr01-12001 (RichMail) with SMTP id 2ee16afab9541e5-84257;
-	Mon, 16 Nov 2026 16:05:42 +0800 (CST)
-X-RM-TRANSID:2ee16afab9541e5-84257
-From: Yiqing Wu <wuyiqing@cmss.chinamobile.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Yiqing Wu <wuyiqing@cmss.chinamobile.com>
-Subject: [PATCH] pNFS: Fix use of uninitialized be_prev in ext_tree_encode_commit()
-Date: Mon, 16 Nov 2026 16:05:31 +0800
-Message-ID: <20261116080531.50982-1-wuyiqing@cmss.chinamobile.com>
-X-Mailer: git-send-email 2.56.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kzkbn6tP
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E5A231F000C5;
+	Mon, 16 Nov 2026 09:41:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794822116;
+	bh=hXng9hYJH3diUcfIm+3EkeLNi/DrI5XwE9hJbmJZ9MI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=kzkbn6tPB2bS/Zn/Pn5gXJRXwYUjckO+3EyZRv12Tme1m2pQkOlyS27Q2NJx0bLjq
+	 iAF35/8jh5WK0aPjealgqEWqPtYQ2eIjwus2l7uEA6Rw6F/DzFARz9BZlmZeeRX4IA
+	 a8T9Xm8NCDxJP3dX2atLlDz9ZBm8mqYBsqZVK7vDVaxJ/ohv+LFKZYXH6eS5lGqyub
+	 cuo0dCjJOQ9Cm7L88ZJ23RQ4pRGG9KOeHzD56rkH8lmKmPt3M3ylorww7aaA+S2CPt
+	 kiO/myHptFlIERKjXIXwXpMeNSX+FLQjdkTiW70P+l/3Lf4R8ggQC98SE8Kxc70N4V
+	 A+Zhh9qKrjqLA==
+Date: Mon, 16 Nov 2026 10:41:49 +0100
+From: Christian Brauner <brauner@kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jan Kara <jack@suse.cz>, Shakeel Butt <shakeel.butt@linux.dev>, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jens Axboe <axboe@kernel.dk>, linux-fsdevel@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, io-uring@vger.kernel.org, linux-block@vger.kernel.org, 
+	linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
+	linux-unionfs@vger.kernel.org, bpf@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	stable@vger.kernel.org
+Subject: Re: [PATCH 07/12] zloop: take freeze protection when recording write
+ pointers
+Message-ID: <20261116-biegen-flaute-flanke-cebddae97444@brauner>
+References: <20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org>
+ <20261114-work-fs-frozen_writes-v1-7-f5ae61c898b1@kernel.org>
+ <20261116064820.GB2964@lst.de>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -69,68 +63,129 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20261116064820.GB2964@lst.de>
 
-Building with W=2 warns:
+On Mon, Nov 16, 2026 at 07:48:20AM +0100, Christoph Hellwig wrote:
+> Looks good:
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> 
+> Can we get some kind of debug check into vfs_setxattr to enforce
+> callers have taken the write protection?
 
-  fs/nfs/blocklayout/extent_tree.c:615:59: warning: be_prev may be used uninitialized [-Wmaybe-uninitialized]
+I considered that and decided against it becuase it will mean everyone
+starts splatting which means everyone needs to get their act together by
+7.5.
 
-When the encoded layoutcommit overflows the buffer,
-ext_tree_encode_commit() breaks out of the extent loop with -ENOSPC
-and computes lastbyte from be_prev, the last extent that was
-successfully encoded.  be_prev is only assigned after an extent is
-encoded, so if the first extent matching the filter already exceeds
-the buffer, the loop breaks before be_prev is ever set and the error
-path reads it uninitialized.
+You might not have seen it but I sent out a bunch of bug reports for
+subsystems that suffer from the same bug class but that need way more
+invasive fixes than anything I'm doing here.
 
-That path cannot be reached in practice: overflowing on the very
-first extent would require a buffer smaller than the encoding of a
-single extent (20 bytes for SCSI layouts, 48 bytes for block
-layouts), but the callers always pass a full page or the server
-wsize, which nfs_io_size() clamps to at least NFS_MIN_FILE_IO_SIZE.
-GCC cannot prove this, and zero-initializing be_prev alone would
-turn the theoretical read into a NULL dereference, so handle the
-case explicitly and report U64_MAX, the same "no information" value
-that is already used when bl_lwb is zero.
+But I guess we can do it if we use the VFS_* macros which are compiled
+out unless CONFIG_DEBUG_FS is set. This will still mean that syzbot will
+start splatting at these subsystems. If we're fine with that I'm good to
+go with this.
 
-Signed-off-by: Yiqing Wu <wuyiqing@cmss.chinamobile.com>
+Fwiw, the check can't go into __vfs_setxattr(), __vfs_setxattr_noperm()
+or __vfs_removexattr(). cap_inode_killpriv(), IMA and EVM call those
+from ->write_iter() via file_remove_privs() and kiocb_start_write()
+hides the freeze protection from lockdep for aio and io_uring. I have
+not bothered to figure out why. Maybe you already know? In any case,
+until that's fixed we can't place it there which means this doesn't
+catch IMA/EVM at which point this patch becomes pointless.
+
+So that kiocb_start_write() stuff needs to be sorted first by someone.
+I'm about 300+ patches or more deep into various tree-wide cleanups. I'm
+going to defer this as this seems minor to all the other sh*it that's
+waiting to be cleaned up.
+
+-- >8 --
+Subject: [PATCH] fs: assert freeze protection for xattr and acl writes
+
+Writing an xattr or a POSIX ACL modifies the filesystem but
+vfs_setxattr() and friends leave freeze protection to the caller. Most
+callers get it from mnt_want_write(). Some in-kernel callers forgot
+about it. zloop and overlayfs are fixed earlier in this series and
+ecryptfs and ksmbd have been reported. Christoph asked for a debug check
+to catch the next one (cf. [1]).
+
+So warn in __vfs_setxattr_locked(), __vfs_removexattr_locked(),
+vfs_set_acl(), vfs_remove_acl() and set_posix_acl() if SB_FREEZE_WRITE
+isn't held. This only does something with CONFIG_DEBUG_VFS and lockdep.
+Without lockdep sb_write_started() can't tell and claims it's held.
+Until ecryptfs and ksmbd are fixed this will warn for them.
+
+Note that __vfs_setxattr(), __vfs_setxattr_noperm() and
+__vfs_removexattr() don't get the check. They're also called from
+->write_iter() via file_remove_privs() -> notify_change() for
+security.capability and by IMA and EVM. aio, io_uring and the in-kernel
+async writers call kiocb_start_write() which hides the freeze protection
+from lockdep before ->write_iter() is called. So the check would fire
+for writes that are perfectly fine.
+
+[1]: https://lore.kernel.org/r/20261116064820.GB2964@lst.de
+
+Suggested-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/nfs/blocklayout/extent_tree.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ fs/posix_acl.c | 6 ++++++
+ fs/xattr.c     | 4 ++++
+ 2 files changed, 10 insertions(+)
 
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index 7393118c42a2..f78699317d8e 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -585,7 +585,7 @@ static int
- ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
- 		size_t buffer_size, size_t *count, __u64 *lastbyte)
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index fe77934ea8f20..61de6f105ff4f 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -942,6 +942,8 @@ set_posix_acl(const struct mnt_idmap *idmap, struct dentry *dentry,
  {
--	struct pnfs_block_extent *be, *be_prev;
-+	struct pnfs_block_extent *be, *be_prev = NULL;
- 	int ret = 0;
+ 	struct inode *inode = d_inode(dentry);
  
- 	spin_lock(&bl->bl_ext_lock);
-@@ -612,9 +612,14 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
- 		*lastbyte = (bl->bl_lwb != 0) ? bl->bl_lwb - 1 : U64_MAX;
- 		bl->bl_lwb = 0;
- 	} else {
--		*lastbyte = be_prev->be_f_offset + be_prev->be_length;
--		*lastbyte <<= SECTOR_SHIFT;
--		*lastbyte -= 1;
-+		if (be_prev) {
-+			*lastbyte = be_prev->be_f_offset + be_prev->be_length;
-+			*lastbyte <<= SECTOR_SHIFT;
-+			*lastbyte -= 1;
-+		} else {
-+			/* no extent fit in the buffer */
-+			*lastbyte = U64_MAX;
-+		}
- 	}
- 	spin_unlock(&bl->bl_ext_lock);
++	VFS_WARN_ON_ONCE(!sb_write_started(inode->i_sb));
++
+ 	if (!IS_POSIXACL(inode))
+ 		return -EOPNOTSUPP;
+ 	if (!inode->i_op->set_acl)
+@@ -1099,6 +1101,8 @@ int vfs_set_acl(const struct mnt_idmap *idmap, struct dentry *dentry,
+ 	struct inode *inode = d_inode(dentry);
+ 	struct delegated_inode delegated_inode = { };
  
++	VFS_WARN_ON_ONCE(!sb_write_started(inode->i_sb));
++
+ 	acl_type = posix_acl_type(acl_name);
+ 	if (acl_type < 0)
+ 		return -EINVAL;
+@@ -1220,6 +1224,8 @@ int vfs_remove_acl(const struct mnt_idmap *idmap, struct dentry *dentry,
+ 	struct inode *inode = d_inode(dentry);
+ 	struct delegated_inode delegated_inode = { };
+ 
++	VFS_WARN_ON_ONCE(!sb_write_started(inode->i_sb));
++
+ 	acl_type = posix_acl_type(acl_name);
+ 	if (acl_type < 0)
+ 		return -EINVAL;
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 0705801a62cc5..715d04111c274 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -302,6 +302,8 @@ __vfs_setxattr_locked(const struct mnt_idmap *idmap, struct dentry *dentry,
+ 	struct inode *inode = dentry->d_inode;
+ 	int error;
+ 
++	VFS_WARN_ON_ONCE(!sb_write_started(inode->i_sb));
++
+ 	error = xattr_permission(idmap, inode, name, MAY_WRITE);
+ 	if (error)
+ 		return error;
+@@ -564,6 +566,8 @@ __vfs_removexattr_locked(const struct mnt_idmap *idmap,
+ 	struct inode *inode = dentry->d_inode;
+ 	int error;
+ 
++	VFS_WARN_ON_ONCE(!sb_write_started(inode->i_sb));
++
+ 	error = xattr_permission(idmap, inode, name, MAY_WRITE);
+ 	if (error)
+ 		return error;
+
 -- 
-2.56.0
-
-
-
