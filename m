@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827203;
-	b=EHY/ujhTUJpF25CuPaW15s6KrkGYNPoMz3RnbBQc+kkH4SEMz8RHgZZZYooSYgb29wPL
-	 rOQfbj9xZrR9v8+KJzSRvCaNeAZZB3SoHmM9vZ2EpRuVnLYXdx34Jv/4L3g8drS66+AwO
-	 upQFjNz+pfJYoGte+2tp+Kq78Px+V6q3zaHGYR1K4x/UH6XDn82xB/mrViUqruZdIVQQM
-	 CdJ4AbU5DHbrlz1gkKsz04eTJzLHzaPhUsEwYlvFfDYfhTJpR5OJCPXgl2gK0gABUfKMA
-	 tJqr0epOvUvNOj7SskEG8mVeIGWK+rIPRK7O/fXC1ZsF3NjD6G1nXf7YYVAO8ypfHVA==
+	t=1794827218;
+	b=xqYbKT2nsE39oNOnBaMn+x/h1XnNqsGHv65v7XASD+R0GaMv6a5UfOGhtW+Gz/AUU4MQ
+	 AlCwdr2q9OEQGzuHew5RNPJ/KNILVWWotNv9saAAvrI9+ICPZwCHi3evKOGeUdVDqMY0p
+	 p3RaPB3BuUuEB+kmiDPc9Y5bv1HvoOnvDtWlGrDgnN8WRP65Bn2B1cF/5xQhfcHk4r1xL
+	 h3jRohJ53ylteNsLBykdEAI7g0pIygB/ZWKy6kgegIKY87S99sw5qXI0aOmbQuu7+fGnd
+	 wY7Y9qXKIY7WBqo5KQNE7Scu3J0ku/2AAMKO1g/t1d5QJhba5fc78AXPuXw6f5cizzA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827203;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827218;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=WxYlM2WrInCj+tZCjOFP8L/ZbkLteejSwwMuIi+k/j0=;
-	b=EM8Hg6+sxrMbVjPyjn6njcUa/vWLPqRyEITl9UTnQDvEJuez5oCW7zk/Ek7H2hhVEdzZ
-	 zCVNgpfQZF7Kp4N9hnP+UbknHIfNz473eEH4ncCFxlA08Lqp5BrOU6sdzxHDNa7QKf+VR
-	 RG6nIeKZXzHynJmMSDOlbXnFgAkESCwB5wDRw9HsMsDSiZQEJvaraFfmOdb6ipykYnBoR
-	 BiZPoqd7IRtwukPcJ6luM8UhKsQjlMsFjBzSZtmRs9aYz32UZB7eoNS0DYuTy6sKv5Y+b
-	 9lHTDv+riijXbLubQXc5zSb2A4/7RwHpDaR9y8xUZcm5axpitBU2JWGZ5hSAI/lYzng==
+	bh=jcuZgfEAu/QV7fwp1VLyFSljuB6ko+rpbI5oo0xXTbA=;
+	b=bZeGjXFKwcXhn+ajLHANYOYHeAfRVzzMABnlL5Ruq2Ri4XTPBie/jzpkxFBzivzbw8SJ
+	 iCs6Wx/vCr2e7E6IhXluJkwcw8ZwzYBpPtEorrYf05jYQJCK8pbPoRcWe2vxz9aY5WQxQ
+	 Pi3sDr3FXGsgEbU5LmOGggn+D/DYUg82E7YRpCizBytiTcARU4CxZMt7kRs8XZvOtf947
+	 68gV1Rj8UWeWhUAHGG26RxXL4HET5mJ937U0m5VXt5t6vVi0ktbdJdk/B16pLirvHQETs
+	 BBTVjjqWVC83V1ruKPUjzULxyuTtFkHCI1AaJzGhkoIwtYnLBw3GCc9k5AVbaKAL18A==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HIBGA33D;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VlWUdDLV;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D312606D787;
-	Mon, 16 Nov 2026 11:06:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F396606FD92;
+	Mon, 16 Nov 2026 11:06:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=HIBGA33D
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0BB091F000C6;
-	Mon, 16 Nov 2026 11:06:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=VlWUdDLV
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DBF281F000CE;
+	Mon, 16 Nov 2026 11:06:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794827203;
-	bh=WxYlM2WrInCj+tZCjOFP8L/ZbkLteejSwwMuIi+k/j0=;
+	s=k20260515; t=1794827217;
+	bh=jcuZgfEAu/QV7fwp1VLyFSljuB6ko+rpbI5oo0xXTbA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=HIBGA33DZKK7wLY4NbU1UsuWaQJnkbG0rRCtIKIXDHpO9jDtPSdQhfLQbTHhTKx8X
-	 XuX7PnB2kkTJoZriLdQv9iPo7IxfuI5i/hHeh3OnCCY6MHhW/GZMXU7CCCB4IZCpzc
-	 q0+u+L41qd9ZOl8lQb+cKh9xYAgLOA471R2AzufTEMSg/dCw2bOSv3Q1XSWzhqjCfs
-	 sNXo2m2S8siDOJUurEhdoM/D1hZ2q/5dqT6j4xt/aNAgYhltavLFwce+QkO/Jev9GZ
-	 5lfAlzmTs8+9PTfmF1jNifCNVQu/HrVcBF6evkHDFY6UOLA4bPT4TCpN89UIe3t5YZ
-	 YxVy/TwqEWNsQ==
+	b=VlWUdDLVuU7+1W5AfKDV8A6h7bpZD6EsCzKV3QkLOwQIaYytJajpFIVxFa+tZJ35S
+	 tI3uPLWgSo+No0yMgSs4xL74IpVyEJcOMhOK9feVdhR0gz/3OsFCh+HBGIfL5bfaQy
+	 EeWwUQfCTADTYpl3kYIVLHrKD0071KrFYjjll+kMtoKchmkd0P4z7p5mleDk4dc4RI
+	 FfwrK4jlOLZbAGciN7FsmDhx1C1Isd2oeRGeEvBqEwGSDwcR3+swUmLjG4HKFAeiXz
+	 c1mW+z65Ldx/VReJb1LQr1zBRFMkwzpCRVKF3SJQ+PxD2B6SIRjYnlrbYtR7otXVX9
+	 51azYy6ntC+8g==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 16 Nov 2026 12:04:38 +0100
-Subject: [PATCH RFC v3 05/44] kernfs: use fc_init_pseudo()
+Date: Mon, 16 Nov 2026 12:04:40 +0100
+Subject: [PATCH RFC v3 07/44] binfmt_misc: use fc_init_pseudo()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-work-loop-pseudo-v3-5-8cbbea1cf34f@kernel.org>
+Message-Id: <20261116-work-loop-pseudo-v3-7-8cbbea1cf34f@kernel.org>
 References: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 In-Reply-To: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -77,59 +77,56 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  Alexander Mikhalitsyn <alex@amutable.com>, 
  Chris Down <chris@chrisdown.name>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1543; i=brauner@kernel.org;
- h=from:subject:message-id; bh=b1WdZIg+OtBecm5NRM4f/C4ttSoZ3Tz9qDg/k3dTDkg=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9epzSXe5vEPNi3pbqvoQu08sCwWuePl/0KVmlUibZU
- +J2n/3+jlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgIn8N2RkeKF7zH9azOs1V6c4
- PRXbZLyiwWHxr3+qnE8Wt7vs/HMxK46RYZuD26pXQUvnGJZWdkpW7OSs237Rws6gNFNVvjjiTew
- fbgA=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1381; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=Op8caQB40yLDgM+EzuEIWYdaqzetBKTmauJ3/A8MyW4=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9epz2stXSV/bIi9CLVUrrcpeXPvuV4y5RpjX9R2Rox
+ r/jidW7O0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACYiKszIsPeTS0+B0pFmdk8l
+ p0n2046ui4zZq/L5S64sm9fmmVf2dTMyzMt9rHkle3Nhwf2a5nkBe5i1t7ttYSyfFqfzfN10XlU
+ eRgA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize all kernfs based filesystems as pseudo filesystems in
-kernfs_get_tree() instead of raising SB_I_NOEXEC and SB_I_NODEV by hand
-in kernfs_fill_super(). This adds SB_I_PSEUDO for sysfs, cgroupfs and
-resctrl.
+Initialize binfmt_misc as a pseudo filesystem instead of raising
+SB_I_NOEXEC and SB_I_NODEV by hand. This adds SB_I_PSEUDO.
 
 Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Alexander Mikhalitsyn <alex@amutable.com>
 Reviewed-by: Chris Down <chris@chrisdown.name>
-Tested-by: Chris Down <chris@chrisdown.name>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/kernfs/mount.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/binfmt_misc.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/kernfs/mount.c b/fs/kernfs/mount.c
-index a0be784bfb064..6b60d212b003d 100644
---- a/fs/kernfs/mount.c
-+++ b/fs/kernfs/mount.c
-@@ -8,6 +8,7 @@
-  */
- 
+diff --git a/fs/binfmt_misc.c b/fs/binfmt_misc.c
+index d945b4f6e1581..7dc233becd98d 100644
+--- a/fs/binfmt_misc.c
++++ b/fs/binfmt_misc.c
+@@ -22,6 +22,7 @@
+ #include <linux/file.h>
  #include <linux/fs.h>
+ #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
- #include <linux/mount.h>
  #include <linux/init.h>
- #include <linux/magic.h>
-@@ -298,8 +299,6 @@ static int kernfs_fill_super(struct super_block *sb, struct kernfs_fs_context *k
- 	struct dentry *root;
+ #include <linux/kstrtox.h>
+ #include <linux/limits.h>
+@@ -1575,8 +1576,7 @@ static int bm_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	if (user_ns != current_user_ns())
+ 		return -EINVAL;
  
- 	info->sb = sb;
--	/* Userspace would break if executables or devices appear on sysfs */
+-	/* Never exec off this instance and never let anything stack on it. */
 -	sb->s_iflags |= SB_I_NOEXEC | SB_I_NODEV;
- 	sb->s_blocksize = PAGE_SIZE;
- 	sb->s_blocksize_bits = PAGE_SHIFT;
- 	sb->s_magic = kfc->magic;
-@@ -388,6 +387,7 @@ int kernfs_get_tree(struct fs_context *fc)
- 	info->ns = kfc->ns_tag;
- 	INIT_LIST_HEAD(&info->node);
++	/* Never let anything stack on this instance. */
+ 	sb->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
  
+ 	/*
+@@ -1660,6 +1660,7 @@ static void bm_kill_sb(struct super_block *sb)
+ 
+ static int bm_init_fs_context(struct fs_context *fc)
+ {
 +	fc_init_pseudo(fc);
- 	fc->s_fs_info = info;
- 	sb = sget_fc(fc, kernfs_test_super, kernfs_set_super);
- 	if (IS_ERR(sb))
+ 	fc->ops = &bm_context_ops;
+ 	return 0;
+ }
 
 -- 
 2.53.0
