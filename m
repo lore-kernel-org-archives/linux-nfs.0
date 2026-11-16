@@ -1,49 +1,132 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794872659;
-	b=EKhhcYYuhAmtG42LxtlINr8kwlVz8Xo1WnK14JuY0tlyN/L3DHKjfjJoYaTNXiiO8TVb
-	 f9ocPf08G/Vpeoywa26ZXE4ZQq8Y8wjYd/9CssB9BxLCs1O+bVWc+RayqEsqRW4M9AoX2
-	 fczZ4WZpxlDGZNkaDjpYWDSuzfUPe3ZkyBEMzQ46xCiU8+9Yf1kAzNAJE4GIvK/EW7L+u
-	 fTC8jMbkZ9IkJGurjOpQc2fta6Sj6P+2b7YDmm0o1nTCcQ7rsviCRHAMRFbq2eqhBQyu7
-	 Pa4X50FdRcLPW8vQEhGldDHjs55DttfU2bKOxNJYIwZ0ybVZ1MfW0z17a7596vxCf7Q==
+	t=1794873109;
+	b=3pkDPujCvg1kphFvypFFQ5WlAUV8AQN+UmJD7kAZaubQQpI56nJM+96933SqFF7hmaMy
+	 VtiNuffzC67sbd3nk21er8AyILe9rlEnLjSGNwGnuL+6kos9gMuVWrpCpmnkrys9IkEbT
+	 2mrVuhucgvzxBdjG3k7/4EggPbVgAh/lD2Nkp+x0rdryKzrCDHK/EGSK6wyCRvhkOcwtK
+	 wCE48yJkbgT5xqhgHSu26zvDgsfhI8SDKKUf+6wKSGpWs4N21Zs8a+Ij34cHE8WVXPvR6
+	 JKWCiRblGmfy22DNxswBGsHVAau6ZHcvoNqW2rOPbxGUHSLPAfwPpTpLWmQTMNsLoMw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794872659;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=YMVEDLAzS2zL4o6+n/+i0vlZ4DKQuKFLAtYn5J8lYOE=;
-	b=4VtnZUVpED7G0aOCVFlRrmbummEB8b33ebBhmtbS+ES1ZWiy0M7Zfg1XiPak/8FX5DhV
-	 wmTdwr+YbY26frJxZ3JTBsbKvzRVSmigiMRlWJQt9ZLvQ0YVXoWB6F2Ocr/DUoxMTi6nQ
-	 1AZ/Dqjv1T09xtFd3l/G3FcLeRl6PQWj8HerQ1WC2J5Iz30+UTGBiXWaQpTfX0rKAFlIN
-	 2BvADkyzODguGOfG+Vgk/Ixo1R9vzEFkm+pTIByUu5gIlX6VJIDsielcRR1QiHIZqL4wy
-	 qD2gHb82UYTd4xP05f3/RaAAvuVGT/VLawMZbSn28xh7VgBkhuEOkJH9weZ2S1SduQg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794873109;
+	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
+	 In-Reply-To:References:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=BtwJHSytXoCJpgA3u4eyEo8wQFA0bm5sSnKx59x91dw=;
+	b=VtzlCucHlZ3S8DyAJ4PbIljEeUCHa2GdJx8AIoqojz9E380jgRHpkGiazeYJNzV2w0Nm
+	 Gq/w4l/l99otxaSrjS2ICiMLzgp+7p2YIuUaDd2Xn6y15nyyongffxifqfy4xXEHXJJ2I
+	 YAxEzDHS2J3bRwwsyA6nRsXgnFKIg7sOlzrkdrBKjsbt01O3d5OBPkhWjPKpam74aefmd
+	 cHw9gL1MTTWtDwcEuCif3obESdqw7AO27oaTeONV54DyQ0AEnK0JdHrMu5vc1dix9mPKw
+	 koI5t5zIwUJv+5PAt8Ct7tfV6d02JcM2v7qDWu81elejHbLM40P/0UtuST12G0bHvSA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RPT0ZpEx;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GCjaec7f;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 973B1606A880
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 23:44:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81901606A31C;
+	Mon, 16 Nov 2026 23:51:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RPT0ZpEx
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 566881F000CA;
-	Mon, 16 Nov 2026 23:44:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=GCjaec7f
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06FA31F000C4;
+	Mon, 16 Nov 2026 23:51:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794872659;
-	bh=YMVEDLAzS2zL4o6+n/+i0vlZ4DKQuKFLAtYn5J8lYOE=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=RPT0ZpExTuFoRojllFy24x3LrWbgWBMaIVLbFgnMSd81WwpgFnfPrXXJm5SVED6Ij
-	 6eZ09+BhUqFXGILJCxIqhUtGOjAM+1nd17EWahC1mJJ7n4tzlOpZ7ZxvYP2E4BtUXl
-	 XbuP/Fh5KU4tKXUx7++aat4qu4e7pOHZDhxS2HACCcuKxVwOrHTVB0q6xI2KDhs3ha
-	 VYoWNEoVl5nV5QoOdWDkZBVaBw3rMxKDbJdjvVksq9lCo+QLYMZ7Yp0OUmaXNFnhbQ
-	 uqXbX6VsedlvKaQJ4/LwvJ2g27AW4L+ZDrf7sjU4OhS/7aiEOOOUy2wRZ+lU8P9wZz
-	 bbxjy7EgyCugg==
-From: Chuck Lever <cel@kernel.org>
-Date: Mon, 16 Nov 2026 18:44:14 -0500
-Subject: [PATCH 6/7] NFS: Require room for a result header before executing
- a callback
+	s=k20260515; t=1794873109;
+	bh=BtwJHSytXoCJpgA3u4eyEo8wQFA0bm5sSnKx59x91dw=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=GCjaec7fP4k0K1piPQLVyDBG5By2JLIaGH3tZT42ZK/rAc+mj9sq3IOeMD9USQc2C
+	 phBhsNodCcvTjg6PFYFVlNSwlHiY8YX55ILbaQxuYQsfcOYF0cfagaQb3MlnXq3e2c
+	 wlrOXknLowf9ypWPXua6TNoabqnCk7KOJc+e4/4dhG+iX2Qpag/WqFregA/d9/M7HR
+	 x8NIWwKTRA6VcXGNZMIgtlhjbrHi5ml09S4EWz09hNj6yUSY1vFP4zcUK36ZUsluXC
+	 dy0VvFRZnJO7Qg/Ow6mQ4FPYYxZpvnKsy/5QAT8NGHaf280zDLTR9t827e79eyIXgF
+	 GIoZ5lfbZ7hFA==
+Message-ID: <fac9f04e446b425573b957b67ffa399a9e10c9cd.camel@kernel.org>
+Subject: Re: [PATCH v3 0/3] fs/nfsd: accept a backdated timestamp from a
+ delegation holder
+From: Jeff Layton <jlayton@kernel.org>
+To: Kurt Garloff <kurt@garloff.de>
+Cc: linux-fsdevel@vger.kernel.org, Chuck Lever <cel@kernel.org>, Neil Brown
+	 <neil@brown.name>, Jan Kara <jack@suse.cz>, linux-nfs@vger.kernel.org
+Date: Mon, 16 Nov 2026 15:51:48 -0800
+In-Reply-To: <35138d17-c7ed-4705-b66c-8c84f44525ac@garloff.de>
+References: <35138d17-c7ed-4705-b66c-8c84f44525ac@garloff.de>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-3.fc44) 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,70 +136,26 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-quinn-v1-6-f05258cab8e4@kernel.org>
-References: <20261116-quinn-v1-0-f05258cab8e4@kernel.org>
-In-Reply-To: <20261116-quinn-v1-0-f05258cab8e4@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
-X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1765; i=cel@kernel.org;
- h=from:subject:message-id; bh=as9vVvMr8xky9nTvtUlnx7DHtIIVc/GgPF7jQYh+qfM=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq+5VRZ1Xt4GwO5ssaJ8s0sIOo7TxTkx5pgaSgd
- sP7FF5KOK+JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCavuVUQAKCRAzarMzb2Z/
- l/KtD/4mS+UG4vVQbu2TAKgLw8KoAVZgSjFuq1KFcEcRqUfRZTKI608jc7W8jTVAGK3HYuX0Huq
- b2d16QDB1ubnRmy/FmGa6VyvYLr9mSR1X/s8+vi5CbF/393J9xypa8l1aB+Ko/zleFfeN17Bqgh
- T/9EZ7F/egLDK7u403bZw6ER3pY2R4ymi+0Hjk7MqMcR9c4hE610mqYOLN3/IBrAUYn0ARuqEkj
- mbDUbCb15oj9CXCe9g5qnRgypgEnBmx9GTeqEQ6XgZjfuFuVJcFEcNPsoIGjAyEvnIrcZgfdXQ+
- WOCB57nm0fzhNihGu19cBGBM3PNxDldUtMN0VqQWMS5ONbZuBuHEytXYt7HcUm3bRThYHHRGOkm
- XdcBT3bi63uCps0Pxx5Erx2/bsJqLFN3lYDdT37Sfnf6bsezWK0LEIkEd9zw2oE3att6v7NlP1K
- AruaLvZ1FUMAKeFx2e/poDmdWaKdXT+27NpE1U5iYcS+AoTbAXT0x5IRuH8AbQkyk1FSmON7uZc
- j+VsMRbz2zbJBSl5ZBr3a4yprjk9S5HdvIVUQLL0seuvBNugcPczAzx3Z6OjLjlqNvVc0dR2GSk
- 7+mvEVOa49KUFU556k2hXXUYDvzT6rs9hcvArvAAEfnSSKWUkCe2McoXYjzsJQ8SxyDt3u0D0AT
- JSVhw8+HEieNweQ==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-process_op() executes a callback operation when the reply stream has
-space left, then encodes the operation's result header. The space
-check counts XDR words and passes with one word left, but the result
-header takes two. When a backchannel reply stream ends at the
-transport's buffer with four bytes left, the NFS client executes the
-operation and then drops its result from the reply. The CB_COMPOUND
-status reports NFS4ERR_REP_TOO_BIG, and the server cannot tell that a
-CB_RECALL or CB_LAYOUTRECALL took effect.
+On Mon, 2026-11-16 at 13:43 +0100, Kurt Garloff wrote:
+> Hi Jeff,
+>=20
+> thanks for your nfsd patches to accept backdated stamps from a
+> delegation holder!
+> Without them, I can't even extract a tarball with correct timestamps,
+> which is pretty ridiculous.
+> This breaks compilation of some source trees hosted on a Linux knfsd,
+> e.g. openwrt.
+>=20
+> I applied your patches against 7.3.4 and they fix the issue.
+>=20
+> Tested-by: Kurt Garloff <kurt@garloff.de>
 
-The header encode does not fail cleanly in the backchannel today
-because the reply stream does not stop at the end of the transport's
-buffer. Once the stream stops there, a server can reach the dropped
-result by padding the reply with CB_GETATTR operations.
+Thanks for the testing, but agentic review has found a pile of problems
+with this approach, so I decided to take a different one. I'll
+hopefully be sending v4 sometime this week, so if you can test that
+too, that would be helpful.
 
-Execute an operation only when the reply stream has room for the
-operation's result header. An NFSv4.0 callback reply, which can
-continue into a second page, now reports NFS4ERR_RESOURCE when one
-word is left in the first page, as it already does when none is left.
-
-Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfs/callback_xdr.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 8d6f5d65e7fc..5d128c86ae33 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -932,7 +932,7 @@ static __be32 process_op(int nop, struct svc_rqst *rqstp,
- 	}
- 
- 	maxlen = xdr_out->end - xdr_out->p;
--	if (maxlen > 0 && maxlen < PAGE_SIZE) {
-+	if (maxlen >= XDR_QUADLEN(CB_OP_HDR_RES_MAXSZ) && maxlen < PAGE_SIZE) {
- 		status = op->decode_args(rqstp, &rqstp->rq_arg_stream,
- 					 rqstp->rq_argp);
- 		if (likely(status == 0))
-
--- 
-2.56.0
-
+Thanks,
+--=20
+Jeff Layton <jlayton@kernel.org>
