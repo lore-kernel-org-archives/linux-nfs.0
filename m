@@ -1,75 +1,91 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.70
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794830457;
-	b=nVVVXstUr8PV5pHTbc1wrOhds/RPBJtO+BWgjzd1ymgrNC5i5sJiGXHwY26+KtA4S7kj
-	 lgxSM7lKnGKbwjGluGJ81napB52QjrY4kyga8uJzeRs9BUOUOZf5DKHwY3ju8KUVTfu4L
-	 7/C43uhfqn/kvptkAYRFNfCzyAPk29cikD0PS7YwtRcUocoM35kCc48tvn+BitBjQT9wt
-	 6mXLq7yZrA4oIfyo6q5kpF+37mIOgZiGnaAoMGn6+8L9qnw8ux2sN89argHWBYsDxQcGl
-	 DHzIJMrEb1Czej7vKNZ+nwk4vyadI+Q2a/7tmQDqkQkaWrG88hWFz2tZMoquxhyCz/g==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794830457;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Received:Date:In-Reply-To:
-	 Mime-Version:References:X-Mailer:Message-ID:Subject:From:To:Cc:
-	 Content-Type;
-	bh=kLAz6sn1EqmF7aJ7KDEBtraVgj4ybxLcfJJY1MY6K34=;
-	b=tPLwZwXRPdw2KdCaOegLLqTCswnD8wq5uA2ya7tS2bzF3/ZAByXqPRTbwgNQXNAE5eW5
-	 fG4ga2OaV3z7zGGoMzFf9KJmfnDzPBIGnTMWBxBN3/WVWnu5ZRIoUk3upnoqAdYBICbpS
-	 5Y7pIsutlTwfcMS7EFV+GXCOG4noGhRFHQTCKPeKP9t9EZguBGM2Md/K2BGt7A06jZT+x
-	 m3yUdu9fYjAIolxFPUQU5Ic0OmNPV7ur9Ms2xpCf0aAu59sjkASSfQcz6gFBeUELdFO4w
-	 +ucRRPSJtRU93mXGNfl8zSlSpZWQ/S6RcRE8XhP77RZT371+pzC4QWUgPFWUv1/nb7Q==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=google.com;
-	spf=pass smtp.mailfrom=flex--aliceryhl.bounces.google.com;
-	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=O4rHL3AM;
-	arc=none smtp.remote-ip=209.85.221.70
-Received: from mail-wr1-f70.google.com (mail-wr1-f70.google.com [209.85.221.70])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=85.215.255.25
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1794833020;
+	b=iQFDAWHp4KGOGE3j7msZ9kvHrwFvrC1fFmt+pPHFlc+GE1vlofqeotVXx4QG1+QpipF8
+	 XGhWALHpm1pOunOJF6sE7vylTo2WCob1fIMEXTTXtLco97ZExMNn6f9Q822tWj9HwzFbE
+	 Tz6KRQjDytFHWhkzV+xRSxa7hhaIfXdUIZopMdOYwy6zD0ZSuxRBsUC0NthG2mIs2FL7f
+	 lx+pl3scX8XeEHyAE2E6iKdfPKqVJqHZU2/A5RsVaOjBPSqnhm5sDS6IJxhR+axn7351K
+	 mhqgpkAn8LXDcEXmEPqJc8icgz06k93/TTP0rlmkOcESx8pBjid/RxbtwfgOTUPZwkg==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794833020;
+	h=DMARC-Filter:X-RZG-CLASS-ID:DKIM-Signature:DKIM-Signature:X-RZG-AUTH:
+	 Received:Received:Message-ID:Date:MIME-Version:User-Agent:
+	 Content-Language:To:Cc:From:Subject:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=rP6i96EuKAu2OHvzCFEJt5PO096jDPgjmWWJsNCSW5Q=;
+	b=0H18Plgpxv505pBwi0kvSRpUcaCFRFViIaez56fw6wJAJR6qo+ZMVZgPQgwyQjm9xP9L
+	 a7owvGqomPasawBk5Swo8gA+afbo+1MV8Iq8HH3ZeYPZKgglSV9kfMT5tqs3vZW1Fgjtq
+	 Rg0DIv1lTOEIAw0PpNPtN5Py/qsJJ3yhiq+1h3K0h6q8XDOk5d5iYKR/FsoEbtSwNNbsb
+	 kJ8W2cnSRu9PK63jfuXDURIq57UMEFCQosdSZkQz5+IEGnwbb4aFK1FGKVogHHHFUXQun
+	 4J2EqHesejgi83K9zc0AHiu+iNgMt4HgvKY4WbJKdh+MTKrNFvqVqYD7PX2nEY2i1sQ==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=garloff.de;
+	spf=none smtp.mailfrom=garloff.de;
+	dkim=pass header.d=garloff.de header.i=@garloff.de header.a=rsa-sha256 header.s=strato-dkim-0002 header.b=K6UFnV1Y;
+	dkim=pass header.d=garloff.de header.i=@garloff.de header.a=ed25519-sha256 header.s=strato-dkim-0003 header.b="PD6p/kUr";
+	arc=pass header.oldest-pass=0 smtp.remote-ip=85.215.255.25
+Received: from mo4-p00-ob.smtp.rzone.de (mo4-p00-ob.smtp.rzone.de [85.215.255.25])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24E33606A32F
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 12:00:57 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 24E33606A32F
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--aliceryhl.bounces.google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C25E1606A32A;
+	Mon, 16 Nov 2026 12:43:38 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C25E1606A32A
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=garloff.de
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=garloff.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=O4rHL3AM
-Received: by mail-wr1-f70.google.com with SMTP id ffacd0b85a97d-48e0461e040so2973438f8f.0
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 04:00:56 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20260707; t=1794830455; x=1795435255; darn=vger.kernel.org;
-        h=content-type:cc:to:from:subject:message-id:references:mime-version
-         :in-reply-to:date:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=kLAz6sn1EqmF7aJ7KDEBtraVgj4ybxLcfJJY1MY6K34=;
-        b=O4rHL3AM8g7HMj7xZzkNnKWsQ68P7OhGhMaTci2p92KRiCQKBRod6d2IiBWvipb+DC
-         vxIULYuCXp15OPRCoakat7UXJvZIlTm3l608ZOpeQ2tSQXP8F1JduWNlJvmJluBhwx82
-         /zjz5RQKsdngqWq2MmIuxSHyh06B4MAfnWmvKvQxetAbGOpMt4tj9yv1/rUEGuXhF3Op
-         l1j81S/wHFyKHwmHIqKvzrYEnY13ONP2ciqmD/iT3Hmn84+4ykJqyBiqChsToNXVzSp+
-         o+ANBoTZBCPfy4AMYnFAKcCDqm4IN6I9woJSAZjp0OJbMp9884FpNNs3o+ebUrN8UDGH
-         OZVQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794830455; x=1795435255;
-        h=content-type:cc:to:from:subject:message-id:references:mime-version
-         :in-reply-to:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=kLAz6sn1EqmF7aJ7KDEBtraVgj4ybxLcfJJY1MY6K34=;
-        b=uh0DNDp5knkYnBNBaaMzCBCrvjAVQx5IzsoQu+o2lj0ZuFutJz/w31hqzpk6XuhoL2
-         E1Icamzq4ih1r4A/2pDK8SbLRapbwDo7wziCYWN8+KdS9l+33pXmYswvFXSKpz5xDJgX
-         eGc8utmXC0BG6SXvODq2kmkcIbfaDNtS7w3jZn2rkv2asei37MGG2Zm1NLE11dsVTdkC
-         JbdM6dhvu2L0+Dbm+Wsxg3naTS1NkdU9bRGIi6coG92PQYUG0Xe1CuJl7weD1n8HXK/q
-         8wX6PdWVtFNsaJuiEI8p13RmJXbC6eHR348u0cj7c94RRLGk0XvN2c/H3ZQPVzzxcvAE
-         l4lw==
-X-Forwarded-Encrypted: i=1; AL+hErHIXuWjHhQvw1EKfoedO4DE9QTFaRp7NDhEbSAiDjC1BUBrwDIlR/jUcoomFAQjAMS2vZ1ae2CZGbc=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/UB9KKdiJc5LlpFFPpn37muDtsa/G5O1npdzvtMk9NNdftfoTS
-	u6J7fhyf8Li0+paQm51lwDzN7kd/TVl1xxsDL1fZyunxsLOkpZb9LAvS8ESLiglqKPx9zwI8IZt
-	4gQDpHriWBj/kwWp1iA==
-X-Received: from wrso13.prod.google.com ([2002:a5d:474d:0:b0:493:3d97:6e88])
- (user=aliceryhl job=prod-delivery.src-stubby-dispatcher) by
- 2002:adf:e007:0:20b0:48e:3697:708d with SMTP id ffacd0b85a97d-49c70ed8e41mr16698595f8f.12.1794830455230;
- Mon, 16 Nov 2026 04:00:55 -0800 (PST)
-Date: Mon, 16 Nov 2026 12:00:53 +0000
-In-Reply-To: <20261116-work-loop-pseudo-v3-12-8cbbea1cf34f@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=garloff.de header.i=@garloff.de header.a=rsa-sha256 header.s=strato-dkim-0002 header.b=K6UFnV1Y;
+	dkim=pass header.d=garloff.de header.i=@garloff.de header.a=ed25519-sha256 header.s=strato-dkim-0003 header.b=PD6p/kUr
+ARC-Seal: i=1; a=rsa-sha256; t=1794833011; cv=none;
+    d=strato.com; s=strato-dkim-0002;
+    b=mhbPuL1Vs/EocHO9MK/CVVFXofUtA/Qm7Px2ZxcaopN1focCvHE9rliRFLTS2O1Czg
+    6JgAgK3N7Dqbbe8Qv64e2x2IN8ibALK/BwHDUv9DQRf66dpQjOhJRNnLLGmgK82KGijX
+    DCiZYvjSMxzRVTyOc2KuJqvdhiK3VHIK/r4UPgZ5cf2ZXOktFTgkFH65luJeCkvSDD+q
+    cays8bJZKnDrk4vnXbIIxcPtyogaiePC3g2qN6yvSx+SiENOLRQ3O9M9WBVvTLAdeQzA
+    NgMVdrihSAgvl00IpzP6kfjwb2BgQe3zVitAlBhJ+YCfq4Qs1L5h5mt+7YTvXueJeC4D
+    u2ug==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; t=1794833011;
+    s=strato-dkim-0002; d=strato.com;
+    h=Subject:From:Cc:To:Date:Message-ID:Cc:Date:From:Subject:Sender;
+    bh=rP6i96EuKAu2OHvzCFEJt5PO096jDPgjmWWJsNCSW5Q=;
+    b=p1onapQJtbPfJTFcSMOEPbY0RfnNhIEKqKSVCNL6E6fu++GEzWNCxaZftYBcIEzm/v
+    WwmglzruN5iikP7wByAycpUYjFYp8AAdiXpMKU/nydiBnxS0jgBlk3mkxP/Qbp+uAVtW
+    uunmufFYdkDlfL8VVbegS/6L1hkx8BI/Ht8fpqY0mKSbMpuLX3OCslWZaisXQFKkiKT5
+    Y5cGIxBS38tTmyDsTf5KFbowFbq7+u2XLvmSiuKeqWEnCVuMM8d0njucdZHN8Iyvs0Vx
+    ZuV+p8MVwZ6VHGxCgvfubP9Q58D4BH8m/icdpPLu3pQ2Et/BFLQQLATFPRNCrQ79sihi
+    iE5A==
+ARC-Authentication-Results: i=1; strato.com;
+    arc=none;
+    dkim=none
+X-RZG-CLASS-ID: mo00
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; t=1794833011;
+    s=strato-dkim-0002; d=garloff.de;
+    h=Subject:From:Cc:To:Date:Message-ID:Cc:Date:From:Subject:Sender;
+    bh=rP6i96EuKAu2OHvzCFEJt5PO096jDPgjmWWJsNCSW5Q=;
+    b=K6UFnV1Yhm/sqedQHK/QKDcX7+zN6xj2HKdH/WMQdMcFKbXbD9trhz0Mq+oRBJcBYs
+    kfjccFrBYf7bw7hTptRc34US9j0dLvOiMZlfOzFEAyXyBz+OWY4MEMgTRdlPXhqKnzVY
+    lYc0ZYygR+ld4Vcj/0uxMZK2llQKR6WOGLyy2hAl/IIBpv9R9CnT7ifgGaQJ2HB0U0w8
+    RCftixBY8AZya5GTHkPF2gfNfNdATc5FOt8KvoBwTqz9oAdvh5viTu72torWtd9DufwB
+    utMWqjsgBATlYZUE9FbfEWcpvnEwyHIMtzsEcTJyAtefr1tS7GYyGJPihDJJgN/CUb/k
+    mRbw==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; t=1794833011;
+    s=strato-dkim-0003; d=garloff.de;
+    h=Subject:From:Cc:To:Date:Message-ID:Cc:Date:From:Subject:Sender;
+    bh=rP6i96EuKAu2OHvzCFEJt5PO096jDPgjmWWJsNCSW5Q=;
+    b=PD6p/kUrTYHaLDYuWAan79Tl9lrk6uTXfHCEHnCuQdPkGfTn90h/+l48SiYDLkJpqr
+    TrBeIeFV+7NcU9fbaACg==
+X-RZG-AUTH: ":J3kWYWCveu3U88BfwGxYwcN+YZ41GOdzUdLW+J8VEEt2hpSnX3ozh1rmPvw="
+Received: from mail.garloff.de
+    by smtp.strato.de (RZmta 55.6.3 DYNA|AUTH)
+    with ESMTPSA id L82ab22AGChUEBW
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256 bits))
+	(Client did not present a certificate);
+    Mon, 16 Nov 2026 13:43:30 +0100 (CET)
+Received: from [192.168.155.137] (ap5.garloff.de [192.168.155.10])
+	by mail.garloff.de (Postfix) with ESMTPSA id 6862F60AA5;
+	Mon, 16 Nov 2026 13:43:30 +0100 (CET)
+Message-ID: <35138d17-c7ed-4705-b66c-8c84f44525ac@garloff.de>
+Date: Mon, 16 Nov 2026 13:43:27 +0100
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -78,33 +94,75 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-References: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org> <20261116-work-loop-pseudo-v3-12-8cbbea1cf34f@kernel.org>
-X-Mailer: git-send-email 2.56.0.611.g1030f0b940-goog
-Message-ID: <20261116120053.371591-1-aliceryhl@google.com>
-Subject: Re: [PATCH RFC v3 12/44] rust_binderfs: use fc_init_pseudo()
-From: Alice Ryhl <aliceryhl@google.com>
-To: Christian Brauner <brauner@kernel.org>
-Cc: Alice Ryhl <aliceryhl@google.com>, linux-fsdevel@vger.kernel.org, 
-	Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>, Josef Bacik <josef@toxicpanda.com>, 
-	Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	linux-nvme@lists.infradead.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Jan Kara <jack@suse.cz>, linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
-	driver-core@lists.linux.dev, linux-mm@kvack.org, bpf@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, selinux@vger.kernel.org, 
-	apparmor@lists.ubuntu.com, linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
-	fuse-devel@lists.linux.dev, linux-efi@vger.kernel.org, 
-	xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev, 
-	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
-	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>, 
-	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Content-Language: en-US
+To: Jeff Layton <jlayton@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Chuck Lever <cel@kernel.org>,
+ Neil Brown <neil@brown.name>, Jan Kara <jack@suse.cz>,
+ linux-nfs@vger.kernel.org
+From: Kurt Garloff <kurt@garloff.de>
+Subject: Re: [PATCH v3 0/3] fs/nfsd: accept a backdated timestamp from a
+ delegation holder
+Autocrypt: addr=kurt@garloff.de; keydata=
+ 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
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Mon, Nov 16, 2026 at 12:04:45PM +0100, Christian Brauner wrote:
-> Initialize binderfs as a pseudo filesystem instead of raising SB_I_NOEXEC
-> by hand. This adds SB_I_PSEUDO. binderfs_fill_super() keeps clearing
-> SB_I_NODEV for the binder device nodes.
-> 
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+Hi Jeff,
 
-Reviewed-by: Alice Ryhl <aliceryhl@google.com>
+thanks for your nfsd patches to accept backdated stamps from a
+delegation holder!
+Without them, I can't even extract a tarball with correct timestamps,
+which is pretty ridiculous.
+This breaks compilation of some source trees hosted on a Linux knfsd,
+e.g. openwrt.
+
+I applied your patches against 7.3.4 and they fix the issue.
+
+Tested-by: Kurt Garloff <kurt@garloff.de>
+
+-- 
+Kurt Garloff <kurt@garloff.de>, Cologne
+
