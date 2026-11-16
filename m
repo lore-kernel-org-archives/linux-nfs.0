@@ -1,78 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=44.246.68.102
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=52.42.203.116
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794837370;
-	b=oCCIpgjZJnikO27NvqoGCMndbRmyn2pCXZax1GjgaM4M7P9BIdPTNUAlJKUHFFYyI00D
-	 E6FLjBzyI13yphtDCIi6yMQ14j/6UArOmqh/fBePj2FVs+aLpTesaKyrhMgJYUwLGAUTk
-	 Pjk9+OVtq9mO1QlP9pW7QtlHF0gUCgyz0KBjqZ9ZJJvavf5UT0nmsVj/yomG1fFRcNN0L
-	 njTZKQr/V/B6fGD4r4EVPYmJud6zn+hZzQbAuupcN12XymLAt1hTJUa5dPuvJ2HP5htJE
-	 jJDdiq98n7CIoWXnMTcT1OrR0e8cpNLXev2UU0I6GbDP1sDb4sTWHP7AGJNIHlO4Wzw==
+	t=1794837391;
+	b=kVjpENhCX5pqFHebRSilCzjlp1/OKCIZzuTQgy9rPcBbmRzDg+Vt0J1dMnrZ4YbkWUSy
+	 i7mqgri1QUqLJQQC2dsz86OV6geUYVK0ilOvFEruEvMPYZC0Y9cvNckzTUBtOAgT/SFUA
+	 M6rSz7OxbreEhomiRYtKDjM4K9XMDNenxgQte4FiJ5IescKR5a3rmfh8FrmbbgKjjLrlR
+	 QPU2VrYR7hHl7SIHoiUHMtPR3wEFvXGzbkblGYlBAQBMT4saYi7q9AHFPIEYxdsVUGkz+
+	 o1RdtsBprHL7rbOhHOrw/0IfwFWKPGjsjmyNcQdgKAru0U2DhKX4CALYeRDN3NEBNjg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794837370;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794837391;
 	h=DMARC-Filter:DKIM-Signature:X-CSE-ConnectionGUID:X-CSE-MsgGUID:
 	 X-IronPort-AV:Received:Received:X-Farcaster-Flow-ID:Received:Received:
 	 From:To:CC:Subject:Date:Message-ID:X-Mailer:MIME-Version:
 	 Content-Transfer-Encoding:Content-Type:X-Originating-IP:
 	 X-ClientProxiedBy;
-	bh=Bsgtc6u1I2/r8FkwXk8qLL9uKNWpjjC8b8R54N9naxw=;
-	b=zLAEXdh2Qd0FWu4oA2t50geYE6bM0NDFXTwbPv/s3Edhv1mHV7/9b3IHxVqwprIVRZAG
-	 6Db3iSQKpycIZWR5id1+Mz84V1nh60Ftuf0Wp7cZo+vwBxA0KA5nmW2z5sW1e07rFAZLH
-	 HL4caikZUTzoceCh6JQbLbzip132aFAnj4UUNFU9p+ILqL7jUl4UXN3Ewg1WyLbQ+Jenq
-	 z6W0e00Zf/R6i96+5fiSOdFn0qaVRED4nnMtICcQ3uxvS1lE9EwjpoTTNxLVLs5qCrvDa
-	 OD5U4GQrAWhtXP02ig+3KhV+9pXnktt0551hoEGPigsd8UjGQtq+AAgrz1RAryoM4Fg==
+	bh=X0MZiv+7I8rasT3tWedmaVXcEdTKVEiNIUxeh6hwJD4=;
+	b=Ennc1HaxQHjdAj/4s9VyJz87r+DMzbUVQJpPP03Fk1S5ObChjvgdFU09tUTDMAAToLcN
+	 F2PvGqoS7S/RL4as5cWd2s9gmLBH+rLH70wTl8ShCiIWTkYjnSGgRmdFNQE3+Owvvf1iq
+	 DFqK0fiOLb2Ii+EApg5xaDXUFkvtmW0jxEHjErPRYhUp0hd8AcD2Cp/osSW+90oFpN1iu
+	 WZ3h7h3L3IX0xOTCEKSjrb4FDlsKNonqSQnAPXKivE4/HiKVbx8+WOm2NXpG6lVwIYbnr
+	 o3YOXAQywq57LZngfbcdpzdkhY0mmNscvK2HKoIxXL2JJUbb/AMAl+fobVHhBT92DrQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=amazon.de;
 	spf=pass smtp.mailfrom=amazon.de;
-	dkim=pass header.d=amazon.de header.i=@amazon.de header.a=rsa-sha256 header.s=amazoncorp2 header.b=EH1ECm+u;
-	arc=none smtp.remote-ip=44.246.68.102
-Received: from pdx-out-003.esa.us-west-2.outbound.mail-perimeter.amazon.com (pdx-out-003.esa.us-west-2.outbound.mail-perimeter.amazon.com [44.246.68.102])
+	dkim=pass header.d=amazon.de header.i=@amazon.de header.a=rsa-sha256 header.s=amazoncorp2 header.b=kGukngRM;
+	arc=none smtp.remote-ip=52.42.203.116
+Received: from pdx-out-008.esa.us-west-2.outbound.mail-perimeter.amazon.com (pdx-out-008.esa.us-west-2.outbound.mail-perimeter.amazon.com [52.42.203.116])
 	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7FA5606A32C;
-	Mon, 16 Nov 2026 13:56:09 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C7FA5606A32C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D13DB606A894;
+	Mon, 16 Nov 2026 13:56:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D13DB606A894
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amazon.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=amazon.de header.i=@amazon.de header.a=rsa-sha256 header.s=amazoncorp2 header.b=EH1ECm+u
+	dkim=pass (2048-bit key, unprotected) header.d=amazon.de header.i=@amazon.de header.a=rsa-sha256 header.s=amazoncorp2 header.b=kGukngRM
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
   d=amazon.de; i=@amazon.de; q=dns/txt; s=amazoncorp2;
-  t=1794837369; x=1826373369;
+  t=1794837390; x=1826373390;
   h=from:to:cc:subject:date:message-id:mime-version:
    content-transfer-encoding;
-  bh=Bsgtc6u1I2/r8FkwXk8qLL9uKNWpjjC8b8R54N9naxw=;
-  b=EH1ECm+uYHN28QbprISzi/pZHst499qJ17Hh/mFNCA09isDv/8vwuWW8
-   b8SRbSX7z1vKR74BBMNXcUsjZ2vFYW3MctTfl9jsS6AndrDkFvAFdHVPP
-   SvxNH0mGp+kJfIWZbWwx59YbsQ2khXenL+EV19evUstrVx1CSknmmDqsA
-   TeNkrDkGNjkBOGhrioo9oTErfBfyBbCAuX7TZq+cp1qPqUY+xKd93EqAy
-   iC9E0l7IuyhCPgKsJ9uTOCuDlPIqNZx27TCnmYadUtJBaOOuAdblLm17M
-   hlK6F7UDTzawj8wVhnYjqcmfIcve6F7lwNXAtGjTUcc3vkU6i/kIThv8D
+  bh=X0MZiv+7I8rasT3tWedmaVXcEdTKVEiNIUxeh6hwJD4=;
+  b=kGukngRMOQ6QyzSnXDnyqIhO1Jk2SOj/iWermWupSJ1XZb0TPS8q3wVt
+   UYg27p9a9EidE88LAOTHXGSGodVU8xDnDkOSkM9UJosiiAMouNPTEzb/F
+   pVmpc+BBJi6d9vSDPOKm0BbLo2KzN6ZGjSVY8STwhcL+j2x52n4TV2HEN
+   35U7I8U7Ai81UnPc0THrFULr4Erbr2jfpX2CSSlA4I9W25I2OofTdEsmu
+   7pznouZ0jWBkOIg6CSD5vsFinMm5bsuWAMyn1HEB+M+lV70cJM71JHvg6
+   cVprK0ZV9jEk+Auwm9oRk96mNCOTJjyHeHDhiiCTRtluJvCHEDSxmOZwF
    w==;
-X-CSE-ConnectionGUID: 7y6m0LNMS6CKerQfsrSa5g==
-X-CSE-MsgGUID: +Pd0z7x0TEiXyzH7Rk0g9A==
+X-CSE-ConnectionGUID: /2Ij3QezQ/2gANYbfFWLnw==
+X-CSE-MsgGUID: UI6jPlkGRTixlsY2xMSQnQ==
 X-IronPort-AV: E=Sophos;i="6.27,216,1787011200"; 
-   d="scan'208";a="34150849"
-Received: from ip-10-5-12-219.us-west-2.compute.internal (HELO smtpout.naws.us-west-2.prod.farcaster.email.amazon.dev) ([10.5.12.219])
-  by internal-pdx-out-003.esa.us-west-2.outbound.mail-perimeter.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 16 Nov 2026 13:56:07 +0000
-Received: from EX19MTAUWC002.ant.amazon.com [205.251.233.111:13267]
- by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.31.142:2525] with esmtp (Farcaster)
- id 730537e1-8bb1-45d5-9fec-75bca5012de7; Mon, 16 Nov 2026 13:56:07 +0000 (UTC)
-X-Farcaster-Flow-ID: 730537e1-8bb1-45d5-9fec-75bca5012de7
+   d="scan'208";a="34269716"
+Received: from ip-10-5-0-115.us-west-2.compute.internal (HELO smtpout.naws.us-west-2.prod.farcaster.email.amazon.dev) ([10.5.0.115])
+  by internal-pdx-out-008.esa.us-west-2.outbound.mail-perimeter.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 16 Nov 2026 13:56:28 +0000
+Received: from EX19MTAUWA001.ant.amazon.com [205.251.233.182:20287]
+ by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.34.255:2525] with esmtp (Farcaster)
+ id eab0ca1a-5cb8-495b-a272-c0415033ad3c; Mon, 16 Nov 2026 13:56:27 +0000 (UTC)
+X-Farcaster-Flow-ID: eab0ca1a-5cb8-495b-a272-c0415033ad3c
 Received: from EX19D001UWA001.ant.amazon.com (10.13.138.214) by
- EX19MTAUWC002.ant.amazon.com (10.250.64.143) with Microsoft SMTP Server
+ EX19MTAUWA001.ant.amazon.com (10.250.64.204) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.56;
- Mon, 16 Nov 2026 13:56:06 +0000
+ Mon, 16 Nov 2026 13:56:27 +0000
 Received: from dev-dsk-doebel-1a-7b355d76.us-east-1.amazon.com (10.169.119.5)
  by EX19D001UWA001.ant.amazon.com (10.13.138.214) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.56;
- Mon, 16 Nov 2026 13:56:05 +0000
+ Mon, 16 Nov 2026 13:56:26 +0000
 From: Bjoern Doebel <doebel@amazon.de>
 To: <stable@vger.kernel.org>
 CC: <gregkh@linuxfoundation.org>, <cel@kernel.org>,
 	<linux-nfs@vger.kernel.org>, Kimi Security Team <bug-report@moonshot.ai>,
 	Yilin Zhang <yilinzhang@moonshot.ai>, Bjoern Doebel <doebel@amazon.de>
-Subject: [PATCH 5.15] SUNRPC: Copy the deferred RPC Call from the head buffer
-Date: Mon, 16 Nov 2026 13:55:51 +0000
-Message-ID: <20261116135551.2582117-1-doebel@amazon.de>
+Subject: [PATCH 6.1] SUNRPC: Copy the deferred RPC Call from the head buffer
+Date: Mon, 16 Nov 2026 13:56:19 +0000
+Message-ID: <20261116135619.2582482-1-doebel@amazon.de>
 X-Mailer: git-send-email 2.50.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -85,7 +85,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-ClientProxiedBy: EX19D031UWA004.ant.amazon.com (10.13.139.19) To
+X-ClientProxiedBy: EX19D031UWC001.ant.amazon.com (10.13.139.241) To
  EX19D001UWA001.ant.amazon.com (10.13.138.214)
 
 From: Chuck Lever <cel@kernel.org>
@@ -122,7 +122,7 @@ Reported-by: Kimi Security Team <bug-report@moonshot.ai>
 Reported-by: Yilin Zhang <yilinzhang@moonshot.ai>
 Link: https://patch.msgid.link/20260902133101.48914-1-cel@kernel.org
 Signed-off-by: Chuck Lever <cel@kernel.org>
-[doebel: 5.15 backport. In this tree the RPC Call header is parsed
+[doebel: 6.1 backport. In this tree the RPC Call header is parsed
  with svc_getnl(), which advances rq_arg.head[0].iov_base while
  rq_arg.len keeps measuring from the start of the receive buffer, so
  len > head[0].iov_len for every Call at svc_defer() time and the
@@ -138,10 +138,10 @@ Signed-off-by: Bjoern Doebel <doebel@amazon.de>
  1 file changed, 14 insertions(+)
 
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 3cf53e3140a5a..d88764005c256 100644
+index 1393eefbf2187..151e3d1747922 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -1224,6 +1224,20 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
+@@ -1221,6 +1221,20 @@ static struct cache_deferred_req *svc_defer(struct cache_req *req)
  	} else {
  		size_t skip;
  		size_t size;
