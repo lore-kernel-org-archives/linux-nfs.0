@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827127;
-	b=r1+hKaOHwSJK/CLZMQKX5Y7/M0AVBFYNDs5j7iCUlebvk1okBcwhar4S7m0k5ZjR5RIc
-	 1Ized51kGOms9eIdkn3/zVZ1PmqORNqpcKbqtQk3KHxyUXVpxDu7VneFwOBGphnt1mLXU
-	 7BWNA8aW2+0RzL0LuugUvyFNd/uzHGzKJtCGU3FTwvYuKveNYXIOZN82kDY1kOFbIlhgt
-	 w73AKFAsit3R5D8j7UPafv/OXFrDTDH/4o6MnMuqyAlLcOvWT4yneuqK751zf0xB+18rs
-	 xD7V6s4Z21rkjX7TAB9PnBSeIh0KA62qpRtOcPEAfM1Snl2quVFR2qxXOAqQcnyxnFg==
+	t=1794827135;
+	b=PiHV3rL5w+TVE+9kD1pOtOZPT74Cc0DdRL+cRJeOj+UUV2pIp/ryyhqWoHxONEXkOp0X
+	 Xj+0oYSty8iLLQZ/aj3Lujts2HVdAMXYuCueVs19Ro7/dtLH8P3gnxrCC1bq91pRaznZt
+	 o2BzcGrN9Q0ekJa2vwxFlhSa9F2U/IvrJXFNzMFIGzhVZUJ9EOuqVvuwRdVQn1fZRLgP4
+	 iIJG7cYdtd+v7BHf+DJdgLF5xjvAhJ6a5BFJtlKiQS1Vcw3CS4rpab1qTSvQcalCGmFDe
+	 GgZC5c3qiklYV5gmOHtpES8Qbe6Ui7MN7umQCcqLtfxoWUsOuIOo2qyEcG6QttDPq1A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827127;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827135;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=6nxQGkR2+dQ77VXhMKkc6TeWhcz+nCP3lMiHG+fTsXY=;
-	b=xLbbZw/W+Qd/PaG+4OMPHZCpTJpPPpKmBya0XGTUkWFhMOsIynpyCVKmkRDiXZPc4UJX
-	 e6iR2V2ek0A35skAB31dBLPTLi191uZUVUkkpcWSr+dRVmOrBKHacZbRYmU8wzvgXWY/H
-	 DZ7vEWxF3AK6VXVC/BZ8Hs6xD6nTlj2Yf/vjSxo+vNjuGczF3Oy9Kzci6Yz7c+KU9GZCr
-	 AxFJ5TzAZd10BKzMf0+e1Ed4s1idPH0FgNkdrecmuvmrcpJ4V9xsYfn8V38A3YBYo3QyN
-	 U8M523N+6WRnUisLihvc9xORbsjr6T/faL+WVKrBVL9/W6PNKO/53U5/UF4sPQJXZnw==
+	bh=1QF0+KKDPXTbJ0UkYlxOFTSFnDq8YOHfFuDVPMQMMME=;
+	b=d046Wrych4HqoCSp1W1aN+w6yk65Y42gHchVb5Z6Y8vUW4nfknzkJsHQwzrZTe7I9zG6
+	 S/qhpps7Hx+EfYFyo5Kp38y5Sx7rbRmG17r37mrJxLqXtpBRKZhlJmdwteQrb60usyOpg
+	 WJjW3BMxQlClZ8JrjNMsiTzH5pGTM5run0nEM5xeJGSJp9keYDRHYh+6vq03fR/dmIG6P
+	 dO+8tS3+4NUsVVyr319c5U7aR+Fbj/7F+dYZMlbtNoEKdBdJr15XMnGjLGIW6yBFJLaAD
+	 ff/2Ask2UIjXkakzVnLX8BAWAyPEEewcH4itBkse8kfKScxsduKOGtwTvcsuOGXwFBA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=n0gNWaP6;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ck/Fpf51";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60F90606A8AA;
-	Mon, 16 Nov 2026 11:05:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A58D2606A32F;
+	Mon, 16 Nov 2026 11:05:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=n0gNWaP6
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BC38D1F00927;
-	Mon, 16 Nov 2026 11:05:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ck/Fpf51
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BC1521F000C6;
+	Mon, 16 Nov 2026 11:05:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794827127;
-	bh=6nxQGkR2+dQ77VXhMKkc6TeWhcz+nCP3lMiHG+fTsXY=;
+	s=k20260515; t=1794827135;
+	bh=1QF0+KKDPXTbJ0UkYlxOFTSFnDq8YOHfFuDVPMQMMME=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=n0gNWaP6+UaJle+lzPIjzK+kyrdMuW2wim4FMgJ0DTFVHRkmRwb05GQtyZ4lcrEsr
-	 WlFZlJjd6EHmIj8NzzqDTKy4RpNXFIE4ZB5YKinWiLIV4yE4N/uGMY+6QoW1uNGMzv
-	 WoAeWTa83/6NZeA9JdwkbDDGa3YMvfBApWd5SppCS24LPewTESUQ0Ef4mKIVfC5vWA
-	 Ir+k9QzWOr857A5zUwd6ZoxCqLRz8FoDlRyKmkMQqHSNs0HSYvIfzdmpkuYyXj0m6h
-	 s6cTQ+4KoNp8FYesvPVXR2KA8ehz0xzT8rIyuF5ll1Hqf9UsF8qMO0hse7R038w17P
-	 sCSrre2Hcixmw==
+	b=ck/Fpf51qFS3EHEddNfmsL1bIe8Taey8LjrZGzNMpgHEPuJ1VvtqdvBfaqG6qhxpE
+	 mrvS+azIkIJJPAnJUWMmlL83WA2/8T+yNE+Q8o2SvCBwQw8MYdA1DMAdF/BvJXG4y8
+	 d2j8oNmy9+IWdWgTdbtT87Gv6/psMcS4+lIam8QX4mcOoDUMYwgSTrzikk7HGB3fvq
+	 e6KjCy8Rwjga2FSODjRJBeaHywt7cIh0nMaZ031BK6ucqMIOUZopgpVRZmUNNSkTll
+	 AYR/aZepGfDfpKqRhXkb0qEqYqzZymz+CtzjtPuZqR4AozUUXGawQTMJLRC7yZTg8K
+	 ZpjJq4FFpxmfA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 16 Nov 2026 12:03:55 +0100
-Subject: [PATCH v2 15/17] loop: use kiocb_write_iter()
+Date: Mon, 16 Nov 2026 12:03:57 +0100
+Subject: [PATCH v2 17/17] backing-file: use kiocb_end_write_iter()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-work-fs-frozen_writes-v2-15-ecc4a2aac40e@kernel.org>
+Message-Id: <20261116-work-fs-frozen_writes-v2-17-ecc4a2aac40e@kernel.org>
 References: <20261116-work-fs-frozen_writes-v2-0-ecc4a2aac40e@kernel.org>
 In-Reply-To: <20261116-work-fs-frozen_writes-v2-0-ecc4a2aac40e@kernel.org>
 To: Jan Kara <jack@suse.cz>
@@ -68,53 +68,59 @@ Cc: Shakeel Butt <shakeel.butt@linux.dev>,
  linux-nfs@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1200; i=brauner@kernel.org;
- h=from:subject:message-id; bh=WndiNS7xqPSBhItB27WExsGLYYFKg/7/xrVo1D0g96o=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9eqxXtP1Yx59vm07NWnTitsu3rH+TNSNvb/70UOxp1
- LaO6rdh3R2lLAxiXAyyYoosDu0m4XLLeSo2G2VqwMxhZQIZwsDFKQATUVnF8M+kT8HKTKFTvPkQ
- S/BFj+BK3YqMldUXL1zIzWvT36sSZwFU8bjpkNHbAwqTIjpDBdZwKp7cKMudIf2tb9GRoD9+b+U
- YAQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1554; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=ekRldUrgBiFG3YHdph7NV3YyVlYUFmWnca1eOlEjyD8=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9emy47av6aq8f8tcaf53VT85reJav/Xmzjf5Cp/lGC
+ 3azfpaS7ShlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZjIfmFGhi+LejYIbrW4lLA6
+ XtKg3PbEi8KdggESFeHRX7r4pypxNjEyvN6uH8u0PHH5bZ+9XLv5PD+cZBe5cf0028OjegtCzaa
+ +5gMA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Use the new helpers instead of open-coding freeze protection for writes
-to the backing file.
+vfs_iocb_iter_write() marks the kiocb with IOCB_WRITE now. Drop freeze
+protection with kiocb_end_write_iter() in the completion callback and
+get rid of aio->is_write.
 
 No functional changes.
 
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/block/loop.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ fs/backing-file.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index d2f29aadabcc1..872d78006b131 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -325,8 +325,7 @@ static void lo_rw_aio_do_completion(struct loop_cmd *cmd)
- 		return;
- 	kfree(cmd->bvec);
- 	cmd->bvec = NULL;
--	if (req_op(rq) == REQ_OP_WRITE)
--		kiocb_end_write(&cmd->iocb);
-+	kiocb_end_write_iter(&cmd->iocb);
- 	if (likely(!blk_should_fake_timeout(rq->q)))
- 		blk_mq_complete_request(rq);
- }
-@@ -395,10 +394,9 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		cmd->iocb.ki_flags = 0;
- 	}
+diff --git a/fs/backing-file.c b/fs/backing-file.c
+index 5780f60662d07..e86f5685758eb 100644
+--- a/fs/backing-file.c
++++ b/fs/backing-file.c
+@@ -106,8 +106,6 @@ struct backing_aio {
+ 	struct kiocb iocb;
+ 	refcount_t ref;
+ 	struct kiocb *orig_iocb;
+-	/* used for aio completion */
+-	bool is_write;
+ 	void (*end_write)(struct kiocb *iocb, ssize_t);
+ 	struct work_struct work;
+ 	long res;
+@@ -148,9 +146,8 @@ static void backing_aio_rw_complete(struct kiocb *iocb, long res)
+ 	struct backing_aio *aio = container_of(iocb, struct backing_aio, iocb);
+ 	struct kiocb *orig_iocb = aio->orig_iocb;
  
--	if (rw == ITER_SOURCE) {
--		kiocb_start_write(&cmd->iocb);
--		ret = file->f_op->write_iter(&cmd->iocb, &iter);
--	} else
-+	if (rw == ITER_SOURCE)
-+		ret = kiocb_write_iter(&cmd->iocb, &iter);
-+	else
- 		ret = file->f_op->read_iter(&cmd->iocb, &iter);
+-	/* Pairs with kiocb_start_write() in vfs_iocb_iter_write() */
+-	if (aio->is_write)
+-		kiocb_end_write(iocb);
++	/* Pairs with kiocb_write_iter() in vfs_iocb_iter_write() */
++	kiocb_end_write_iter(iocb);
  
- 	lo_rw_aio_do_completion(cmd);
+ 	backing_aio_cleanup(aio, res);
+ 	orig_iocb->ki_complete(orig_iocb, res);
+@@ -264,7 +261,6 @@ static int do_backing_file_write_iter(struct file *file, struct iov_iter *iter,
+ 		return -ENOMEM;
+ 
+ 	aio->orig_iocb = iocb;
+-	aio->is_write = true;
+ 	aio->end_write = end_write;
+ 	kiocb_clone(&aio->iocb, iocb, get_file(file));
+ 	aio->iocb.ki_flags = flags;
 
 -- 
 2.53.0
