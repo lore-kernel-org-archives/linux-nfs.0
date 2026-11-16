@@ -1,106 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.49
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794841676;
-	b=bKR33OUTu5+5lFBqDYqwngFXGS5gXwz4bmPB6J0fSSP9IVmKRYaUvVjNHp+tKjnyM1LS
-	 R/q36wag0++0LNCYkhf3zpTUPwBl/rpPSUn0CI67sH/XlFwb5AtKaNbqHz+chjmwygxHK
-	 2xFwny5VTX/M4eYoeExCpkBwMwZ+0pMt/O6QSttA7W+xzdhtY9tA03DWX1nWYwY8CkEK/
-	 0UrAthorQDBKOp5xMldH6S4XTFnXb/aFz6a7PaLfwvS+ZuyC3C4629ivRDe36RTz7QzwU
-	 OUh5drHJqeQ77NEnHGvnDQ9jlif1wnTFu7uM2hlSY+DudT+cFyNT41wB46Vw2ksHdWw==
+	t=1794844510;
+	b=gAj6sG1lDxvNQDpF+L9tiRmvHSyCFZW9jvLuuRiFgNCrPLCxMShzLq0WjtbxawsHpacX
+	 wuVrlIkDnJhH+vb2+aQoDaAxf8Pw/wTJcWWoqxnczhFjSvD34aHVBPIRwwKHUauDP4Jk8
+	 yfO+DkXFI9wPF3+qOU6XR6TTngIBFsmlNfeEmWbt5RbG5JqGFMVHuqnnT5jMYM2KOZwrr
+	 FMc2HJ+L05UTOIPKP2wMkrelk8AfvK+r4d57cYReDQ6BUjhcvvc8lkPm441253FHtguN8
+	 iZ9pNdJZvCedmp9MgVU2V3PnrgdYh7mNm1lj6CWkowCppQiHR0ufV1zqCc+P8Tc0qiA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794841676;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
-	 Content-Language:From:In-Reply-To:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
-	b=1ww8tkb+sH42HcmI+XVfVEUMWRhzXcAao4/Ot0VGpFoD0XW5eSqALfP6tupVm9o9v7Pi
-	 Y8JrFXzdDjGPwunKE6rQ4ZjZq47dRu65STReFJHqy/YW8fc/FkGlHsjhpm6sQVwAzMcB2
-	 XYmcsCzqyg113r+8ZG+kr1N9pd0HtPJcoVRiwOpnD2OopD3Ts8nnpb020L5B+f4aJ+lls
-	 GiDvrUPxKM80plD7vMY3KdZTXAbdZa7sK6PetxeSrLKz5bBg27UgvlkGWC+2nT7ci+Bwk
-	 WBq+5RqnWz5n9DoL49IoN4gvgxq7/68Fe7T/88r/jTULuQDO+g6iAHDoDG3HbT3PIMA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794844510;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Mime-Version:Content-Type:Date:Message-Id:Subject:From:To:Cc:X-Mailer:
+	 References:In-Reply-To;
+	bh=040W0WtrDSqyLSlnE1PnGtn4Yj+G8VjPGcb4tUhpFSw=;
+	b=4ZWlsD2ziq0rA/Not/XKI6I8jf6qr4XNjgLd3XKlSpEX2FN51diYZgCBipgzrR4v4E9k
+	 4ci1RzT5MRpBCuTJ0LgKBapk37XGT1pyKVnnC4a8fmnkbdAHfUiy9TeG6mxuLjVmsa/ka
+	 1k2WIbnayO5uKx5a8IKgiYl5xJaGiQwNSIWp/xZuU/U601QSExIyhRS5V1HH/BTApxqXJ
+	 uyKUiop4ZOjzMuWT72b4Yeke0UVDfgL7vzayvj4AosUIcAu5EpnMT356drTZt1/Y9CuLd
+	 hOB3jvpsIQACCmzJkYUagWFLdT6h+6oal/P4NF2PQIlz/IMDXUKAEEcXyHzLoN433gA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=cFj+8y89;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=BJFeHx0m;
-	arc=none smtp.remote-ip=170.10.129.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="pzw1LYv/";
+	arc=none smtp.remote-ip=209.85.128.49
+Received: from mail-wm1-f49.google.com (mail-wm1-f49.google.com [209.85.128.49])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2E330606A880
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 15:07:55 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2E330606A880
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 439A0606A330
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 15:55:09 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 439A0606A330
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=cFj+8y89;
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=BJFeHx0m
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794841675;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
-	b=cFj+8y89eWwT4ZdbMYci6Lf/kImkZQWFEWPSjpMtf2BesZ465amiHLR5WR6Kv++WStLRiX
-	krprWLolTqXstFetnfVhqa3zkmrijcdLltoCFxSlmjdD/4v0r+ZreG/9dwHOBSac2zVb6s
-	s2XRyliKOo8tjbA3YI3DzXmUMqu7eAg=
-Received: from mail-vs1-f69.google.com (mail-vs1-f69.google.com
- [209.85.217.69]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-137-OQi-SrJoMROZy3PCveXbPA-1; Mon, 16 Nov 2026 10:07:53 -0500
-X-MC-Unique: OQi-SrJoMROZy3PCveXbPA-1
-X-Mimecast-MFC-AGG-ID: OQi-SrJoMROZy3PCveXbPA_1794841673
-Received: by mail-vs1-f69.google.com with SMTP id ada2fe7eead31-7cc36b97a77so567143137.0
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 07:07:53 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=pzw1LYv/
+Received: by mail-wm1-f49.google.com with SMTP id 5b1f17b1804b1-4a9a8d6cea8so38419865e9.1
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 07:55:08 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1794841673; x=1795446473; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
-        b=BJFeHx0mE32qmkRm2mc748EzLyeMD+BJrqkPoYMleXjkMV3uwcd6iNiMextnGynfQn
-         CF9EXnOiu4YyGaGSYLD58nRejrjOoGbzeTXwuN8QfB42vUOsuGaxIIF3NnEkjofzSwIv
-         rzYBacnh2ayd0aCGYbXnuCDzjk0ugcuZ8KNfIWu39vSVtEPsk8kHEzJzJwK6pH5j/NGw
-         pFYAuZQW6GNO8OjK8C2CQxuZvt46wKzkCki2ikNsZ7uvzVsPOVyR3oOkkUG9DAwlAYWO
-         q4pj/taFPqLxCnh8JYTOjKHzqIexZcTjpKvPWOb5yP5Y+9wHdECLb0C8Nalg/iKTZfuR
-         RV/A==
+        d=gmail.com; s=20260707; t=1794844507; x=1795449307; darn=vger.kernel.org;
+        h=in-reply-to:references:cc:to:from:subject:message-id:date
+         :content-type:mime-version:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=040W0WtrDSqyLSlnE1PnGtn4Yj+G8VjPGcb4tUhpFSw=;
+        b=pzw1LYv/GrIlyi119CS5O4dqTEojMh2PPNb0YLcVL7AgRpRPj91hUHUDLzwGHiIkuC
+         5ghAwsq0A9srRmVkNB8Ix2AZMHzK2FSmwfF1fpVV6wSxAgjHZbG1qbtI/8JNO2HgW+r3
+         XgDVOXvb5VVxNKCsylQTXVTZZnpIc/RC1U9X4IdocD0LsekYcooCdMYN+Ye/PIugulrR
+         bsLdCqNRm/HCjdSVlog5UWaUqIdJSeiekv7v0ydQZt8YByVGiL3lGc9Lkhi/TNtQ+1ll
+         hw9b6NezzwKImWenA2JKyQoRtyOhZw4ZVaZluabORLOPZCH4hh4orZFsxIpsVOaBSg97
+         1eRQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794841673; x=1795446473;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=cM3QLUhGrpStinpnv+wMKIwxc19R2VnYQvR9Rwtt3PE=;
-        b=eG1teXR9kNSOtJmNbP63qBTMAuX2CpbsaeZC69ythb1G3mVrWkLk2e/TWPBlbm1Qsn
-         gmAlg46jo1JbyjkSPtf+m90Csz4GXgF9oa7SXXUJXjUl9UZEBAUMB9Vvzyzf2v9wl53T
-         iM9SWf3AeyWyI5xVBfkXKLkgiysXV3vf+dpKC8ypGdta8y3UpZxHkwhXGt/aC6bLe81h
-         /5W6M+VeqQaxaCcN6XQtN3qmjBS0SBX/+8Wcdrra45SmqByms8h7bJhfBlrLCTomySjX
-         lG7O85gLdG/dcv4iyk/0BTG5IMSwfxyOdo8dasBVpBUDozodrsmEnXWv2QcbYLJV6ivy
-         4N4Q==
-X-Gm-Message-State: APuU4Z+e56h0jx9tC91bS+vmNQy9+cYETKPPvFBdr2LZct6Idi5lkGkp
-	X+fzTRh2pLliG0oklsFZemB4VwTEFY6jOOgv2KEnWD19UkZvy0dBS5wq2Q5KfW415IF3YXBX72D
-	jhKH8bUBj+7vJ8kpbJpPDjWsraF/314vnXSj02rG8HkQ7PDIAU8Sh7rA+0KcKzA==
-X-Gm-Gg: AYBFou3NPXxJs/jYkKGnp2Qeh6VDwCZJP9bq+8kyI7BOI+dkWlBhM2izkBa5Vbi/4At
-	PPYpdCU9RzJCRROL82vMBK3kwMPS0cEzsBiDRe0XPOChimdclx7SLbs0YoGKSAd/UUAW1+42ODK
-	Rwp30eH1vtQ3+Coi33W4Q3G+JlMYDuRpQEv7YF2+ZB4Bo/ybYpQjN+nrmY7xsohUN61CeQ8laCZ
-	THrvxSDoSQFg6/sPgqU5NR5cYoIrAjjuJzV7/gp35ptNMPNbL2zhJQrMz65fvaDsdu+LvyWHUxb
-	0M12fpzA/1GAUJMnVVAT2Z6Tad6X5zfeuPvVjlZ/8AQP16xuseu/72wQ4v+NPJfP5I3FjZgDvWE
-	p4cBG7+tUvI3eqOc4UUQeKKimg0eDYEEHSQ9w2kTAmVQUbTu8
-X-Received: by 2002:a05:6102:94f:b0:7d2:7f93:7708 with SMTP id ada2fe7eead31-7d64d6d5a23mr3100509137.8.1794841672810;
-        Mon, 16 Nov 2026 07:07:52 -0800 (PST)
-X-Received: by 2002:a05:6102:94f:b0:7d2:7f93:7708 with SMTP id ada2fe7eead31-7d64d6d5a23mr3100426137.8.1794841672189;
-        Mon, 16 Nov 2026 07:07:52 -0800 (PST)
-Received: from [172.31.1.12] ([70.105.240.105])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-91f23d7b607sm88675606d6.26.2026.11.16.07.07.50
+        d=1e100.net; s=20260707; t=1794844508; x=1795449308;
+        h=in-reply-to:references:cc:to:from:subject:message-id:date
+         :content-type:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=040W0WtrDSqyLSlnE1PnGtn4Yj+G8VjPGcb4tUhpFSw=;
+        b=nM0OVXEbzktBL3d5Gp/ZWbclAbmNYktyGbWxDQ8B8LEOejVHyWSt56kRo0rYkithxA
+         tlzF3YoyWayA+TO29W2OdKlwtzwDho7sVs0Aaudza9xbEgill8ZatoqzAJWCGxnpv04Y
+         OqxnyuvFyB42fG2VLRDiOvbmBwF8EYgAP+XfD0Z2Cs9mnKpvWiyBajpXLKTe7MrB2aJU
+         bCgkE8jOZl7SAezSae1Ssczv0pFp9i2ibnYhH+1I4xz2uUJK1BlKgreQ6h0s5CjbsMZi
+         xle3SqIsHZWF6uJihLpvmiTkFMrxHsIlqNagqTW6B8V2e2UE+c5tiNSVMNRPga5Y13DZ
+         VdZg==
+X-Forwarded-Encrypted: i=1; AL+hErG4MoNQnEiUxRt2iAOSnqluC8opEVCQuo2fVdHhzbpCwye6mMMttdf2s6/W7LR4xdgvVXN3WJcAQIY=@vger.kernel.org
+X-Gm-Message-State: APuU4Z8/BhKjtOgaCwGxTmPE5vEcrhW441y98WZ56zdZBt9YRIvbCjcH
+	8XVfNnNG1zCTLf51b7waQvO3DR2rti6BKFo/f2QIXmDSKNfIwCumnBKj
+X-Gm-Gg: AYBFou2NZraEtU794uD9jdYTvwBpeqK8Zi9jyo862BdpL7/xpFm88awKMmQV5VNLx6V
+	+TiiY+SzvigvzAGE+KXu/LhH2nSB/j7lFY/Ubk4QO0XQRtXdPCyzX3R9uwP7KDseIEb5OHpJLnc
+	Ftmfk/PXCYHG5Ar0nRPpeiHI+FuGJTG7g03w2yRbv3ElIohhJxUm8oEgZTV9KBG7md81+dgoDCA
+	qO/yRmK9cfc6QkMGk0N0iUYGhXg52XV0010/kALHiIxosf321/Sc3x9EAwKLoC3LgiW9s2jXMLr
+	p2Ps6qo6x8ik4wqic2kGUflmAONwTjnH+aSDkSnQ5jkIunOp5SWWCO7vh07le5LtzJD3YOWcU4N
+	2JkMbS1+oZ1jWSqzlrwJpHjW3SQlwJDhKkpOX6IZxkCfrPR8cNd47Sdd1U+jbD3n7SaLEJrlbht
+	lQdU/60NGL9QaxvmrIaRpBnSs3LG9QL6385J4x9GdU3+ypZM3VQoh59ObAsQJs2W5M4ZbnX+ovH
+	/QD4xbkfzA/neTRyLL3a9aPCCwgfIrZIjjrSvpHCFqEUpKokgJV8aMmAd3ruA/RZTTqZj+Qzphb
+	E6Kq2uscyG6vliOzT/P3pwm7pQ==
+X-Received: by 2002:a05:600c:1906:b0:4a1:c6f5:2450 with SMTP id 5b1f17b1804b1-4bb55ac2a34mr244783135e9.17.1794844507334;
+        Mon, 16 Nov 2026 07:55:07 -0800 (PST)
+Received: from localhost ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb55ae501bsm321476945e9.10.2026.11.16.07.55.03
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 16 Nov 2026 07:07:51 -0800 (PST)
-Message-ID: <8bbef8bd-396f-4f50-8d65-a23641f84be7@redhat.com>
-Date: Mon, 16 Nov 2026 10:07:50 -0500
+        Mon, 16 Nov 2026 07:55:05 -0800 (PST)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -109,114 +86,290 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH nfs-utils] nfsdcld: signal readiness only after the pipefs
- watch is installed
-To: =?UTF-8?B?7YyM656R7IOI?= <lhjnano@gmail.com>
-Cc: linux-nfs@vger.kernel.org, cel@kernel.org
-References: <CAN+dWLYt7=WDO-wGHt5_1K2JcqDgrHs1bX2WBOvaTt-PFi1meg@mail.gmail.com>
-Content-Language: en-US
-From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <CAN+dWLYt7=WDO-wGHt5_1K2JcqDgrHs1bX2WBOvaTt-PFi1meg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Mime-Version: 1.0
+Content-Type: multipart/signed;
+ boundary=f93caca3b757f4039ce5a884d522f788c6958abee5364c6a1026cc96907d;
+ micalg=pgp-sha512; protocol="application/pgp-signature"
+Date: Mon, 16 Nov 2026 16:55:02 +0100
+Message-Id: <DMWR9XOQTPOK.3IDTXWG0BB6CG@gmail.com>
+Subject: Re: [RFC PATCH v4 06/10] vfs: add __vfs_fileattr_set_locked() for
+ inode_lock()'d callers
+From: "koraynilay" <koray.fra@gmail.com>
+To: "Amir Goldstein" <amir73il@gmail.com>, "koraynilay"
+ <koray.fra@gmail.com>
+Cc: "David Sterba" <dsterba@suse.com>, "Namjae Jeon"
+ <linkinjeon@kernel.org>, "Sungjong Seo" <sj1557.seo@samsung.com>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>, "Christian Brauner"
+ <brauner@kernel.org>, "Trond Myklebust" <trondmy@kernel.org>, "Anna
+ Schumaker" <anna@kernel.org>, "Chuck Lever" <cel@kernel.org>, "Jeff Layton"
+ <jlayton@kernel.org>, "Konstantin Komarov"
+ <almaz.alexandrovich@paragon-software.com>, "Paulo Alcantara"
+ <pc@manguebit.org>, "Chris Mason" <mason@kernel.org>, "Yuezhang Mo"
+ <yuezhang.mo@sony.com>, "Jan Kara" <jack@suse.cz>, "NeilBrown"
+ <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo"
+ <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>, "Ronnie Sahlberg"
+ <ronniesahlberg@gmail.com>, "Shyam Prasad N" <sprasad@microsoft.com>,
+ "Bharath SM" <bharathsm@microsoft.com>, "Sergey Senozhatsky"
+ <senozhatsky@chromium.org>, "ChenXiaoSong" <chenxiaosong@chenxiaosong.com>,
+ "Darrick J . Wong" <djwong@kernel.org>, "Sean Smith"
+ <defendthedisabled@gmail.com>, "Andrey Albershteyn" <aalbersh@kernel.org>,
+ "Pedro Falcato" <pfalcato@suse.de>, =?utf-8?q?Pali_Roh=C3=A1r?=
+ <pali@kernel.org>, <linux-btrfs@vger.kernel.org>,
+ <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
+ <exfat@lists.linux.dev>, <ntfs3@lists.linux.dev>,
+ <linux-cifs@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+ <linux-api@vger.kernel.org>
+X-Mailer: aerc 0.22.0-0-gc2f86b7abde3
+References: <20261115180343.576773-1-koray.fra@gmail.com>
+ <20261115180343.576773-7-koray.fra@gmail.com>
+ <CAOQ4uxgm+JEu2MGnqQrJ00nTJ45S2ECQ7CBOC2QrgniOfkLYAQ@mail.gmail.com>
+In-Reply-To: <CAOQ4uxgm+JEu2MGnqQrJ00nTJ45S2ECQ7CBOC2QrgniOfkLYAQ@mail.gmail.com>
+
+--f93caca3b757f4039ce5a884d522f788c6958abee5364c6a1026cc96907d
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=UTF-8
+
+On Mon Nov 16, 2026 at 2:52 PM CET, Amir Goldstein wrote:
+> On Sun, Nov 15, 2026 at 7:04=E2=80=AFPM koraynilay <koray.fra@gmail.com> =
+wrote:
+>>
+>> Currently there is no way for a caller to invoke vfs_fileattr_set()
+>> while holding an inode lock without having the kernel go into deadlock.
+>>
+>> Fix this by moving the vfs_fileattr_set() logic into
+>> __vfs_fileattr_set_locked() and making vfs_fileattr_set() a simple
+>> wrapper that only handles the inode lock.
+>>
+>> Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.5.7
+>> Signed-off-by: koraynilay <koray.fra@gmail.com>
+>> ---
+>>  fs/file_attr.c           | 139 +++++++++++++++++++++++----------------
+>>  include/linux/fileattr.h |   2 +
+>>  2 files changed, 86 insertions(+), 55 deletions(-)
+>>
+>> diff --git a/fs/file_attr.c b/fs/file_attr.c
+>> index 12610fb6a751..063c81fbfa6a 100644
+>> --- a/fs/file_attr.c
+>> +++ b/fs/file_attr.c
+>> @@ -288,6 +288,89 @@ static int fileattr_set_prepare(struct inode *inode=
+,
+>>         return 0;
+>>  }
+>>
+>> +/**
+>> + * __vfs_fileattr_set_locked - change miscellaneous file attributes whi=
+le
+>> + * holding the inode lock
+>> + *
+>> + * @idmap:     idmap of the mount
+>> + * @dentry:    the object to change
+>> + * @fa:                fileattr pointer
+>> + *
+>> + * Same as vfs_fileattr_set(), but caller must hold the inode lock.
+>> + *
+>> + * Return: 0 on success, or a negative error on failure.
+>> + */
+>> +int __vfs_fileattr_set_locked(const struct mnt_idmap *idmap, struct den=
+try *dentry,
+>> +                             struct file_kattr *fa)
+>> +{
+>> +       struct inode *inode =3D d_inode(dentry);
+>> +       struct file_kattr old_ma =3D {};
+>> +       int err;
+>> +
+>> +       if (!inode->i_op->fileattr_set)
+>> +               return -ENOIOCTLCMD;
+>> +
+>> +       if (!inode_owner_or_capable(idmap, inode))
+>> +               return -EPERM;
+>> +
+>> +       err =3D vfs_fileattr_get(dentry, &old_ma);
+>> +       if (err)
+>> +               return err;
+>> +
+>> +       /* initialize missing bits from old_ma */
+>> +       if (fa->flags_valid) {
+>> +               /* FS_IOC_SETFLAGS */
+>> +               fa->fsx_xflags |=3D (old_ma.fsx_xflags & FS_XFLAGS_MASK)=
+ &
+>> +                                 ~FS_XFLAG_COMMON;
+>> +               fa->fsx_extsize =3D old_ma.fsx_extsize;
+>> +               fa->fsx_nextents =3D old_ma.fsx_nextents;
+>> +               fa->fsx_projid =3D old_ma.fsx_projid;
+>> +               fa->fsx_cowextsize =3D old_ma.fsx_cowextsize;
+>> +               fa->fsx_ptime =3D old_ma.fsx_ptime;
+>> +       } else {
+>> +               /*
+>> +                * Preserve unmasked xflags when running file_setattr()
+>> +                * with a mask, which doesn't need a read-modify-write
+>> +                * so these attributes would be set to 0.
+>> +                *
+>> +                * With FS_IOC_FSSETXATTR or mask =3D=3D 0 (legacy mode)
+>> +                * this is not needed as userspace does
+>> +                * read-modify-write already.
+>> +                */
+>> +               if (fa->fsx_xflags_mask) {
+>> +                       fa->fsx_xflags |=3D old_ma.fsx_xflags &
+>> +                                         ~fa->fsx_xflags_mask;
+>> +                       fileattr_fill_xflags(fa, fa->fsx_xflags &
+>> +                                            ~FS_XFLAG_RDONLY_MASK);
+>> +                       if (!(fa->fsx_xflags_mask & FS_XFLAG_EXTSIZE))
+>> +                               fa->fsx_extsize =3D old_ma.fsx_extsize;
+>> +                       if (!(fa->fsx_xflags_mask & FS_XFLAG_PROJID))
+>> +                               fa->fsx_projid =3D old_ma.fsx_projid;
+>> +                       if (!(fa->fsx_xflags_mask & FS_XFLAG_COWEXTSIZE)=
+)
+>> +                               fa->fsx_cowextsize =3D old_ma.fsx_cowext=
+size;
+>> +               }
+>> +               fa->flags |=3D old_ma.flags & ~FS_COMMON_FL;
+>> +
+>> +               /* xflags not present in fsxattr */
+>> +               if (!(fa->fsx_xflags_mask & FS_XFLAG_PTIME))
+>> +                       fa->fsx_ptime =3D old_ma.fsx_ptime;
+>> +       }
+>> +
+>> +       err =3D fileattr_set_prepare(inode, &old_ma, fa);
+>> +       if (err)
+>> +               return err;
+>> +       err =3D security_inode_file_setattr(dentry, fa);
+>> +       if (err)
+>> +               return err;
+>> +       err =3D inode->i_op->fileattr_set(idmap, dentry, fa);
+>> +       if (err)
+>> +               return err;
+>> +       fsnotify_xattr(dentry);
+>> +
+>> +       return 0;
+>> +}
+>> +EXPORT_SYMBOL(__vfs_fileattr_set_locked);
+>> +
+>>  /**
+>>   * vfs_fileattr_set - change miscellaneous file attributes
+>>   * @idmap:     idmap of the mount
+>> @@ -308,7 +391,6 @@ int vfs_fileattr_set(const struct mnt_idmap *idmap, =
+struct dentry *dentry,
+>>                      struct file_kattr *fa)
+>>  {
+>>         struct inode *inode =3D d_inode(dentry);
+>> -       struct file_kattr old_ma =3D {};
+>>         int err;
+>>
+>>         if (!inode->i_op->fileattr_set)
+>> @@ -318,60 +400,7 @@ int vfs_fileattr_set(const struct mnt_idmap *idmap,=
+ struct dentry *dentry,
+>>                 return -EPERM;
+>>
+>>         inode_lock(inode);
+>> -       err =3D vfs_fileattr_get(dentry, &old_ma);
+>> -       if (!err) {
+>> -               /* initialize missing bits from old_ma */
+>> -               if (fa->flags_valid) {
+>> -                       /* FS_IOC_SETFLAGS */
+>> -                       fa->fsx_xflags |=3D (old_ma.fsx_xflags & FS_XFLA=
+GS_MASK) &
+>> -                                         ~FS_XFLAG_COMMON;
+>> -                       fa->fsx_extsize =3D old_ma.fsx_extsize;
+>> -                       fa->fsx_nextents =3D old_ma.fsx_nextents;
+>> -                       fa->fsx_projid =3D old_ma.fsx_projid;
+>> -                       fa->fsx_cowextsize =3D old_ma.fsx_cowextsize;
+>> -                       fa->fsx_ptime =3D old_ma.fsx_ptime;
+>> -               } else {
+>> -                       /*
+>> -                        * Preserve unmasked xflags when running file_se=
+tattr()
+>> -                        * with a mask, which doesn't need a read-modify=
+-write
+>> -                        * so these attributes would be set to 0.
+>> -                        *
+>> -                        * With FS_IOC_FSSETXATTR or mask =3D=3D 0 (lega=
+cy mode)
+>> -                        * this is not needed as userspace does
+>> -                        * read-modify-write already.
+>> -                        */
+>> -                       if (fa->fsx_xflags_mask) {
+>> -                               fa->fsx_xflags |=3D old_ma.fsx_xflags &
+>> -                                                 ~fa->fsx_xflags_mask;
+>> -                               fileattr_fill_xflags(fa, fa->fsx_xflags =
+&
+>> -                                                    ~FS_XFLAG_RDONLY_MA=
+SK);
+>> -                               if (!(fa->fsx_xflags_mask & FS_XFLAG_EXT=
+SIZE))
+>> -                                       fa->fsx_extsize =3D old_ma.fsx_e=
+xtsize;
+>> -                               if (!(fa->fsx_xflags_mask & FS_XFLAG_PRO=
+JID))
+>> -                                       fa->fsx_projid =3D old_ma.fsx_pr=
+ojid;
+>> -                               if (!(fa->fsx_xflags_mask & FS_XFLAG_COW=
+EXTSIZE))
+>> -                                       fa->fsx_cowextsize =3D old_ma.fs=
+x_cowextsize;
+>> -                       }
+>> -                       fa->flags |=3D old_ma.flags & ~FS_COMMON_FL;
+>> -
+>> -                       /* xflags not present in fsxattr */
+>> -                       if (!(fa->fsx_xflags_mask & FS_XFLAG_PTIME))
+>> -                               fa->fsx_ptime =3D old_ma.fsx_ptime;
+>> -               }
+>> -
+>> -               err =3D fileattr_set_prepare(inode, &old_ma, fa);
+>> -               if (err)
+>> -                       goto out;
+>> -               err =3D security_inode_file_setattr(dentry, fa);
+>> -               if (err)
+>> -                       goto out;
+>> -               err =3D inode->i_op->fileattr_set(idmap, dentry, fa);
+>> -               if (err)
+>> -                       goto out;
+>> -               fsnotify_xattr(dentry);
+>> -       }
+>> -
+>> -out:
+>> +       err =3D __vfs_fileattr_set_locked(idmap, dentry, fa);
+>>         inode_unlock(inode);
+>>         return err;
+>>  }
+>> diff --git a/include/linux/fileattr.h b/include/linux/fileattr.h
+>> index ba7ed3b387d8..7ff62ee27e58 100644
+>> --- a/include/linux/fileattr.h
+>> +++ b/include/linux/fileattr.h
+>> @@ -97,6 +97,8 @@ static inline bool fileattr_has_fsx(const struct file_=
+kattr *fa)
+>>  int vfs_fileattr_get(struct dentry *dentry, struct file_kattr *fa);
+>>  int vfs_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dent=
+ry,
+>>                      struct file_kattr *fa);
+>> +int __vfs_fileattr_set_locked(const struct mnt_idmap *idmap, struct den=
+try *dentry,
+>> +                             struct file_kattr *fa);
+>
+> There is no reason for __ prefix here and I think it should be discourage=
+d for
+> global scope if possible.
+
+Ah ok, I copied what had been done for __vfs_setxattr_locked() /
+vfs_setxattr() and __vfs_removexattr_locked() / vfs_removexattr(), but I
+agree that __ makes it more "internal", I'll change it for v5.
+
+Thanks,
+koraynilay
+
+> Thanks,
+> Amir.
 
 
 
-On 11/7/26 1:06 AM, 파랑새 wrote:
-> nfsdcld daemonizes with daemon(0, 0) and nfsdcld.service is Type=forking,
-> so systemd considers the service started when the daemonizing parent exits.
-> The child, however, only installs its inotify watch on the rpc_pipefs
-> directory much later, after the sqlite database is prepared and
-> cld_pipe_init() runs. Until the watch is installed, nfsdcld cannot notice
-> that the kernel has (re)created the cld pipe.
-> 
-> nfs-server.service orders itself After=nfsdcld.service, but that ordering
-> is meaningless with Type=forking: on a busy boot or a restart storm,
-> systemd starts nfsd while nfsdcld is still doing schema migration or legacy
-> record import, and the kernel's one second wait for nfsdcld to open the pipe
-> (see nfs4recover.c:nfsd4_cld_tracking_init()) can expire unused. An observed
-> instance of this race took an NFS server down for 44 minutes when nothing
-> restarted the failed nfsd.
-> 
-> Fix by converting nfsdcld to the daemon_init()/daemon_ready() helpers used
-> by the other nfs-utils daemons: the parent no longer exits until the child
-> signals, and the child signals right after cld_pipe_init() has installed
-> the inotify watch. With that, the existing After=nfsdcld.service ordering
-> means what it claims, and the kernel's one second window is sufficient.
-> 
-> The event base is now created after daemonizing: daemon_init() renumbers fds
-> (its status pipe takes fd 3) and would otherwise clobber the epoll descriptor
-> created before daemonizing. The event base allocation failure is now reported
-> through xlog() instead of fprintf(stderr): stderr is /dev/null after
-> daemonizing, so an fprintf() message would be lost, while xlog() routes it to
-> the syslog.
-> 
-> Suggested-by: Chuck Lever <cel@kernel.org>
-> Link: https://lore.kernel.org/linux-nfs/20261015114755.33331-1-lhjnano@gmail.com/
-> Signed-off-by: HeonJe Lee <lhjnano@gmail.com>
-Committed... (tag: nfs-utils-2-1-2.rc4)
+--f93caca3b757f4039ce5a884d522f788c6958abee5364c6a1026cc96907d
+Content-Type: application/pgp-signature; name="signature.asc"
 
-steved.
-> ---
-> Hi Steve,
-> 
-> Chuck Lever suggested on linux-nfs that I direct this patch to you as
-> the maintainer of nfs-utils. The thread originated from an NFSD startup
-> race investigation.
-> 
->   utils/nfsdcld/nfsdcld.c | 22 +++++++++++-----------
->   1 file changed, 11 insertions(+), 11 deletions(-)
-> 
-> diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
-> index 8551dc9..772cf31 100644
-> --- a/utils/nfsdcld/nfsdcld.c
-> +++ b/utils/nfsdcld/nfsdcld.c
-> @@ -819,12 +819,6 @@ main(int argc, char **argv)
->   		return 1;
->   	}
-> 
-> -	evbase = event_base_new();
-> -	if (evbase == NULL) {
-> -		fprintf(stderr, "%s: unable to allocate event base.\n", argv[0]);
-> -		free(progname);
-> -		return 1;
-> -	}
->   	xlog_syslog(0);
->   	xlog_stderr(1);
-> 
-> @@ -866,14 +860,18 @@ main(int argc, char **argv)
-> 
->   	strlcat(pipepath, DEFAULT_CLD_PATH, sizeof(pipepath));
->   	xlog_open(progname);
-> +	daemon_init(foreground);
->   	if (!foreground) {
->   		xlog_syslog(1);
->   		xlog_stderr(0);
-> -		rc = daemon(0, 0);
-> -		if (rc) {
-> -			xlog(L_ERROR, "Unable to daemonize: %m");
-> -			goto out;
-> -		}
-> +	}
-> +
-> +	/* daemon_init() renumbers fds and would clobber the epoll fd. */
-> +	evbase = event_base_new();
-> +	if (evbase == NULL) {
-> +		xlog(L_ERROR, "unable to allocate event base.");
-> +		free(progname);
-> +		return 1;
->   	}
-> 
->   	/* drop all capabilities */
-> @@ -925,6 +923,8 @@ main(int argc, char **argv)
->   	signal(SIGINT, sig_die);
->   	signal(SIGTERM, sig_die);
-> 
-> +	daemon_ready();
-> +
->   	xlog(D_GENERAL, "%s: Starting event dispatch handler.", __func__);
->   	rc = event_base_dispatch(evbase);
->   	if (rc < 0)
+-----BEGIN PGP SIGNATURE-----
 
+iHUEABYKAB0WIQSgVimKafU5DQMcjcDmj22qf5IGXAUCavsnVgAKCRDmj22qf5IG
+XC40APwLpgC2qCi2ygC417CAeeBgnvIyXQNVw3WOnFMBGg8tUQEAsuqI0c//BtxD
++1WkW5Y6mUri16pC/bv/iBr7lSbFFAs=
+=Rkz6
+-----END PGP SIGNATURE-----
+
+--f93caca3b757f4039ce5a884d522f788c6958abee5364c6a1026cc96907d--
