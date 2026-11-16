@@ -1,77 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=78.133.224.34
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=111.22.67.137
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794812947;
-	b=ePYLK8Y++vV92rE1O+zSZCs4lo87Otb4FfAJWiDs70cEphLaB2Y96yBMFN3hxfG6Wu7S
-	 ID1wO3/s7IRKmfszS6ass9rVS/NkT+0IEKNclHH6Na5A1XglLvVX89hw6EX3OTizXWw11
-	 XaY2Vq2klq+DvtRoTGG5+ExU/nDQ1RsbCFoZ8eimZrSHXVAtAp/S1UOfts+Fre8by4a0k
-	 75Ao4/kAVxy2XfqfbsSPh5jyAdGfMPBkfJKDBLVoPGrY+SF+4T5MKQQKPRboRM10D4ihZ
-	 XGbgoYXU6qr45whCoELyMp4Xzt4TGUiDdtmlGclm984F6gQjikei6KsKoZ/5SsaMAvg==
+	t=1794816346;
+	b=qW/rOC4AmqmpVniDuCKX0d5xxFegzs4gHRSiDufGuI/tTy6RY1/Qh2nyw18fK4zdy9vK
+	 ToMH6ctJmosHffx1Qh73diOaG8g4vfNBzJAc5F5qFQ0IEt3oPvzMmrYqVXz7vGCA6G3nE
+	 BvwBD4F/QnDMK3tKkgZ65zA/S7JL/LIbpdmsip2YzOS1boRE3Qw805XJ9IfOzZCfv1hSy
+	 +7LoyEIXfVE2g2eQXGG378U2Kh5PvWVs7U/8e40Od5TTqLKflGXVJbH2G4o1I2m4qhACH
+	 oCdzdO+O/xqeZigTQw9GbURZOY5NUldLopmGD7s1p3/zMyvdx/nUbMHjE+ICEEBF2NQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794812947;
-	h=DMARC-Filter:Received:Received:Date:From:To:cc:Subject:In-Reply-To:
-	 Message-ID:References:User-Agent:MIME-Version:Content-Type;
-	bh=1mHmG9IJHtIMld4ZeRanDjKIMZUQxx8f0ptnWkrCv+U=;
-	b=0i8RahmNidBKHbWBeQckX6v4j9iCyuvVL/fZe/BEsPc/Xoe2nv+21TKq8Z9boKNYHrYK
-	 TotB7T80Z1D6oFXyUkcSsAhoCh3IC2ARjY/i+UN6pi3dNYn0B76azB/X9E/tIfcdqgcSB
-	 9AKBwpQFVyOBZwo6poe7axdA/vqIytMUUML/LMiEAVafmfqLwAHbYtegV4ihhnpc2LQN1
-	 1aZBowjXeK5BftnnOth8JJo70ZfTNBNImfEeyD/SSoOHs0mtHF983Xw9qw+XNmuv9T2VO
-	 QrXYqlONvEBxO/uVPvcWVve8MQ3C5gxmDeM/Gca8NoKmNnPn6fkxMNR6i7ZoQw4/UxQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794816346;
+	h=DMARC-Filter:DKIM-Signature:X-RM-TagInfo:X-RM-SPAM-FLAG:Received:
+	 X-RM-TRANSID:X-RM-TagInfo:X-RM-SPAM-FLAG:Received:X-RM-TRANSID:From:
+	 To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=6Avz1NW7TUudJTX++ez+xj7beQ7E+txia0kyE9b57xc=;
+	b=GSXe+HlZAOqid532lL/FRCyphgRM+H1Sj12sNd/Nq8L0Bn8uMhKHEbw/jArJsE4DIpHk
+	 B1SJYo6ZnNq4MXtEoWTILerp4+yEPpzYjyCKJ/N9dVBJ3iMdqS6iOwn07Bhr90IYHmeVx
+	 Aj0bRKg/0rPxeYXxwNxZMFiqeuKXyvusGufnoqyxTERToYo7aYmpkNRnNpVlKSv1imHNE
+	 aKl74cW6vQFGhl620drOUXhqA/6wppomgPigRqS4d3d+AcjDlHa+t/EdRgE4RMxqYc21m
+	 8M33/KSAumru7pnHeNfAJrDVvCrd8jFTW34aoBlL8/bMVAvN+S+fzh2be7wSMgAuCYA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=orcam.me.uk;
-	spf=none smtp.mailfrom=orcam.me.uk;
-	arc=none smtp.remote-ip=78.133.224.34
-Received: from angie.orcam.me.uk (angie.orcam.me.uk [78.133.224.34])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 364A6606A332;
-	Mon, 16 Nov 2026 07:09:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 364A6606A332
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=orcam.me.uk
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=orcam.me.uk
-Received: by angie.orcam.me.uk (Postfix, from userid 500)
-	id 39D8A92009C; Mon, 16 Nov 2026 08:09:04 +0100 (CET)
-Received: from localhost (localhost [127.0.0.1])
-	by angie.orcam.me.uk (Postfix) with ESMTP id 376CC92009B;
-	Mon, 16 Nov 2026 07:09:04 +0000 (GMT)
-Date: Mon, 16 Nov 2026 07:09:04 +0000 (GMT)
-From: "Maciej W. Rozycki" <macro@orcam.me.uk>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-cc: David Laight <david.laight.linux@gmail.com>, 
-    Christian Brauner <brauner@kernel.org>, 
-    Geert Uytterhoeven <geert@linux-m68k.org>, linux-fsdevel@vger.kernel.org, 
-    Jann Horn <jannh@google.com>, Josef Bacik <josef@toxicpanda.com>, 
-    Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-    NeilBrown <neil@brown.name>, Eric Dumazet <edumazet@kernel.org>, 
-    Thomas Gleixner <tglx@kernel.org>, Al Viro <viro@zeniv.linux.org.uk>, 
-    Jonathan Corbet <corbet@lwn.net>, Christoph Hellwig <hch@lst.de>, 
-    Greg Kroah-Hartman <gregkh@suse.de>, 
-    Joel Granados <joel.granados@kernel.org>, Kees Cook <kees@kernel.org>, 
-    Jan Kara <jack@suse.cz>, Jan Kara <jack@suse.com>, 
-    linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
-    linux-acpi@vger.kernel.org, linux-kselftest@vger.kernel.org, 
-    linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org, 
-    linux-um@lists.infradead.org, linux-wireless@vger.kernel.org, 
-    linuxppc-dev@lists.ozlabs.org, netdev@vger.kernel.org, 
-    ntfs3@lists.linux.dev, platform-driver-x86@vger.kernel.org, 
-    coreteam@netfilter.org, kexec@lists.infradead.org, 
-    linux-pci@vger.kernel.org, linux-sound@vger.kernel.org, 
-    netfilter-devel@vger.kernel.org, dri-devel@lists.freedesktop.org, 
-    ibm-acpi-devel@lists.sourceforge.net, jfs-discussion@lists.sourceforge.net, 
-    linux-alpha@vger.kernel.org, linux-arm-kernel@lists.infradead.org, 
-    linux-cifs@vger.kernel.org, linux-fbdev@vger.kernel.org, 
-    linux-hwmon@vger.kernel.org, linux-mm@kvack.org, linux-sh@vger.kernel.org, 
-    linux-usb@vger.kernel.org, samba-technical@lists.samba.org, 
-    sparclinux@vger.kernel.org, linux-m68k@lists.linux-m68k.org, 
-    linux-doc@vger.kernel.org, linux-serial@vger.kernel.org, 
-    linux-atm-general@lists.sourceforge.net, Takashi Iwai <tiwai@suse.de>, 
-    linux-input@vger.kernel.org, linux-raid@vger.kernel.org, 
-    linux-ext4@vger.kernel.org, linux-modules@vger.kernel.org, 
-    linux-debuggers@vger.kernel.org, Chuck Lever <cel@kernel.org>
-Subject: Re: [PATCH RESEND v2 14/23] proc: let procfs copy in writes before
- pinning the entry
-In-Reply-To: <CAHk-=whsA3tKcUCBJDj_vmJ11rVGT9rivgnKjGRgMO21CPmCxg@mail.gmail.com>
-Message-ID: <alpine.DEB.2.21.2611160657470.17804@angie.orcam.me.uk>
-References: <20261104-work-procfs-core-v2-14-76ace653a773@kernel.org> <CAMuHMdVfakapgBK6TBhO1iWX8qzvLDk8jzRS=t2MVa5G=MCUeg@mail.gmail.com> <20261107-akteur-gemieden-eckdaten-21304d085e35@brauner> <20261108185953.28054fb3@pumpkin>
- <alpine.DEB.2.21.2611090504170.17804@angie.orcam.me.uk> <20261109214558.0d9d5228@pumpkin> <CAHk-=whsA3tKcUCBJDj_vmJ11rVGT9rivgnKjGRgMO21CPmCxg@mail.gmail.com>
-User-Agent: Alpine 2.21 (DEB 202 2017-01-01)
+	dmarc=pass header.from=cmss.chinamobile.com;
+	spf=pass smtp.mailfrom=cmss.chinamobile.com;
+	dkim=pass header.d=cmss.chinamobile.com header.i=@cmss.chinamobile.com header.a=rsa-sha256 header.s=default header.b=grpOFYAf;
+	arc=none smtp.remote-ip=111.22.67.137
+Received: from cmccmta4.chinamobile.com (cmccmta4.chinamobile.com [111.22.67.137])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id B277E606A31C;
+	Mon, 16 Nov 2026 08:05:44 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B277E606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=cmss.chinamobile.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cmss.chinamobile.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=cmss.chinamobile.com header.i=@cmss.chinamobile.com header.a=rsa-sha256 header.s=default header.b=grpOFYAf
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=cmss.chinamobile.com; s=default; l=0;
+	h=from:subject:message-id:to:cc:mime-version;
+	bh=47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=;
+	b=grpOFYAf/BGqCy8WbnRkBlQS+K6LyvEA2Bzu8ZRdN5QUZhHfWn6zHkpZ5byLQdpXiQodeQpCB2zPt
+	 D+x8pgBSTDLNPL1/x1ZArqxZgNVkAgG51lmS77RGCNXn3XY0r8EEmFExA95+jFqX9pupiDXM8ApWCY
+	 Bpw3MTw5MwFdTUgQ=
+X-RM-TagInfo: emlType=0                                       
+X-RM-SPAM-FLAG:00000000
+Received:from spf.mail.chinamobile.com (unknown[10.188.0.87])
+	by rmmx-syy-dmz-app04-12004 (RichMail) with SMTP id 2ee46afab95699e-9dbc1;
+	Mon, 16 Nov 2026 16:05:42 +0800 (CST)
+X-RM-TRANSID:2ee46afab95699e-9dbc1
+X-RM-TagInfo: emlType=0                                       
+X-RM-SPAM-FLAG:00000000
+Received:from fedora (unknown[223.108.79.102])
+	by rmsmtp-syy-appsvr01-12001 (RichMail) with SMTP id 2ee16afab9541e5-84257;
+	Mon, 16 Nov 2026 16:05:42 +0800 (CST)
+X-RM-TRANSID:2ee16afab9541e5-84257
+From: Yiqing Wu <wuyiqing@cmss.chinamobile.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Yiqing Wu <wuyiqing@cmss.chinamobile.com>
+Subject: [PATCH] pNFS: Fix use of uninitialized be_prev in ext_tree_encode_commit()
+Date: Mon, 16 Nov 2026 16:05:31 +0800
+Message-ID: <20261116080531.50982-1-wuyiqing@cmss.chinamobile.com>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -81,21 +69,68 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
 
-On Mon, 9 Nov 2026, Linus Torvalds wrote:
+Building with W=2 warns:
 
-> > Just that the cast would have to be:
-> >         u8 *foo = (u8 *)bar;
-> > where 'bar' is 'char *', and I don't think you need a cast there when
-> > char is unsigned.
-> 
-> .. and just to clarify: 'char' is always unsigned in the kernel on all
-> architectures since commit 3bc753c06dd0 ("kbuild: treat char as always
-> unsigned") back four years ago...
+  fs/nfs/blocklayout/extent_tree.c:615:59: warning: be_prev may be used uninitialized [-Wmaybe-uninitialized]
 
- Thanks, yes, that's the piece of the context I was missing.  I've since
-actually come across this commit while investigating which Linux ports 
-have plain `char' signed in the psABI (MIPS for sure).
+When the encoded layoutcommit overflows the buffer,
+ext_tree_encode_commit() breaks out of the extent loop with -ENOSPC
+and computes lastbyte from be_prev, the last extent that was
+successfully encoded.  be_prev is only assigned after an extent is
+encoded, so if the first extent matching the filter already exceeds
+the buffer, the loop breaks before be_prev is ever set and the error
+path reads it uninitialized.
 
-  Maciej
+That path cannot be reached in practice: overflowing on the very
+first extent would require a buffer smaller than the encoding of a
+single extent (20 bytes for SCSI layouts, 48 bytes for block
+layouts), but the callers always pass a full page or the server
+wsize, which nfs_io_size() clamps to at least NFS_MIN_FILE_IO_SIZE.
+GCC cannot prove this, and zero-initializing be_prev alone would
+turn the theoretical read into a NULL dereference, so handle the
+case explicitly and report U64_MAX, the same "no information" value
+that is already used when bl_lwb is zero.
+
+Signed-off-by: Yiqing Wu <wuyiqing@cmss.chinamobile.com>
+---
+ fs/nfs/blocklayout/extent_tree.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index 7393118c42a2..f78699317d8e 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -585,7 +585,7 @@ static int
+ ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+ 		size_t buffer_size, size_t *count, __u64 *lastbyte)
+ {
+-	struct pnfs_block_extent *be, *be_prev;
++	struct pnfs_block_extent *be, *be_prev = NULL;
+ 	int ret = 0;
+ 
+ 	spin_lock(&bl->bl_ext_lock);
+@@ -612,9 +612,14 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
+ 		*lastbyte = (bl->bl_lwb != 0) ? bl->bl_lwb - 1 : U64_MAX;
+ 		bl->bl_lwb = 0;
+ 	} else {
+-		*lastbyte = be_prev->be_f_offset + be_prev->be_length;
+-		*lastbyte <<= SECTOR_SHIFT;
+-		*lastbyte -= 1;
++		if (be_prev) {
++			*lastbyte = be_prev->be_f_offset + be_prev->be_length;
++			*lastbyte <<= SECTOR_SHIFT;
++			*lastbyte -= 1;
++		} else {
++			/* no extent fit in the buffer */
++			*lastbyte = U64_MAX;
++		}
+ 	}
+ 	spin_unlock(&bl->bl_ext_lock);
+ 
+-- 
+2.56.0
+
+
+
