@@ -1,64 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=213.95.11.211
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794781807;
-	b=CkQQVL0MS0BsBdWyUht/5iZr98ynU09vMfcxx1mDaci0WwolL5wx7SwKQ8/mxpSRYs42
-	 UOYbnrzbXuRjMEG3368unP+OYTaPNieNYTM0/oov/xFoLpamMaGY85LD2nF0amxgAbAR1
-	 3B/BlaMnDUgpbQzsjF/0adxnC1QI6SYtGxZxvRnXfyhWAFvezu0lagXNVLJ4FbvAw8upL
-	 rwO7EXIa56pAZJGA51vS7Oncp80HQbaxSx92jnqVBP92LaxDYxaKlXo8P8ll9Nprf1aU5
-	 K6ePlRJeSfjLhvmohubN09W8XFT/UULCiW6n/9XGvxlQQqBXBL/AN6nAIHo6tqSv6vg==
+	t=1794811621;
+	b=gIa0vf1vLK3bcS4ApXyZxg05IsXsghIUKRjlW4j20AMP+b7QYNrIepMDixxfjO9vjSzB
+	 UlrTDS+0SZoGwqRE5ogJZhv99n7/8yO2JVy1tk+rhieMDlS94OjrgzT3SiG7SQbvlXSP5
+	 CBknp/o+D3QgFCZ+PurFpuY+c10Rej/DevHbwQQ0mol4fmxFB6crkSBak/ynwDzfqvTa4
+	 AYXq2rxLrAGE2zdQsdwG3vAJm8TWOcD4HhLTIxwOK1A/Rcb0tGGe/E/JcgcJvYScwh4+7
+	 vy3/TWDRYANz70KcNosox0MtzPg77o3/30OFxnVSAbGHHOZzGPX85vDMj/MxB1mcsOA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794781807;
-	h=Received:DKIM-Signature:Received:Subject:From:In-Reply-To:References:
-	 X-PR-Tracked-List-Id:X-PR-Tracked-Message-Id:X-PR-Tracked-Remote:
-	 X-PR-Tracked-Commit-Id:X-PR-Merge-Tree:X-PR-Merge-Refname:
-	 X-PR-Merge-Commit-Id:Message-Id:Date:To:Cc;
-	bh=Y5hvIG8v61heB6aZ7N4+8FEHVrA+BCC6bBlR7NUkHOc=;
-	b=rVN68IulyN1BwGNcMIUm8Q921RyaQxNgD2w7PnlF70ACdPmxzNiX6H7KTVGT5Hl/vByh
-	 xQc3CADwKYs4LdB8pcjyD3D+TPH9gLMvt5ko43lR2FJMHQlERf2zIVtP+B6fsDKV7yXFG
-	 kBsBsd3ATS8lnK02uC6YyL8cOQNEvVe6R9Dbn4MkRuxiL/dopumN1LpUY4C5cxwPBstSo
-	 DoHadBs3sHBr16CAuTG8KuOyx2O8c3dACfB9Z+6P6XF+4u2PcFeNK7NIihkUkDRh+t04B
-	 Z81sdkQS6E0g6LqSv1dsdn7Y5vg0BUF7XjYHsphLfcCLxeQVL8C7D2QOQOEasnvYjRw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794811621;
+	h=DMARC-Filter:Received:Date:From:To:Cc:Subject:Message-ID:References:
+	 MIME-Version:Content-Type:Content-Disposition:In-Reply-To:User-Agent;
+	bh=/SQB0s9m3nMGtRyx/o5sNyvuyYNHFqW/HgtMVBQxlv8=;
+	b=ilL6tem7wRd9ScaCyxiCwFPmx7IsmTw6ZTK0770asyHuXutiY+9MAluTxV7QPsrSdTSy
+	 i7QZm2WA7rUe3Q2L68rjrz3rD95X+2u36T1fiQVhcZOLsrI255pLuDmZbSLFz+Ch+o/Zo
+	 bA8pCBUVOS0092rWQwJ1+ZVBEGsaS0mpWmVo6+uZCkW/LioPGCWqbhlETWkxH2ExmhKBm
+	 OoaVYAgWl/nLb+SLDHnzT5fuEdG+nTVbHK2gZOBjByazRuScatIi60sUDUGYqS8oZ57lU
+	 U4Mt+NInpMZDa8s3PAFODH5iZKQEpI8JHoXYUfZPz32CBKyRUd632//BwL/tmHzY7Xg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="ZS/PxFhq";
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=lst.de;
+	spf=pass smtp.mailfrom=lst.de;
+	arc=none smtp.remote-ip=213.95.11.211
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF079606A884
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Nov 2026 22:30:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ZS/PxFhq
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8BD561F000CD;
-	Sun, 15 Nov 2026 22:30:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794781807;
-	bh=Y5hvIG8v61heB6aZ7N4+8FEHVrA+BCC6bBlR7NUkHOc=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc;
-	b=ZS/PxFhqLut9i1s4FMjq7h6q8p3h6Zvrym2P3uZS8zPYIGQDv7BCMrUin+HFDBy0U
-	 4xbKfaF+4zqZicizbmO6544xyWSU++z7EiNBELx9A4zsHWmChLZNnEejiCVpwZesEh
-	 I/Aj3eA843lUEElj9rieGpHXI0p/yH+xSRSXm22aWz+YJPjnqTjfRlUwhAnTTfGGSP
-	 PtJ95nj0UOos3nzuWreKhOxvsqoWy1CuSkYPO8jhzohkNzcxlv6bqYiujopcQeWOqr
-	 KRhlS2IhbP3JD5iEnxC0M5WzBr9FKIeO0gXQwcwbR/Y6KUjdYk2Z+itlg0Qwn/zpub
-	 K57MgCgj1G5Lg==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 805A3380823F;
-	Sun, 15 Nov 2026 22:30:07 +0000 (UTC)
-Subject: Re: [GIT PULL] Please Pull NFS Client Bugfixes for Linux 7.4-rc
-From: pr-tracker-bot@kernel.org
-In-Reply-To: <20261115182926.1408630-1-anna@kernel.org>
-References: <20261115182926.1408630-1-anna@kernel.org>
-X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
-X-PR-Tracked-Message-Id: <20261115182926.1408630-1-anna@kernel.org>
-X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-7.4-2
-X-PR-Tracked-Commit-Id: 151d95a1e696979a7d54b23c96338754be2fcc1f
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: f70886e5a510cd7fc2c3aef91c46a14f4485fe63
-Message-Id: <179478180615.2784423.5128567411861228372.pr-tracker-bot@kernel.org>
-Date: Sun, 15 Nov 2026 22:30:06 +0000
-To: Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, torvalds@linux-foundation.org, anna@kernel.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EE2A606A31C;
+	Mon, 16 Nov 2026 06:47:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8EE2A606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id 7D40E68B05; Mon, 16 Nov 2026 07:46:55 +0100 (CET)
+Date: Mon, 16 Nov 2026 07:46:54 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Shakeel Butt <shakeel.butt@linux.dev>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Jens Axboe <axboe@kernel.dk>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, io-uring@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
+	linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
+	target-devel@vger.kernel.org, linux-unionfs@vger.kernel.org,
+	bpf@vger.kernel.org, linux-nfs@vger.kernel.org,
+	stable@vger.kernel.org
+Subject: Re: [PATCH 02/12] zloop: take freeze protection for writes
+Message-ID: <20261116064654.GA2964@lst.de>
+References: <20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org> <20261114-work-fs-frozen_writes-v1-2-f5ae61c898b1@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -67,16 +53,38 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261114-work-fs-frozen_writes-v1-2-f5ae61c898b1@kernel.org>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
-The pull request you sent on Sun, 15 Nov 2026 13:29:26 -0500:
+On Sat, Nov 14, 2026 at 11:47:09AM +0100, Christian Brauner wrote:
+> --- a/drivers/block/zloop.c
+> +++ b/drivers/block/zloop.c
+> @@ -514,6 +514,10 @@ static void zloop_rw_complete(struct kiocb *iocb, long ret)
+>  {
+>  	struct zloop_cmd *cmd = container_of(iocb, struct zloop_cmd, iocb);
+>  
+> +	/* A queued write still holds freeze protection. */
+> +	if (req_op(blk_mq_rq_from_pdu(cmd)) != REQ_OP_READ)
+> +		kiocb_end_write(iocb);
 
-> git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-7.4-2
+So io_uring, libario and cachefiles use the IOCB_WRITE flag on the
+ioctl to make this somewhat generic.
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/f70886e5a510cd7fc2c3aef91c46a14f4485fe63
+> +	if (rw == ITER_DEST)
+> +		return zone->file->f_op->read_iter(&cmd->iocb, &iter);
+> +
+> +	kiocb_start_write(&cmd->iocb);
+> +	ret = zone->file->f_op->write_iter(&cmd->iocb, &iter);
+> +	if (ret != -EIOCBQUEUED)
+> +		kiocb_end_write(&cmd->iocb);
+> +	return ret;
 
-Thank you!
+And then everyone duplicates this.  Do we want a little abstraction
+for the above code + setting IOCB_WRITE, and then another one takes care
+of the kiocb_end_write before or after calling into ->ki_complete?
 
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
+Without that this is a lot of opencoding that feels a bit fragile.
+
