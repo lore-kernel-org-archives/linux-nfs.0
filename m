@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827277;
-	b=4tF7mR9P6cXleCybKD9S7Oz1lZHFy6LOf/hYhPhQqSGrwAjyUCk4/hQzxNeQz3JbxRES
-	 ees6/kMI6pZsPS+20A1iNYxyttkypog2GwStOptv9SEJGuBH9KtEsxr/YbYhlWkn8nvBT
-	 62sGUH4P04Yzm55n8tl6B1qPVIY16Jip9WVEi+SuOFvKKRirw55Jq50TTzN1HX4fSY68R
-	 si8OIwVxlykt42Ounoivyi8GstluEnsi7rFGVK4t/4my4mEG5iLtp/qqUcXn7AvW/PpuC
-	 1OElzt6YanippP+G/NbbN1d5VbuccKsfh8IfkURjD1fwByD1K/3m2GUz8EPbYYoPdYg==
+	t=1794827285;
+	b=XqenNZIYLnuSzF9ooMrnprOFi7DyRs0cmpX11p1E8TIrlnYasZxProg79GFZEaeLQ0Uc
+	 Xs7cu82AR90GneSvCSgcWGkNvzGU981NenrBwaNX+3BzRcnKR1kVNckdwYY1Ts74o0VsY
+	 w2Oh2UDEnoUaxRrHP6nLtzNTTXHDNCyHDuCiPnFDj9uRNK01pgvo6tezfrtKlj/1as31r
+	 ZPirAlACanklRf5HHiXg0ySN7yBSQL1YVlORYewmBet5eRP0gVZIKIPZmB+zDccR16XHQ
+	 +HGe3O9tFc4UpoG0WBjTzMoXv3mI+oD3/hSq2ciLP4OEUOW9GmW3fjWQs+MUmLngeCA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827277;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827285;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=PqfeLGmjk4y0+kxRkxjSur2IdVXjx1oPYJuREevbBc0=;
-	b=RuCq7Z4K2cJNUwD+AEZhNNJ8uFs++oR946dv19ACXr1Iu4qfm1uwez9ocOELtnMuf0z8
-	 7aFoa8TtCf2kLIyyxVKONzJJXePXIQQLbDrQduDy1fk5QP2SwZqt6FvheWCQiJutsNOZ6
-	 o/tS0JfgyMUpAXkOxzZfnn+7v+h6wR2eCZuy8cSX9cgAEhSZHIbmKdPaAN2Ttxrz5COQi
-	 0psjbmpmiHrWQp+LWgzlk1oHLq88Gj8/RHj0fSBxdAXq/GgVdwRwJy+p4fi0QCG2mtVR/
-	 hjvTkbmpOBJoo3DQLBFo2K8V8RRAEIt2GFNAVGpm1+HGGKt2unm/+wuK9sWh8T8nYBA==
+	bh=/UpKqXd1Q8PiwEiW91lGeEUdsRaeGgHVBpYK/fx91FQ=;
+	b=K6ZHdtkkkQBdAs5fD6H6FV3gZahAxnfdWNFwTkNqrjLIGWEdNsbMjRZAJ9Mn9RjJO0YA
+	 /68yNO/46+GtCS70IYMB8OSoze8cEonu8FLNOFhrK1cv7B+yFNLbFQ3ig2D8I2scV/2Rz
+	 x6BhNdt5pb9hf/b3daYlbgPGbyI1UqhYPf9wmmuGWxP2Vc+SslrOAHw05sSum9ffurOQ1
+	 2RR3eqkRInUpJNdqoLU2mV2Z6880vdAenEDw7WEsIKH34rgSZfvKH8KEdTZLo9ZUMFpkK
+	 iN89GUgMo/oNt6dEh8WZa5kTU6nkPWqX4ph6XE8b5o7Gn9r2rXbDORSD+UQ2Q3fgkTg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="YvkLPRy/";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ThaPefJk;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF0C3606AB45;
-	Mon, 16 Nov 2026 11:07:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6695606A8B8;
+	Mon, 16 Nov 2026 11:08:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YvkLPRy/
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 88D961F000C5;
-	Mon, 16 Nov 2026 11:07:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ThaPefJk
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E153D1F000C4;
+	Mon, 16 Nov 2026 11:07:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794827277;
-	bh=PqfeLGmjk4y0+kxRkxjSur2IdVXjx1oPYJuREevbBc0=;
+	s=k20260515; t=1794827285;
+	bh=/UpKqXd1Q8PiwEiW91lGeEUdsRaeGgHVBpYK/fx91FQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=YvkLPRy/TdN3pcwscLXBhpcduUBjYfqgxZuCJwXsSL+UDnogKKD+92Xz/+diWB7NI
-	 0mqTTOVlCiRH9R0uBfT3YiIB2BmI3UU7ll0jcE3kk2lC7TLroBC6Pkv/qkjCb2pKNw
-	 zDc5Qqdo1HgBsZBD3BoeHwLBK/Raft20V7BmIejOzs9J/6v/WXVyn+g9CQ2gGm+AqX
-	 J1BdMMjoyxnVFZYvSfydNC+8KMf09MmPJr+eYY10D9OpdtxnRAAZVeQJdaGrm0Le+R
-	 4Rzjk+4/AJ7X87jNNtb5qnMUVnAQtEquA0JDBGjIxtZx98uV2qTRkccJqkx7xTRA3w
-	 c7AFtct/ZdTHA==
+	b=ThaPefJkzYID6A/gJ8BD95JHrrRcoJDueFApgfCzzf6m8AFEdrOPX1V/N0Ou5MSFE
+	 3MisKv2jAnh8Lq68niVuDDcQgUlU9KBmq1TWQenImwyQsFWqYvNjMCUA6JECgAVC5Z
+	 eCzHZrAVshZEsT9OLL1LKL8EXLhOWYBuwDyPsI88o0Rflk04BSpkmzvraWAQ+wW1P4
+	 lJTEA6hSyLJvmV54IXpt4SUS6mx/j+/M7f4C24pf7Qhx12uczYw4UemP32oaW2sS5n
+	 2peCadUpW/SatJlkDR04CbDtgimV2EQJ4ss/0BvVQFYbPY9qCuNlO9CEhSFfF6dtOq
+	 nUL3+tjJpm9Gg==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 16 Nov 2026 12:04:48 +0100
-Subject: [PATCH RFC v3 15/44] tracefs: use fc_init_pseudo()
+Date: Mon, 16 Nov 2026 12:04:49 +0100
+Subject: [PATCH RFC v3 16/44] configfs: use fc_init_pseudo()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-work-loop-pseudo-v3-15-8cbbea1cf34f@kernel.org>
+Message-Id: <20261116-work-loop-pseudo-v3-16-8cbbea1cf34f@kernel.org>
 References: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 In-Reply-To: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -74,51 +74,49 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  Amir Goldstein <amir73il@gmail.com>, linux-erofs@lists.ozlabs.org, 
  linux-kselftest@vger.kernel.org, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
- Alexander Mikhalitsyn <alex@amutable.com>, 
+ Breno Leitao <leitao@debian.org>, Alexander Mikhalitsyn <alex@amutable.com>, 
  Chris Down <chris@chrisdown.name>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1157; i=brauner@kernel.org;
- h=from:subject:message-id; bh=jWsk7jA40wU8aE/ukx0Eq/KUmnvJ+ql3poj8uK0lOp0=;
- b=kA0DAAoWkcYbwGV43KIByyZiAGr643Cha2aEDzogEHXFHDf4ItcyB4+yUL4ANkviCVs/P6sGm
- 4h1BAAWCgAdFiEEQIc0Vx6nDHizMmkokcYbwGV43KIFAmr643AACgkQkcYbwGV43KI/pwEA638U
- 1d15U79N804Xlrmzg1WVT0YbKUtsgjGXa9iRx+MA/RH2I1+OACZjxtKr5OTHN7a/GnbvmGcfgyl
- DomehAAUO
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1100; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=arBHZovnHktbx+8dxEhh1iDCO+7a7q/uQBzsyfGCKl8=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9elz4yo7/8fTyqPtLu0x0Zv8tjtQzyl68wOHUusK4U
+ 1piFu/4O0pZGMS4GGTFFFkc2k3C5ZbzVGw2ytSAmcPKBDKEgYtTACayW5nhn4LuCbVth/nnv61W
+ jll948YM7hL1TRmv/gSG7k93fv59SRTDP6tHgrPsfflmcXKeOZ47jc/ugU3PlsV14pWbp3dNO/K
+ lkwUA
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize tracefs as a pseudo filesystem. This raises SB_I_PSEUDO and
-also SB_I_NOEXEC and SB_I_NODEV. tracefs never holds executables or
+Initialize configfs as a pseudo filesystem. This raises SB_I_PSEUDO and
+also SB_I_NOEXEC and SB_I_NODEV. configfs never holds executables or
 device nodes.
 
-SB_I_NOEXEC also refuses PROT_EXEC mappings. The only tracefs files
-that can be mapped are the ring buffers and __rb_map_vma() refuses
-VM_EXEC already.
-
+Reviewed-by: Jan Kara <jack@suse.cz>
+Acked-by: Breno Leitao <leitao@debian.org>
 Reviewed-by: Alexander Mikhalitsyn <alex@amutable.com>
 Reviewed-by: Chris Down <chris@chrisdown.name>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/tracefs/inode.c | 2 ++
+ fs/configfs/mount.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/fs/tracefs/inode.c b/fs/tracefs/inode.c
-index 5020365ca7048..e04febd868eb4 100644
---- a/fs/tracefs/inode.c
-+++ b/fs/tracefs/inode.c
-@@ -12,6 +12,7 @@
+diff --git a/fs/configfs/mount.c b/fs/configfs/mount.c
+index d8cac1cbf3bd5..60ba24e7ae2b9 100644
+--- a/fs/configfs/mount.c
++++ b/fs/configfs/mount.c
+@@ -13,6 +13,7 @@
  #include <linux/module.h>
- #include <linux/fs.h>
+ #include <linux/mount.h>
  #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
- #include <linux/fs_parser.h>
- #include <linux/kobject.h>
- #include <linux/namei.h>
-@@ -510,6 +511,7 @@ static int tracefs_init_fs_context(struct fs_context *fc)
- 	fsi->mode = TRACEFS_DEFAULT_MODE;
+ #include <linux/pagemap.h>
+ #include <linux/init.h>
+ #include <linux/slab.h>
+@@ -106,6 +107,7 @@ static const struct fs_context_operations configfs_context_ops = {
  
- 	fc->s_fs_info = fsi;
+ static int configfs_init_fs_context(struct fs_context *fc)
+ {
 +	fc_init_pseudo(fc);
- 	fc->ops = &tracefs_context_ops;
+ 	fc->ops = &configfs_context_ops;
  	return 0;
  }
 
