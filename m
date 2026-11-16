@@ -1,73 +1,101 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794857716;
-	b=Lwj4PYVe/k2v5b77XFVkAfFsu1bhIeSp9JBHN5J4apSh1dAOvU9slsLtNVJVA9XjIx52
-	 gDosOXBMbdoKrHY5Dn9DUEXCAfSdJ8/Bf6PxCIQZqVw+EDe7z6qMfx6XpxAVOQ9c48+SH
-	 vxlLJCl6MjiyPDoEZEEhdZN599QuSP/sFoAb0LJzEtnmFuSvbQ/c04IQEtFHmGXJXyLog
-	 sJIrG7T8j7n9Vd/I29+Ak5Cptu8uPQtVl2BKsw25+Rs7fBNnVtX6VLmLoBj2Qd9aDf0V9
-	 1qUInxrJAHJwI8nNuysbAtxsk6VUG1LjQWAcePNx4TSpb1kYf9zVowjBKUcZE/jyfVQ==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794857716;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=ex8sQsHIpPx0Nkd4LC2Tkk5aOBl+I7Jg5Gyc5xqzvWs=;
-	b=azZtPNKN5uJJ6TFXd8U3Mhpkrx7o+kEdlR7FWE1G3JNB4/RkEdW2Egf1mz1FUMuHLrgH
-	 mbliYebVgeGna04wBk1KNTmLplwKpZ5K/OMf5/O6UYeX0rNfurM9otQq4VXPJ9LtF1rTH
-	 pd71CyjsK06N7Yvp7eKBZGD97Q/r/Cwpl+YcHtq4WEzTZALwAf7puQVTA9A8yB2dA2hP2
-	 PNVH4exGpqSf7rF7Gcqml8UFcdbdCgm968QsPpe274o9/qWrnghRLPLR2Q+RBkpGmM8Oi
-	 8XVX0C1rIXKQWzfhOXepIjf+h7XbBadaDln72whBI2VuSLj/eIbtC5Sc02twg6/6Bkw==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TRJuwhmb;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.51
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1794859450;
+	b=vWyDjK42kxtqV5TrAyAFiXvxemy/wUCaLKyytAFLHbtHganLTCGN1DPZheJ2V53I60Hz
+	 ktfD3vuTnGJrYA0XjzJC20uyMzyVthDIRWK+8ItYUBNidxV1xs2BQV4lFEdwZX4hEzdvH
+	 cVP3A4Sl1mlscASolleJbimAtdUzSUt3CQ0mstkl9z7DotKAfN7c0rjbK+o787FkKb9ot
+	 JNMWFH4+asHkQdQSArz/LCdUQtZ/vf98YyqLPTEb9guk9ObSeF0TUh0l+CU7RzZfDqbfU
+	 giVuqhOtH36PdSCILKvCWVXVxSDGZ7CgyyEIJXtdDtZcz1Mihx8pBe4QVZ4+SPwvt5g==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794859450;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=FEtpE65JhLGyAYaL/FOW2ebUIws2WwBZ/4Zy8VNXUuw=;
+	b=dwcRpoBooEVA6BSC7sCdpTo53wrbjxnP+G+zeeg2ZVq1xQbjiCzIkgOZTr0kpTEaGpJt
+	 q/ImPoD9KqEJ3dobiugr3t18zol79dTPSNRNtYOzrUCuCJ9cLtWWt6caSEHmC7BsyR0PT
+	 0ylezpuDoSKy1bvzjY7LVfOk+ylesSH0F4aDeLLXAnvNQEtYAKXr986Z/jKT/CbBr+dty
+	 r1IsJCPftRLt9llteh/tAr1btK6CvgmFs9wHkpwxvdBPns4DVvUHF4qiWIJPpsqF8XWFT
+	 4ovzROq7tBbLZbAffLo0OBHqm8kMXtoOzaD6Rnu3zSMmTOV4M2BREi0PLNP8+2FuZeA==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=hnqDx80H;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.221.51
+Received: from mail-wr1-f51.google.com (mail-wr1-f51.google.com [209.85.221.51])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84366606A330;
-	Mon, 16 Nov 2026 19:35:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 361F9606A333
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 20:04:09 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 361F9606A333
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=TRJuwhmb
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 95F761F000C4;
-	Mon, 16 Nov 2026 19:35:15 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794857716;
-	bh=ex8sQsHIpPx0Nkd4LC2Tkk5aOBl+I7Jg5Gyc5xqzvWs=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=TRJuwhmbE2QVM975XTsOiQxVBpLb73RPDqfAHb2UNZ+rtGZoPsy/gOtYG4sjdu2/O
-	 9yJMlr6+KBttJpx32oAzkJnKRIpBhJyLxbnN9615uI3rTiMyU9Q4KR1bTS7jUVoJyL
-	 GqDAYOcglcyqx5m1EgFZRZT63MZAazHX0ETifAfr29S8/RNPk6Xppxc6b41O+d7xJM
-	 I9T0v+SCO4hAGy4R2S7dPCDUnPD8cYN61+GHpVUIpYWbmPOgvlXAMrexgp3XK32uRq
-	 30NuFWshSFAb3LL75GQl4fRn6CiYJivf3EJ+BKq8KMDsgYFki8xbPgm3qPd0nL5/l2
-	 umxJF4DVXWtNQ==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id F21DCF4008E;
-	Mon, 16 Nov 2026 14:35:14 -0500 (EST)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Mon, 16 Nov 2026 14:35:14 -0500
-X-ME-Sender: <xms:8lr7aqy2mio05VSyCMv9d5JzFlNbS5Z5HCwyJkxR3th3MGMJifRuyg>
-    <xme:8lr7ahEjHY5ZsaUt9-pDaEc3evfBzWl4tRgCsvzIgQ75fcRGAH2tc8gwt5RDbxGBu
-    XBF9_dK0TN7cY7FG6s96_FzsTA-GIZQW1KacC2bsNaPAt6qoUv7Q-Q>
-X-ME-Proxy-Cause: dmFkZTEDf1fF5fEjzXWosWKUidFpweRbW27lXH2eETu4hEuPB6N7vCEWuRexsuIK2XCxz6
-    1SJhRsOZ1wJzJ2XNS4wbK3MXOeiY+ZRjeQqtOZEU8I6FcVejjAACXS4aREsw+YLhui8r8w
-    75GysTZxGkHNZGJpo0hROO5mNVfHHVNm2H3JKd+MaWv0O7+znYjnPX6/D5p/YxniGAdIsD
-    P4L2mMThJcQm1hcEQb4dV/qARgqXDHDpbaQBjxkegRpWeV9k8Yd00aUmtQMp3SsFXMgqLD
-    Kkc+h/0j/216mCHf+RLvVDxHEoMI+kmiS7hNfVMIxjLamNIo6P9E9RkT8eb+xTFdZjE2C1
-    yWLVyuaWFClhd7btoVxPHuG/z1EuWrZnBK73SOPwUKRtv4De2gp7oatGCNgMgP3Key1skl
-    JNTwibMVjhNHut1owP6CDpbADG+dVALqfic5ZGTM7/vYIyl1t37ohmFVwNEi+2UDbKeSO3
-    qKg9rVhdra6qM3js+FSpYQcHoIcC8mgY4PsikFojyKrzAfnNOvZAeAPhARJDzjBILJlaAd
-    L/hrt+HUBqqNnAR+GlBXHGtB9S0YQMIVksbnqih0tUVzkCisAQ6e6bhZc/3wGR1oGYdyJi
-    hEe+oEN4fEd620Oe7CVEyLS5Wr3uoHMrIzK66FXQKlxKZir81QnmN/SywMJw
-X-ME-Proxy: <xmx:8lr7amuj-eeKiSi8PDxR64uhUmwW8-SUuJ67vxRGywCSyULcJvToyw>
-    <xmx:8lr7aq7aJ5q_eZpUxXF2jq7u5kH9P1v48QoScht4oPPpIp3GkevHdA>
-    <xmx:8lr7ai11A4ItBqtor-sHc3eigNSVTNxmjXX69khbYc3cXfsJQ5o2bA>
-    <xmx:8lr7aljF5bVi_RCIBQOZPaKB942nl3sGz9qQeWC_VY0f3wtJhM0foQ>
-    <xmx:8lr7aqqGJYCazqYZ-135JAkaCP1tqnUlPapmasY2uPW7DK-EbxLDB0Yb>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id D88E9B6006E; Mon, 16 Nov 2026 14:35:14 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=hnqDx80H
+Received: by mail-wr1-f51.google.com with SMTP id ffacd0b85a97d-498f5fa5103so1736452f8f.2
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 12:04:09 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1794859448; cv=none;
+        d=google.com; s=arc-20260327;
+        b=ordTXJuxDLJFFe2kqtzrIPaXrutWjet7GOVP41khazzjtYsCpvjE0HCzSNrpzvBf8F
+         gjfZj+b5goPigZrxfFE9yOkpm1Lm7viQir4wOVnAI+AFET9CbHtkNvqEVo+U3TM5YGV+
+         B1Vb713teMxjyb9V795xq4rE0RHd4JpWpOX69A30AUJE0+XBZjTClq2iOGhPY3ipV3Ah
+         7PfsRCORWF6xDQtRoGGYy35hssnkbVVmoshc6+U15niasLD9HX0a1GmJyjXWdiSw4yaa
+         iZK8Hm/hYlZLxdan4uH2TryRC1G2b/RLVAkmwPax24SB/Z+sX0oJHYJ7/YAYu6UfmVn9
+         c7gw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=FEtpE65JhLGyAYaL/FOW2ebUIws2WwBZ/4Zy8VNXUuw=;
+        fh=rxQ8C1vpJq+OrBpkaRSs+gOBlUW/EzmDo1OTLGkAY9Q=;
+        b=pe8o/GlDD4YYrR6mRNIrqLvCk3gGd1epT6oX2dFBZR2avO+95+UpdI0Ja0Sy4Q/MBq
+         XdzrP9NqXFdUJ7LeKmGBLJWHcF9CADB+0A6zBgemf3vQW0xvh18NyzAH0KmSEglTqO2b
+         n/mB/KGWHaveylJEDFU+gAhsRFxfDF6DeAl9GswQG9qdhQfdj+ACbS0ovSJr5LQEkFXv
+         Px0wD46GU0wTmMC1Pta/1Ikdy8hPldMt8GkrTLpWjlr1cQLmFxjZCJEDAbkJO8PNt27T
+         kSMOaYyRPTI7RSd4IDZIY/TSkoSQBbwA5z26yLMZOSJtKOGXBMql3628VSyprthaaZiJ
+         Nkfg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1794859448; x=1795464248; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=FEtpE65JhLGyAYaL/FOW2ebUIws2WwBZ/4Zy8VNXUuw=;
+        b=hnqDx80H1BHGMZ+jCw863LQE2wm4hG6wTw//ziQNWkZpZIjdyNNCtFJNcbykSvuJWZ
+         RrqgQGru9l+9Rlw9NCoAO7RXSeH6CHzRwb+h6TsbT77V+vTLtC7o5AslWzWJ8+7yhciq
+         sbJxN7Yoz6y6VYO91QUyEDVlXVHt5e/uzOZriYhKEljZIduQH6pNfhdOY5sHlJFueOxf
+         bN/uTLfuNBjnHaTZ+WukZQS/Wa30tWyiKsfqEPmOKtkcPCgN1gGIeLsa9pfco/3ZvP3P
+         koo3Bb9/+esUnHdHS2hTd5qtXE/k/xctadMJUuU/zchcL0VDKvTRNofZgdIQ6mLOou9W
+         X5rA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1794859448; x=1795464248;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=FEtpE65JhLGyAYaL/FOW2ebUIws2WwBZ/4Zy8VNXUuw=;
+        b=mtcAeN1G9N6s2558Wfy09l7Ra2Dekwa3pr+q32yx4nZvhLbdWv6bCQXDFQVCuT/zZQ
+         2yHD8Oo46Ghtgs7qfPbCJ6+tUdT9jVOc89R/w+XZyoAqCR1Q3MmbONG/tGR4jNy4SUXN
+         ENpLOywy0C+n4aoSTAUVdjQhNMydduJNYbtxBnDNiYf+QvT+NkWyZehLEi/2FqyZyTjG
+         mEph/YzqNTz2o5owmeJS+UUH0BNyFr6R0boG3FZLWu/au35Pl+KD3YMadTurjjXGc6OD
+         uGzy/brAZpTWyEXHsQ5yZHOBOUEPqva59EChHv/zLnzfAFy0mgq7b4OlebZQ0+EBtJsb
+         b9wA==
+X-Forwarded-Encrypted: i=1; AL+hErHfbiIVfjUBcJl93UvktZJjT+UfOMRKobXNmQEV8rv3x3O6c7PDg0G5jhN0BE50g3HibJXto3HTpeU=@vger.kernel.org
+X-Gm-Message-State: APuU4Z90bjSAl1IGlUgPvCimo4i7IbZGNXfUU8l7V8V5f5t6hWM9vC3u
+	MkUBJRnlL9yX1KGE4bpq4W3jiZt/GLCX0NP2r9z7ByYhNAhYZ5LpnFY/7tjxFl3deH6kxKhtV2/
+	0fKO1OHflirUqcSbUZHvqVRBVRg6YYnQ=
+X-Gm-Gg: AZFdTZcutOnvoE+XB3KlP7nsEvmPHelYKTtUlB+xSymrObH1Y8EFNxRr8auzJLXWDFe
+	fYKqijbTSa3XyA+EQ0ax8fZNzxfvHpjWGLZSKIg5WE38+M3fvCh2njp8UqV9/T6GhR1yVrpxe5d
+	DgMY95puGO7UO/8qzhv+R0fJ/j8FSEnxGORTZ7GXfO9XUCaDlQeqSYxifpFw9mzk8NPusv3t3Q3
+	Ir7N9k7vCL5ymW8asT36+6qrpTxqEDvwZtIDBOKA84/w4ZhbJ51lTwv1JgHFDWrkKIpQh79GEKV
+	TzAdHAvn6dUqd94F6p92vTDJrLGVJPZp1TEyRVr60hPk7zUO9ndIAHBWGtU6MguvRmapJOiJUv0
+	bYIOVwTjn8ylAr0WgozKNJiJJBf9K1omYCKh/M8YWzu0uZ0LiAilRknFawiQ/2T+rUYa+uq2pOp
+	C+suuQZmS8kvAzS3dSYHE=
+X-Received: by 2002:a05:6000:4692:b0:491:3fdd:af34 with SMTP id
+ ffacd0b85a97d-49d61c80db3mr13343868f8f.36.1794859448335; Mon, 16 Nov 2026
+ 12:04:08 -0800 (PST)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,261 +105,81 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AkKQlABzAp6g
-Date: Mon, 16 Nov 2026 14:34:54 -0500
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Andrew Pam" <andrew@sericyb.com.au>,
- "Trond Myklebust" <trondmy@kernel.org>
-Cc: "Chuck Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Rafael J. Wysocki" <rafael@kernel.org>, "Mike Snitzer" <snitzer@kernel.org>,
- linux-nfs@vger.kernel.org, linux-pm@vger.kernel.org, netdev@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Message-Id: <51a2b5d3-4322-42ed-a2ee-e17c125865fa@app.fastmail.com>
-In-Reply-To: <20261116131428.1024230-4-andrew@sericyb.com.au>
-References: <20261116131428.1024230-1-andrew@sericyb.com.au>
- <20261116131428.1024230-4-andrew@sericyb.com.au>
-Subject: Re: [PATCH v2 3/3] SUNRPC: reconnect client transports after resuming from
- hibernation
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+References: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org> <20261116-work-loop-pseudo-v3-9-8cbbea1cf34f@kernel.org>
+In-Reply-To: <20261116-work-loop-pseudo-v3-9-8cbbea1cf34f@kernel.org>
+From: Andrii Nakryiko <andrii.nakryiko@gmail.com>
+Date: Mon, 16 Nov 2026 12:03:57 -0800
+X-Gm-Features: Aa3M54q6P4M0RFDCKQ8HHGNCWJafItTSPdWR1qNwVGtToDAv2VOv8vDfWHzYR6A
+Message-ID: <CAEf4BzbLFVawibuX0wk=8uzy0WZSYHbkgK55d7rqLab2qAM1Fg@mail.gmail.com>
+Subject: Re: [PATCH RFC v3 09/44] bpf: use fc_init_pseudo() for bpffs
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, Jann Horn <jannh@google.com>, 
+	Chris Mason <mason@kernel.org>, Josef Bacik <josef@toxicpanda.com>, Christoph Hellwig <hch@lst.de>, 
+	linux-block@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-nvme@lists.infradead.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Jan Kara <jack@suse.cz>, linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
+	driver-core@lists.linux.dev, linux-mm@kvack.org, bpf@vger.kernel.org, 
+	linux-security-module@vger.kernel.org, selinux@vger.kernel.org, 
+	apparmor@lists.ubuntu.com, linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
+	fuse-devel@lists.linux.dev, linux-efi@vger.kernel.org, 
+	xen-devel@lists.xenproject.org, ocfs2-devel@lists.linux.dev, 
+	linux-s390@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
+	linux-usb@vger.kernel.org, Amir Goldstein <amir73il@gmail.com>, 
+	linux-erofs@lists.ozlabs.org, linux-kselftest@vger.kernel.org, 
+	Alexander Mikhalitsyn <alex@amutable.com>, Chris Down <chris@chrisdown.name>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Hi Andrew,
-
-On Mon, Nov 16, 2026, at 8:14 AM, Andrew Pam wrote:
-> With rpciod and xprtiod frozen across hibernation, no RPC is sent after
-> the snapshot. TCP can still acknowledge data the server sends then,
-> though: typically a reply that was in flight when the snapshot was
-> taken. The restored image has not seen that data, and the server, which
-> saw it acknowledged, will not send it again. The client then waits
-> indefinitely for replies that never arrive.
+On Mon, Nov 16, 2026 at 3:21=E2=80=AFAM Christian Brauner <brauner@kernel.o=
+rg> wrote:
 >
-> Captured in a QEMU test (below): on the one cycle of six that hung, the
-> client's TCP acknowledgement went backwards by 200 bytes after the
-> restore, and the requests outstanding (WRITE, COMMIT, GETATTR) stayed
-> queued on xprt_pending with no further progress.
+> Initialize bpffs as a pseudo filesystem instead of raising
+> SB_I_NOEXEC and SB_I_NODEV by hand. This adds SB_I_PSEUDO.
 >
-> After resuming, disconnect every client transport. Requests in flight
-> are retransmitted on the new connection, and the server answers any it
-> has already executed from its reply cache. Because nothing was sent
-> after the snapshot, NFSv4.1 session slot sequence ids still agree on
-> both sides.
->
-> The disconnect is done from a PM notifier at PM_POST_HIBERNATION, which
-> runs in the restored kernel once everything has thawed. It is also sent
-> when hibernation fails, where the reconnect is unnecessary but harmless.
-> xprt_put() may sleep, so references to the transports are taken under
-> the client list lock and RCU into an array, and released afterwards. The
-> array is sized by a counting pass first, so it is allocated with
-> GFP_KERNEL rather than under the locks, and the walk is repeated if
-> transports were added in between: one left out would stay stalled.
->
-> Tested in the QEMU setup described in the first patch of this series,
-> with 20 hibernations in test_resume mode back to back while NFS writes
-> (8 MB, fsync) and reads ran continuously. Without the series the client
-> hung on the first cycle; with only the first two patches, on the sixth.
-> With this patch all 20 cycles completed and I/O progressed on every
-> one. The capture shows the client's acknowledgement going backwards on
-> two of the old connections, and the client reconnecting and carrying on
-> both times. The single-hibernation test is unchanged apart from one
-> extra connection per resume: nothing reached the server during the
-> image write, and the client resumed without errors.
->
-> Drafted with an AI coding assistant (Claude), which also ran the tests.
->
-> Signed-off-by: Andrew Pam <andrew@sericyb.com.au>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Reviewed-by: Alexander Mikhalitsyn <alex@amutable.com>
+> Reviewed-by: Chris Down <chris@chrisdown.name>
+> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 > ---
->  net/sunrpc/clnt.c        | 112 +++++++++++++++++++++++++++++++++++++++
->  net/sunrpc/sunrpc.h      |   2 +
->  net/sunrpc/sunrpc_syms.c |   7 +++
->  3 files changed, 121 insertions(+)
+>  kernel/bpf/inode.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 >
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 2f076b4bfd54..f9c31c49dc0b 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -32,6 +32,8 @@
->  #include <linux/in.h>
->  #include <linux/in6.h>
->  #include <linux/un.h>
-> +#include <linux/suspend.h>
-> +#include <net/net_namespace.h>
-> 
->  #include <linux/sunrpc/clnt.h>
->  #include <linux/sunrpc/addr.h>
-> @@ -881,6 +883,116 @@ int rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
+
+Acked-by: Andrii Nakryiko <andrii@kernel.org>
+
+> diff --git a/kernel/bpf/inode.c b/kernel/bpf/inode.c
+> index c6f328e4752e1..57cf3775c0766 100644
+> --- a/kernel/bpf/inode.c
+> +++ b/kernel/bpf/inode.c
+> @@ -15,6 +15,7 @@
+>  #include <linux/namei.h>
+>  #include <linux/fs.h>
+>  #include <linux/fs_context.h>
+> +#include <linux/pseudo_fs.h>
+>  #include <linux/fs_parser.h>
+>  #include <linux/kdev_t.h>
+>  #include <linux/filter.h>
+> @@ -1197,8 +1198,6 @@ static int bpf_fill_super(struct super_block *sb, s=
+truct fs_context *fc)
+>         sb->s_magic =3D BPF_FS_MAGIC;
+>         sb->s_op =3D &bpf_super_ops;
+>         sb->s_xattr =3D bpf_fs_xattr_handlers;
+> -       sb->s_iflags |=3D SB_I_NOEXEC;
+> -       sb->s_iflags |=3D SB_I_NODEV;
+>         sb->s_time_gran =3D 1;
+>
+>         inode =3D bpf_get_inode(sb, NULL, S_IFDIR | 0777);
+> @@ -1261,6 +1260,7 @@ static int bpf_init_fs_context(struct fs_context *f=
+c)
+>         opts->delegate_attachs =3D 0;
+>
+>         fc->s_fs_info =3D opts;
+> +       fc_init_pseudo(fc);
+>         fc->ops =3D &bpf_context_ops;
+>         return 0;
 >  }
->  EXPORT_SYMBOL_GPL(rpc_clnt_iterate_for_each_xprt);
-> 
-> +/*
-> + * After hibernation takes its snapshot, the kernel keeps running with the
-> + * network up while it writes the image. rpciod and xprtiod are frozen by
-> + * then, so no RPC is sent, but TCP still acknowledges anything the server
-> + * sends, such as a reply that was in flight when the snapshot was taken.
-> + * The restored image has not seen that data, and the server will not send
-> + * it again, so the connection cannot make progress.
-> + *
-> + * Once the system has resumed, disconnect every client transport. Requests
-> + * in flight are retransmitted on a new connection, and the server answers
-> + * any it has already executed from its reply cache. Because nothing was
-> + * sent after the snapshot, NFSv4.1 session slot sequence ids still agree.
-> + */
-> +/*
-> + * Take a reference to each client transport in every network namespace and
-> + * store it in @xprts, up to @max of them. Returns the number of transports
-> + * found, which exceeds @max if the array was too small. Called with
-> + * net_rwsem held for reading.
-> + */
-
-What's with the weird double comment here? I like the second one better.
-
-> +static unsigned int rpc_pm_get_xprts(struct rpc_xprt **xprts,
-> +				     unsigned int max)
-> +{
-> +	unsigned int n = 0;
-> +	struct net *net;
-> +
-> +	for_each_net(net) {
-> +		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> +		struct rpc_clnt *clnt;
-> +
-> +		spin_lock(&sn->rpc_client_lock);
-> +		rcu_read_lock();
-> +		list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
-> +			struct rpc_xprt_switch *xps;
-> +			struct rpc_xprt *xprt;
-> +
-> +			xps = rcu_dereference(clnt->cl_xpi.xpi_xpswitch);
-> +			if (!xps)
-> +				continue;
-> +			list_for_each_entry_rcu(xprt, &xps->xps_xprt_list,
-> +						xprt_switch) {
-> +				if (n < max) {
-> +					xprts[n] = xprt_get(xprt);
-> +					if (!xprts[n])
-> +						continue;
-> +				}
-> +				n++;
-> +			}
-> +		}
-> +		rcu_read_unlock();
-> +		spin_unlock(&sn->rpc_client_lock);
-> +	}
-> +	return n;
-> +}
-> +
-> +static int rpc_pm_notify(struct notifier_block *nb, unsigned long action,
-> +			 void *data)
-> +{
-> +	struct rpc_xprt **xprts = NULL;
-> +	unsigned int i, n, max = 0;
-> +
-> +	if (action != PM_POST_HIBERNATION)
-> +		return NOTIFY_DONE;
-> +
-> +	/*
-> +	 * The references are taken under spinlocks, but xprt_put() may sleep,
-> +	 * so collect them in an array and disconnect after the locks are
-> +	 * dropped. Count first so that the array can be allocated without
-> +	 * GFP_ATOMIC, and recount if transports were added in the meantime:
-> +	 * a transport left out would keep the stalled connection.
-> +	 */
-
-Is there a way to do this without the double loop? The rpc_xprt_switch has a
-"xps_nxprts" field that should hold the number of xprts in the switch. Using
-that might be more straightforward than looping twice and counting.
-
-Thanks,
-Anna
-
-> +	for (;;) {
-> +		down_read(&net_rwsem);
-> +		n = rpc_pm_get_xprts(xprts, max);
-> +		up_read(&net_rwsem);
-> +		if (n <= max)
-> +			break;
-> +
-> +		for (i = 0; i < max; i++)
-> +			xprt_put(xprts[i]);
-> +		kfree(xprts);
-> +		max = n + 8;
-> +		xprts = kmalloc_objs(*xprts, max);
-> +		if (!xprts) {
-> +			pr_warn("RPC: no memory to reset transports after resume\n");
-> +			return NOTIFY_DONE;
-> +		}
-> +	}
-> +
-> +	for (i = 0; i < n; i++) {
-> +		xprt_force_disconnect(xprts[i]);
-> +		xprt_put(xprts[i]);
-> +	}
-> +	kfree(xprts);
-> +	return NOTIFY_DONE;
-> +}
-> +
-> +static struct notifier_block rpc_pm_nb = {
-> +	.notifier_call = rpc_pm_notify,
-> +};
-> +
-> +int rpc_pm_notifier_register(void)
-> +{
-> +	return register_pm_notifier(&rpc_pm_nb);
-> +}
-> +
-> +void rpc_pm_notifier_unregister(void)
-> +{
-> +	unregister_pm_notifier(&rpc_pm_nb);
-> +}
-> +
->  /*
->   * Kill all tasks for the given client.
->   * XXX: kill their descendants as well?
-> diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-> index 11b9e5cead8e..1833b167616c 100644
-> --- a/net/sunrpc/sunrpc.h
-> +++ b/net/sunrpc/sunrpc.h
-> @@ -43,6 +43,8 @@ struct rpc_task;
->  struct rpc_xprt;
->  int rpc_clients_notifier_register(void);
->  void rpc_clients_notifier_unregister(void);
-> +int rpc_pm_notifier_register(void);
-> +void rpc_pm_notifier_unregister(void);
->  void auth_domain_cleanup(void);
->  void svc_sock_update_bufs(struct svc_serv *serv);
->  enum svc_auth_status svc_authenticate(struct svc_rqst *rqstp);
-> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> index 1a3884a0376a..d32786f51ae5 100644
-> --- a/net/sunrpc/sunrpc_syms.c
-> +++ b/net/sunrpc/sunrpc_syms.c
-> @@ -116,6 +116,10 @@ init_sunrpc(void)
->  	if (err)
->  		goto out6;
-> 
-> +	err = rpc_pm_notifier_register();
-> +	if (err)
-> +		goto out7;
-> +
->  	sunrpc_debugfs_init();
->  #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
->  	rpc_register_sysctl();
-> @@ -124,6 +128,8 @@ init_sunrpc(void)
->  	init_socket_xprt();	/* clnt sock transport */
->  	return 0;
-> 
-> +out7:
-> +	genl_unregister_family(&sunrpc_nl_family);
->  out6:
->  	rpc_sysfs_exit();
->  out5:
-> @@ -141,6 +147,7 @@ init_sunrpc(void)
->  static void __exit
->  cleanup_sunrpc(void)
->  {
-> +	rpc_pm_notifier_unregister();
->  	genl_unregister_family(&sunrpc_nl_family);
->  	rpc_sysfs_exit();
->  	rpc_cleanup_clids();
-> -- 
+>
+> --
 > 2.53.0
+>
+>
