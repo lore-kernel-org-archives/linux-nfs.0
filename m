@@ -1,109 +1,108 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794826114;
-	b=KXnqFUvAHsX25z2PsVAouwyWzQwlmgHBjzl1cBDOt0jDBwqZXKJ7wpkBQm1EZh5Sh9A7
-	 nvgEowe6O92StKBXUwOb77tvfDWAhfP1yKHoJeZMCAXmH0gOBFjs2eJmfhJlFBrQO1Wsl
-	 besLMrCJExCFbOztoYEwqGsAoPXXYLjau0Auh2A4g+faxP0XJiSzbwtZs0TrjXYCJlvyO
-	 rgG8nDMs9GtCqyfgxhZoaD28X25q5WXN5O3yjJGwzd2AVhXYIbybOoWDzZJQgXefERDsX
-	 vXCQkyOXXHyBGpZmtq3WSpGTivTmuMS1xbl7mpezT0ZjxnIEgfCCn5d1AGX7hD5oyJw==
+	t=1794826944;
+	b=cF8ptl78+6jNVE3qrqm4bubWuBNG1U9iwzKBpnoOgm2StUSrUv12qvWJneZ6YTQiEc13
+	 7HiKf3paeEFgWk436TtMLSienkcq410STogrrQwfTcClZCCAeD+JK+NMBB4VIHbNdWSZP
+	 YFR5As8V/tJxrKtBswy6eAJ3PJOBKWDrgPiOBsmVvjl/thowK4Aqq5eNZ9m7CgQ5eFDki
+	 t4ODlKxTnXjTwHswef34IzOt2RcpdQ6ymY72ZJHK3VFT6WFa0QYH0YFOFb8t/V+QOB6dK
+	 12Nqgzrqfyw1opDTUHsBgO5z3znDntTa2uOfzlshL6UGwmFw9rDC4KX8/U5Pm3ruyvw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794826114;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794826944;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
 	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:X-Spam-Score;
-	bh=WdV7LfPZ4msOsP2SDeAiTLmjSH9L5rSuovDgUpDr7/o=;
-	b=Gc+KfSyj8nt3IdhzvPW+dVOZOz3ix/0Fo0q5nP/Ttl2L51g/pUoUNLUUhQn7OGIekRym
-	 ov6LlMFKk9s+tvJePKbMIKqnbpj4olw0F2iCTkoGcE1SGRGxgzM8ChdUh26z8UoqYwGP5
-	 7Gvtsb6qq5aINJwP4EjE2Os/uwslyA9qKRwlU2ZfXfC5NKquliSKp3da+Ck2EtsjEZIpV
-	 9FnvJJdFYV3cOaJTY2QObzr2qw+N2Xy6Pzp0owRA1WIaY/coXqnOXC45DNe2nFlu8TAtM
-	 AAtVQM5DBQTHtv7Q7Qr1tJz4uAuajwGog8J8REIvwiSr8o1xYV+FsZOvg3/hDAeiTFw==
+	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
+	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
+	b=q0NchACfu5LBl/oo2/oFJ+qMVfFfMS6JjOqlnzfxefZFxJ5MJqEZyclifSSUdzsVqHnU
+	 erpVOKVYP853GkiNGBdfVqzFQv5sb890ycYv7en+5Mm6g2/cg4RQAIuhImaJznr4Y4Ug7
+	 TmflcC+vl94CjFdMvwYlemz17LIWxLmwzQnz3sML+NTVhGS+387SJt6Tvc+z2y3KjQaMn
+	 jOj3/+0UJGpikFnCRYpd90eflpnVgJLMoEvlukIIxOvOZi2oxaxfbjXk+2DNlg+qHYLHW
+	 Y9s6/lGz3xpFcs9D2UNM0dwTeps2+mxDWTBBzPauLuv5qcxDSiGetU3C+xcAAsNLFSg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=suse.cz;
 	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=JAx15jQz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6yuKD6uR;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=JAx15jQz;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6yuKD6uR;
-	arc=none smtp.remote-ip=195.135.223.130
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV;
+	arc=none smtp.remote-ip=195.135.223.131
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D689A606A31C;
-	Mon, 16 Nov 2026 10:48:33 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D689A606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6921B606A31C;
+	Mon, 16 Nov 2026 11:02:23 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6921B606A31C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=JAx15jQz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6yuKD6uR;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=JAx15jQz;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=6yuKD6uR
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 4030822290;
-	Mon, 16 Nov 2026 10:48:32 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 9A98C1FD38;
+	Mon, 16 Nov 2026 11:02:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794826112; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794826941; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=WdV7LfPZ4msOsP2SDeAiTLmjSH9L5rSuovDgUpDr7/o=;
-	b=JAx15jQzTftUEsIrFEpxbzwWMXmveAo8iHij/8uzgxS3WDfPaepPH8Vik/C1LrWoQEph/+
-	iZsdaCrGUdMc6Rpgdo7n5W7StPbBOdfDrcKVBoWc63lMEBDp26q9AuXaO9JZ4VrDMYurnI
-	Gnqv9JORJnHmfzlQccTlxqpQkU9lUr8=
+	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
+	b=m5xT4FxWfhs/zyAI8agAe7LoG6kv0PNhgm8FfIeYbvTPRTtint7AWkWG9HgUuSUhcMt3/K
+	HxyfZRrNkInhARbOOiK4DykIpqUjBjMAwWxL2XQzor4MjcVbnDgPoORIOouh0h8zwauEQE
+	3tlmZTNweSJPM80cbqK2X/wzBiz0kGI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794826112;
+	s=susede2_ed25519; t=1794826941;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=WdV7LfPZ4msOsP2SDeAiTLmjSH9L5rSuovDgUpDr7/o=;
-	b=6yuKD6uR7WQGQOIBvWjEYpVyQsgPsprYCksV1USMJ2Wrhf53d7sHLjz0lYIP7VomQjEarb
-	1tiIDVnYmORGbaCQ==
-Authentication-Results: smtp-out1.suse.de;
+	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
+	b=QITJlvhVhkoDFdAS/Enz/tCFDnDccQ+1FlmiGUQ0L7nZ1+NYfKqgknnqaLI6mDhJ89eQJH
+	YS2FmZ31zPzziODA==
+Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794826112; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1794826941; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=WdV7LfPZ4msOsP2SDeAiTLmjSH9L5rSuovDgUpDr7/o=;
-	b=JAx15jQzTftUEsIrFEpxbzwWMXmveAo8iHij/8uzgxS3WDfPaepPH8Vik/C1LrWoQEph/+
-	iZsdaCrGUdMc6Rpgdo7n5W7StPbBOdfDrcKVBoWc63lMEBDp26q9AuXaO9JZ4VrDMYurnI
-	Gnqv9JORJnHmfzlQccTlxqpQkU9lUr8=
+	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
+	b=m5xT4FxWfhs/zyAI8agAe7LoG6kv0PNhgm8FfIeYbvTPRTtint7AWkWG9HgUuSUhcMt3/K
+	HxyfZRrNkInhARbOOiK4DykIpqUjBjMAwWxL2XQzor4MjcVbnDgPoORIOouh0h8zwauEQE
+	3tlmZTNweSJPM80cbqK2X/wzBiz0kGI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794826112;
+	s=susede2_ed25519; t=1794826941;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=WdV7LfPZ4msOsP2SDeAiTLmjSH9L5rSuovDgUpDr7/o=;
-	b=6yuKD6uR7WQGQOIBvWjEYpVyQsgPsprYCksV1USMJ2Wrhf53d7sHLjz0lYIP7VomQjEarb
-	1tiIDVnYmORGbaCQ==
+	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
+	b=QITJlvhVhkoDFdAS/Enz/tCFDnDccQ+1FlmiGUQ0L7nZ1+NYfKqgknnqaLI6mDhJ89eQJH
+	YS2FmZ31zPzziODA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 13A2D1334C;
-	Mon, 16 Nov 2026 10:48:32 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6FEC713408;
+	Mon, 16 Nov 2026 11:02:21 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id ryFUOH/f+moMewAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 16 Nov 2026 10:48:32 +0000
+	id 39+PCb3i+moaCwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 16 Nov 2026 11:02:21 +0000
 Received: by quack.suse.cz (Postfix, from userid 1000)
-	id B066624DA6; Mon, 16 Nov 2026 11:48:31 +0100 (CET)
-Date: Mon, 16 Nov 2026 11:48:31 +0100
+	id D0FBA24DB2; Mon, 16 Nov 2026 12:02:20 +0100 (CET)
+Date: Mon, 16 Nov 2026 12:02:20 +0100
 From: Jan Kara <jack@suse.cz>
 To: Mike Snitzer <snitzer@kernel.org>
 Cc: Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>, 
 	linux-mm@kvack.org, Christian Brauner <brauner@kernel.org>, 
 	linux-fsdevel@vger.kernel.org, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
 	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v12 3/7] mm: expose WB_DONTCACHE_DIRTY in bdi debugfs
- stats
-Message-ID: <6npuytxjyfa75iypcnwvu4ayu3puysipkqjyrtssng4cieibue@sdkb62hjosuq>
+Subject: Re: [PATCH v12 0/7] mm, iomap, NFSD: stop DONTCACHE writes reading
+ back shared pages
+Message-ID: <iushs6l3mjqkq65srej4gevaf2oeazy5j5miaipy6yxscetzjd@d4ti4qgbhman>
 References: <20261112190911.84702-1-snitzer@kernel.org>
- <20261112190911.84702-4-snitzer@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -115,9 +114,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261112190911.84702-4-snitzer@kernel.org>
-X-Spam-Flag: NO
-X-Spam-Level: 
+In-Reply-To: <20261112190911.84702-1-snitzer@kernel.org>
 X-Spamd-Result: default: False [-12.80 / 50.00];
 	SUSE_INTERNAL_BYPASS(-9.00)[];
 	BAYES_HAM(-3.00)[100.00%];
@@ -130,7 +127,7 @@ X-Spamd-Result: default: False [-12.80 / 50.00];
 	MISSING_XM_UA(0.00)[];
 	MIME_TRACE(0.00)[0:+];
 	ARC_NA(0.00)[];
-	URIBL_BLOCKED(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email];
+	URIBL_BLOCKED(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo];
 	RCVD_COUNT_THREE(0.00)[3];
 	TO_DN_SOME(0.00)[];
 	FROM_EQ_ENVFROM(0.00)[];
@@ -138,87 +135,134 @@ X-Spamd-Result: default: False [-12.80 / 50.00];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Score: -12.80
+X-Spam-Level: 
+X-Spam-Flag: NO
 
-On Thu 12-11-26 14:09:06, Mike Snitzer wrote:
-> The per-bdi_writeback WB_DONTCACHE_DIRTY counter drives how much the
-> flusher writes back in response to an IOCB_DONTCACHE kick, but it is
-> not reported anywhere, so the DONTCACHE dirty backlog can only be
-> inferred from MemFree/Cached movement.
+Hi!
+
+On Thu 12-11-26 14:09:03, Mike Snitzer wrote:
+> An RWF_DONTCACHE write is buffered IO: its data goes through the page
+> cache, and writeback drops each folio once the folio is written back.
+> A write that starts or ends inside a folio covers that folio only
+> partially.  Usually another write covers the rest of the folio.  If
+> writeback drops the folio before the other write writes its part, the
+> other write must first read the folio back from disk.  32 threads
+> writing interleaved records to one XFS file, 4 KiB pages, before and
+> after 5/7:
 > 
-> Report it as BdiDontcacheDirty in /sys/kernel/debug/bdi/<dev>/stats
-> and as WbDontcacheDirty in the per-wb stats, next to the
-> Reclaimable line.  Use wb_stat_sum() rather than wb_stat() to fold in
-> the per-cpu batches: the flusher targets the summed value and small
-> backlogs would otherwise read as zero.
+>   record  pwritev2() flags          4 KiB device       MiB/s
+>   bytes                             reads per write
+>                                     before   after     before  after
+>   47008   RWF_DONTCACHE             0.97     0.0005    831     2281
+>   47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
+>   6000    RWF_DONTCACHE             0.97     0.0001    121      488
+>   6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
 > 
-> Fixes: 88d6f128d06d ("mm: track DONTCACHE dirty pages per bdi_writeback")
-> Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+> 47008 bytes is the transfer size of IO500's ior-hard, in which each
+> rank writes interleaved records to one shared file.  Any record size
+> that is not a multiple of the page size has the same problem.  6000
+> bytes is a second example.
 
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+OK, I understand the problem but frankly I hate the complexity this
+introduces. Patches 1-3 are good improvements, patch 4 is OK but 5 & 6 look
+too complex for too niche usecase to me. I didn't really pay attention to
+previous revisions of this patch set so I'm sorry if this was discussed but
+can't we just make iomap for unaligned RWF_DONTCACHE write ask for
+minimum-sized folios for the partial edges without FGP_DONTCACHE and
+use FGP_DONTCACHE only for folios fully within write? That will also solve
+the problem with the following write having to read again from the disk and
+it will be much simpler. Sure the edge folios will not be dropped after IO
+completion which may have smaller or larger effect (depending on the
+overall write size) but I'd say that's the cost of userspace making life
+hard for the kernel :-p
 
 								Honza
 
-> ---
->  mm/backing-dev.c | 6 ++++++
->  1 file changed, 6 insertions(+)
 > 
-> diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-> index fad1495d3b200..a09c21759fb9f 100644
-> --- a/mm/backing-dev.c
-> +++ b/mm/backing-dev.c
-> @@ -46,6 +46,7 @@ struct wb_stats {
->  	unsigned long nr_dirty_time;
->  	unsigned long nr_writeback;
->  	unsigned long nr_reclaimable;
-> +	unsigned long nr_dontcache_dirty;
->  	unsigned long nr_dirtied;
->  	unsigned long nr_written;
->  	unsigned long dirty_thresh;
-> @@ -78,6 +79,7 @@ static void collect_wb_stats(struct wb_stats *stats,
->  
->  	stats->nr_writeback += wb_stat(wb, WB_WRITEBACK);
->  	stats->nr_reclaimable += wb_stat(wb, WB_RECLAIMABLE);
-> +	stats->nr_dontcache_dirty += wb_stat_sum(wb, WB_DONTCACHE_DIRTY);
->  	stats->nr_dirtied += wb_stat(wb, WB_DIRTIED);
->  	stats->nr_written += wb_stat(wb, WB_WRITTEN);
->  	stats->wb_thresh += wb_calc_thresh(wb, stats->dirty_thresh);
-> @@ -125,6 +127,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
->  	seq_printf(m,
->  		   "BdiWriteback:       %10lu kB\n"
->  		   "BdiReclaimable:     %10lu kB\n"
-> +		   "BdiDontcacheDirty:  %10lu kB\n"
->  		   "BdiDirtyThresh:     %10lu kB\n"
->  		   "DirtyThresh:        %10lu kB\n"
->  		   "BackgroundThresh:   %10lu kB\n"
-> @@ -139,6 +142,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
->  		   "state:              %10lx\n",
->  		   K(stats.nr_writeback),
->  		   K(stats.nr_reclaimable),
-> +		   K(stats.nr_dontcache_dirty),
->  		   K(stats.wb_thresh),
->  		   K(dirty_thresh),
->  		   K(background_thresh),
-> @@ -163,6 +167,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
->  		   "WbCgIno:           %10lu\n"
->  		   "WbWriteback:       %10lu kB\n"
->  		   "WbReclaimable:     %10lu kB\n"
-> +		   "WbDontcacheDirty:  %10lu kB\n"
->  		   "WbDirtyThresh:     %10lu kB\n"
->  		   "WbDirtied:         %10lu kB\n"
->  		   "WbWritten:         %10lu kB\n"
-> @@ -179,6 +184,7 @@ static void wb_stats_show(struct seq_file *m, struct bdi_writeback *wb,
->  #endif
->  		   K(stats->nr_writeback),
->  		   K(stats->nr_reclaimable),
-> +		   K(stats->nr_dontcache_dirty),
->  		   K(stats->wb_thresh),
->  		   K(stats->nr_dirtied),
->  		   K(stats->nr_written),
+> The test program and script: https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
+> 
+> - 1/7 moves code into a helper, with no functional change.
+> - 2/7 fixes 88d6f128d06d ("mm: track DONTCACHE dirty pages per
+>   bdi_writeback"), in v7.3: WB_DONTCACHE_DIRTY could drift.
+> - 3/7 reports WB_DONTCACHE_DIRTY in the bdi debugfs stats.
+> - 4/7 adds folio_mark_dropbehind() for a folio that is already dirty.
+> - 5/7 keeps a partially covered folio until the write that completes it.
+> - 6/7 lets a writer that syncs its own write complete those folios
+>   itself, after the sync.
+> - 7/7 makes NFSD do that for the misaligned ends of a direct-mode WRITE.
+> 
+> Merging: Chuck suggested taking the series through the mm tree.  1/7 to
+> 6/7 apply cleanly to each of these mm branches:
+> 
+>   mm-unstable  4318887a3efa ("fs/proc/task_mmu: fix lost maps entries above 2^63")
+>   mm-new       daed51c91051 ("riscv: mm: fix concurrency in mark_new_valid_map()")
+>   mm-stable    fa4ad798f6f6 ("Merge tag 'for-7.4-rc1-tag' of git://git.kernel.org/pub/scm/linux/kernel/git/kdave/linux")
+> 
+> 7/7 needs the NFSD direct-mode changes that are in cel/nfsd-testing.
+> The whole series applies to cel/nfsd-testing at ab036e3a0dd4 ("NFSD:
+> Refuse a direct READ whose aligned range exceeds the reply pages"),
+> where each patch builds with W=1 with no warnings.  So 7/7 could follow
+> in the nfsd tree once the mm part is merged.
+> 
+> Changes since v11:
+> - 4/7: folio_mark_dropbehind() leaves a mapped folio unmarked.  Through
+>   its page table, a mapped folio can be dirtied without the folio lock,
+>   and PG_dirty set before the folio is counted.  With a stale dirty tag,
+>   folio_mark_dropbehind() then counted the folio in WB_DONTCACHE_DIRTY,
+>   and the dirtier counted it again.  sashiko found this in its review of
+>   v11 4/7 (https://lore.kernel.org/r/sashiko-outbox-210121@kernel.org).
+>   The folio lock keeps an unmapped folio unmapped, so the window is
+>   closed for every dirtier that does not use buffer heads.
+>   filemap_end_dropbehind() does not drop a mapped folio either.
+> - 6/7: filemap_dontcache_edge_complete() leaves a mapped folio alone,
+>   dirty or clean, to match.
+> - Jeff's Reviewed-by is dropped from 4/7, which now has a code change.
+> - Testing: a KUnit test (not in this series) runs the interleaving from
+>   sashiko's review step by step.  On an unmapped folio, the folio is
+>   counted twice.  On a mapped folio, v12 leaves it unmarked and the
+>   count is correct.  The v11 tests through NFSD and with RWF_DONTCACHE
+>   give the same results with v12.
+> - Rebased on the current cel/nfsd-testing.
+> 
+> v11: https://lore.kernel.org/linux-nfs/20261111015607.46338-1-snitzer@kernel.org/
+> v10: https://lore.kernel.org/linux-nfs/20261103211754.35352-1-snitzer@kernel.org/
+> v9: https://lore.kernel.org/linux-nfs/20261024221152.6965-1-snitzer@kernel.org/
+> v8: https://lore.kernel.org/linux-nfs/20261023024548.71123-1-snitzer@kernel.org/
+> v7: https://lore.kernel.org/linux-nfs/20261020220346.28020-1-snitzer@kernel.org/
+> v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
+> v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kernel.org/
+> v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kernel.org/
+> v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kernel.org/
+> v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
+> v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
+> 
+> Thanks,
+> Mike
+> 
+> Mike Snitzer (7):
+>   mm: move clearing the dropbehind flag of a found folio into a helper
+>   mm: take a folio off WB_DONTCACHE_DIRTY only if it was counted there
+>   mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
+>   mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
+>   mm, iomap: keep a partially covered page until a DONTCACHE write completes it
+>   mm, iomap: let a DONTCACHE writer complete its shared pages itself
+>   NFSD: drop a shared boundary page only once both WRITEs have written it
+> 
+>  .../filesystems/nfs/nfsd-io-modes.rst         |  18 ++
+>  fs/iomap/buffered-io.c                        |  30 ++-
+>  fs/iomap/trace.h                              |   3 +-
+>  fs/nfsd/vfs.c                                 | 107 ++++++++-
+>  include/linux/fs.h                            |   5 +-
+>  include/linux/iomap.h                         |   1 +
+>  include/linux/pagemap.h                       |  12 +
+>  mm/backing-dev.c                              |   6 +
+>  mm/filemap.c                                  | 219 ++++++++++++++++--
+>  9 files changed, 370 insertions(+), 31 deletions(-)
+> 
+> 
+> base-commit: ab036e3a0dd410f762192f33d6244e7993b36f8d
 > -- 
 > 2.52.0
 > 
