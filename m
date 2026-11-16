@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827181;
-	b=PfdSFc4fEZiQ7/MKEtSZbzU6R9KSF/Svbe6DSgg0s4pDN9zB/S7nndMp24nS6pJVoY1h
-	 /dcNb+CGJz27+qm9j1F4ipx9dvituwOI5otjougZGN/4fA/6+J6PqCvhLynbB7+sZrL/Y
-	 qDBPNHujmkv+rYSb+D4TbXPu2Wwr9oSRVE2K/Aq7ZA4vgHDkxyYw3GU46tPHKG7n/FX/F
-	 JGQQXO8FydG67F828dhkrxXeLiEq1uQD35PQcNUSy9CMW2Is2M9+1LDB61t2qVglN1Fbv
-	 TXxwliwoJyFTLd1pWCe5DVDjHLR+4C/A2lJ0/cGawCw7pwjiA6u6MBexj7N9pBwjNdg==
+	t=1794827188;
+	b=ydrtJNeaGP+0RFJe7h99kTwSfbBPuP/ON/zg2o1vxOyTbZtmcz77njo7BccN/Olo8goL
+	 aCdFlyJyijck/N6Gsp14i+77/wH3L2yAyE3tYMaRA01RfvB+n10Y3djG24JzYPxp+vZR7
+	 87nbHBG5qNN+8tJUw2HVYapbRo98YvWFO2EYJcqGc7muUlELVyqo5sSobSuNwsYQp25Eo
+	 PLVllJWdkyzSZhvoNAzTDq7qaikxOmW5Waa83ev4k9J5f3ZxlPAPY9qJRey8bRESrYmZl
+	 phsRXrOsc5UNOxXfgW7YMIheJUN9MbDHdBXw0MWOaU1ieGlJNTYmW0+W58DEHCJtCtQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827181;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827188;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=VWUjc/lm6IOzTKu/XrjxEXkA+3TDHZe6UgBZOCqPWKg=;
-	b=CAzEvNRd2NQIAaIOQEzfl3v6Bq8tDUKsQK71rNUnccUFwNZDfN0VOQadVimUCpfaqnBE
-	 RBVLc+z7szscfB6hO9VDH8op3ry2RwFH+2xgwBjTCr9DqXM25WgTZ94efmouC38etWysn
-	 IeM6dzTm3mzvMs0EK8gGZSRG23UzFc8AT6QtGYtR8KDxf92uIZl+X6Eam2VJBmshFPi0i
-	 DY95qrLRALKtp3Jd9E3vjP3wrSkOh0TtvBdy9MVmxNyHfjnGTWvfyq97RZy5l4PpZfojc
-	 j/4ztbVzC2Mtp42IfWV+IrDMfgGgWixLnXmt0WxoR2diEI0wLRCvEdxpAI1XUJcIZzw==
+	bh=V+osxLoh40BKAExDHaAgHTnjFjsOBXyAUQavRmbvZdM=;
+	b=uCHgSUCoXHpOd+EC7TUk2hJ5nZnBdde6h0gC5VRYZhIl+YaA4CXc3gnn52K/amKbALzB
+	 tVjQfHZsqCxpEePD28GyGpwfdyj9VHfKbiW89Z5qfLGt8bq4Mix5fb47E7X6+eZziPiU6
+	 wKc1KZm/RQOdyR9ZogofwAcuITmEN9r0rydbxdN3gdrH05Ai1uHUPlDGPrY86K0Pk10LK
+	 qfA9XRR4FX+y0tOXMD5EkZ2PpAmBdl+ORtunEInFz1jZ6KKOl/GN/Xu/9YVJ9Hk+9vLzU
+	 xV1Fzpu6L5czsu/Z5TOgayKfi/Hxr2L2tbeOMzefneLs6tOJgDalwRP7SB5Vmn2AL1g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gqYeWMoi;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mmCSykMY;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BC3F606AB6A;
-	Mon, 16 Nov 2026 11:06:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F21E606A33B;
+	Mon, 16 Nov 2026 11:06:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gqYeWMoi
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B1CE11F000C4;
-	Mon, 16 Nov 2026 11:06:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mmCSykMY
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3410E1F000C6;
+	Mon, 16 Nov 2026 11:06:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794827180;
-	bh=VWUjc/lm6IOzTKu/XrjxEXkA+3TDHZe6UgBZOCqPWKg=;
+	s=k20260515; t=1794827188;
+	bh=V+osxLoh40BKAExDHaAgHTnjFjsOBXyAUQavRmbvZdM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=gqYeWMoiimKnvtxsZfDhW+FmTOi7BTYxF7bo1d97YCVIcFzQE/1quY4S5XouMi3vB
-	 mIvfX8HLza9wbhVfQveoZSPNYa7EZm6PUCmHQ7skz2lmq1+o5ujqB3Qz/i2/xmyuvR
-	 0b4/gWtXnDtYIY3WrioVdCD8nsc4XHXOdDDcY2gKhZ/KosrpWqVHiN6+7kfAXc2Ahu
-	 If9E+wIs0Kg08YhaHkaKtxLqpKU3MXnTXiDfJS25gkPWQfrBhMW81NVuUjfaEMsu6P
-	 vgEPDQeb4sn9onP21h80NsMHJnf9A+r8P+Co4bTECH6PFFrHeRa5TxSI1gVwQGLhtT
-	 OalR/X8sFsCZQ==
+	b=mmCSykMYbLbUMgfAzsTRriPXLKntVd5F4h0335Zci+KFp7/M6E26jCvFFmFm6/FOh
+	 ZimtlOfuTCf0AKdMb7DArxCbNTGAd0e0/CO69vZW620lEXfAn1pqfCoje10jxhSc1J
+	 cSFCUZF5FEkl71fXKb5wgdAjz1AWCWq6VhUkPeo06V02hbI/WxzaCyHgNvxkzI3sLo
+	 2GdAQUK0Zyr6xa2Qe+qIUwF/i/vhwqVU6IgGnQbVzU/wiykqChN6i8GKS5TT8NvnN7
+	 zLrxUiks7eYGPstb/dmbg814Xp6NJSPByht4od2BBPOlpnQ+JR68HmJS8oj1md4KvV
+	 tKiRrZHSvNGsg==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 16 Nov 2026 12:04:35 +0100
-Subject: [PATCH RFC v3 02/44] nvmet: check that the file backend supports
- ->{read,write}_iter
+Date: Mon, 16 Nov 2026 12:04:36 +0100
+Subject: [PATCH RFC v3 03/44] target: fileio: check that the backing file
+ supports ->{read,write}_iter
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-work-loop-pseudo-v3-2-8cbbea1cf34f@kernel.org>
+Message-Id: <20261116-work-loop-pseudo-v3-3-8cbbea1cf34f@kernel.org>
 References: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 In-Reply-To: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -77,50 +77,53 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  "Christian Brauner (Amutable)" <brauner@kernel.org>, 
  Chris Down <chris@chrisdown.name>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1339; i=brauner@kernel.org;
- h=from:subject:message-id; bh=EG8EaOiS0vQgTkKg5XSiMzmkRFf0paS6Df2fYJxqpSs=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9epzAcWr709tb5k+1mZtXOrOoKe7FjPPX93rnL01cc
- mp3sNpj3o5SFgYxLgZZMUUWh3aTcLnlPBWbjTI1YOawMoEMYeDiFICJxH1n+Ke3fG/p7vfHb83W
- Mp77jIfTTjdGPfuMqexdx60Xbl2XDD/E8D9576foPweu5yU+nf3y9bU/t+YHf7W8oOhp5cy3bNl
- qq+9cAA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1508; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=tSA3soIyhcve68q21MuFcaunaKBcO2eetu56IE80bMc=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9epzEXGTe+sJUZYufjwnje3Vtz4w3241//XLYb7Dlz
+ clNJz9d7ShlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZiIxk9Ght6dlz/J/z+mfrBJ
+ vHbFY9ZvJotOF860Pjt95QXHWeof7qkzMlxf+8bzxp25H/hkNDaErSk2OqtYfjKAI+ps4N2d1nc
+ PbGMBAA==
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-The file backend calls ->read_iter() and ->write_iter() of the backing
-file directly but never checks that they exist. Everything that isn't a
-block device ends up in the file backend. So a namespace pointing to a
-file without them calls a NULL pointer on its first I/O. Only
-buffered_io=1 gets that far as the O_DIRECT open fails for such files.
+With fd_async_io=1 the fileio backend calls ->read_iter() and
+->write_iter() of the backing file directly. The synchronous path goes
+through vfs_iter_read() and vfs_iter_write() which check for them but
+the aio path doesn't. So a backing file without them calls a NULL
+pointer on its first I/O.
 
-Refuse them when the namespace is enabled the same way zloop does since
-commit 0c10f8a1a7ae ("zloop: check that the zone backing file support
-->{read,write}_iter").
+Refuse such files when configuring the device. On the synchronous path
+every read or write that needed the missing method failed with EINVAL
+anyway.
 
-Fixes: d5eff33ee6f8 ("nvmet: add simple file backed ns support")
+Fixes: 769031c92c8b ("scsi: target: target/file: Add support of direct and async I/O")
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Chris Down <chris@chrisdown.name>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- drivers/nvme/target/io-cmd-file.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ drivers/target/target_core_file.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/drivers/nvme/target/io-cmd-file.c b/drivers/nvme/target/io-cmd-file.c
-index 695963dd932ee..dfa8aa46188c8 100644
---- a/drivers/nvme/target/io-cmd-file.c
-+++ b/drivers/nvme/target/io-cmd-file.c
-@@ -47,6 +47,11 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
- 		return ret;
+diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
+index ab9824a4852f1..a5391e57e9aa5 100644
+--- a/drivers/target/target_core_file.c
++++ b/drivers/target/target_core_file.c
+@@ -144,6 +144,14 @@ static int fd_configure_device(struct se_device *dev)
+ 		goto fail;
  	}
- 
-+	if (!ns->file->f_op->read_iter || !ns->file->f_op->write_iter) {
+ 	fd_dev->fd_file = file;
++
++	if (!file->f_op->read_iter || !file->f_op->write_iter) {
++		pr_err("FILEIO: %s lacks ->read_iter or ->write_iter\n",
++		       fd_dev->fd_dev_name);
 +		ret = -EINVAL;
-+		goto err;
++		goto fail;
 +	}
 +
- 	nvmet_file_ns_revalidate(ns);
- 
  	/*
+ 	 * If using a block backend with this struct file, we extract
+ 	 * fd_dev->fd_[block,dev]_size from struct block_device.
 
 -- 
 2.53.0
