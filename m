@@ -1,108 +1,50 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794826944;
-	b=cF8ptl78+6jNVE3qrqm4bubWuBNG1U9iwzKBpnoOgm2StUSrUv12qvWJneZ6YTQiEc13
-	 7HiKf3paeEFgWk436TtMLSienkcq410STogrrQwfTcClZCCAeD+JK+NMBB4VIHbNdWSZP
-	 YFR5As8V/tJxrKtBswy6eAJ3PJOBKWDrgPiOBsmVvjl/thowK4Aqq5eNZ9m7CgQ5eFDki
-	 t4ODlKxTnXjTwHswef34IzOt2RcpdQ6ymY72ZJHK3VFT6WFa0QYH0YFOFb8t/V+QOB6dK
-	 12Nqgzrqfyw1opDTUHsBgO5z3znDntTa2uOfzlshL6UGwmFw9rDC4KX8/U5Pm3ruyvw==
+	t=1794827065;
+	b=Mp2w7l8puSqP3/mF7EOi+lC0EvA2gs2oy/OCov4A4yEuYtHGHgdcOggC0KZvLGtvLDFx
+	 0XCvFqOW1MT5GKYnKhJ9LXdGi1Ahod1onLqDJoBM/I8RMM7grpdXtmvimAU7xFMa8jWWa
+	 01ndclItPf2lv0VY0WmWVAbSkjzr3nr9UTjEFcrySVlXxfofvUq6CiMBGptfwfC9Zulw5
+	 OeuOIglFzgaM91DzhdgchTsEobJFFM5Xzr9my9PIh9Y67NnDgBiBzaGp+9NogYn/mDtKz
+	 Dya/fJjjNd05LyAvhBE9UAQFRcpjBTY9HW44lF7BShYnYJ1kDk3oHXcdGeawFqtdhGg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794826944;
-	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
-	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
-	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
-	b=q0NchACfu5LBl/oo2/oFJ+qMVfFfMS6JjOqlnzfxefZFxJ5MJqEZyclifSSUdzsVqHnU
-	 erpVOKVYP853GkiNGBdfVqzFQv5sb890ycYv7en+5Mm6g2/cg4RQAIuhImaJznr4Y4Ug7
-	 TmflcC+vl94CjFdMvwYlemz17LIWxLmwzQnz3sML+NTVhGS+387SJt6Tvc+z2y3KjQaMn
-	 jOj3/+0UJGpikFnCRYpd90eflpnVgJLMoEvlukIIxOvOZi2oxaxfbjXk+2DNlg+qHYLHW
-	 Y9s6/lGz3xpFcs9D2UNM0dwTeps2+mxDWTBBzPauLuv5qcxDSiGetU3C+xcAAsNLFSg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827065;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=K6hcsOKot76i6ofOuhnqMqhE4PYGjzAJldUZv2AbfjY=;
+	b=TZYjSp03rT+BhHwAj4k+bVnSSruv9QB2cqbeYrkt/vay3puYzYIsXEWTANx4zREiIf0c
+	 TDLOQSXShhPwQ/qU6NfrdnahhpaES3HY4LJsSLnd4iRT7Zxqt9MU5dJ6lIMU4+j3Yi00w
+	 yiWx3YqE9OZ9bmYljqx44ihORSPhK1DyM2wuUlZgG+jIpdSPYsSnT5XEPUAISs6MnCX2D
+	 ADmy6O8HgfjKfIeGIAx2Wn82pRJChEBFHtC6iKMXq6D9QRQ2AmKUqcelP8BfOIg2dIyP5
+	 EXHr1zObHA4sRK9oN5BULjo1puzSzVAdYDo6vNVulLxwgChhAy+S+9vdV8OsMiMzKdg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=suse.cz;
-	spf=pass smtp.mailfrom=suse.cz;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yv+83Ada;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6921B606A31C;
-	Mon, 16 Nov 2026 11:02:23 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6921B606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1331E606A323;
+	Mon, 16 Nov 2026 11:04:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
-	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=m5xT4FxW;
-	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=QITJlvhV
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 9A98C1FD38;
-	Mon, 16 Nov 2026 11:02:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794826941; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
-	b=m5xT4FxWfhs/zyAI8agAe7LoG6kv0PNhgm8FfIeYbvTPRTtint7AWkWG9HgUuSUhcMt3/K
-	HxyfZRrNkInhARbOOiK4DykIpqUjBjMAwWxL2XQzor4MjcVbnDgPoORIOouh0h8zwauEQE
-	3tlmZTNweSJPM80cbqK2X/wzBiz0kGI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794826941;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
-	b=QITJlvhVhkoDFdAS/Enz/tCFDnDccQ+1FlmiGUQ0L7nZ1+NYfKqgknnqaLI6mDhJ89eQJH
-	YS2FmZ31zPzziODA==
-Authentication-Results: smtp-out2.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1794826941; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
-	b=m5xT4FxWfhs/zyAI8agAe7LoG6kv0PNhgm8FfIeYbvTPRTtint7AWkWG9HgUuSUhcMt3/K
-	HxyfZRrNkInhARbOOiK4DykIpqUjBjMAwWxL2XQzor4MjcVbnDgPoORIOouh0h8zwauEQE
-	3tlmZTNweSJPM80cbqK2X/wzBiz0kGI=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1794826941;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=zMrJA+gjZFjeo0ud1+bDTEk2lqHpB6cq2ulbdh6191o=;
-	b=QITJlvhVhkoDFdAS/Enz/tCFDnDccQ+1FlmiGUQ0L7nZ1+NYfKqgknnqaLI6mDhJ89eQJH
-	YS2FmZ31zPzziODA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6FEC713408;
-	Mon, 16 Nov 2026 11:02:21 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 39+PCb3i+moaCwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 16 Nov 2026 11:02:21 +0000
-Received: by quack.suse.cz (Postfix, from userid 1000)
-	id D0FBA24DB2; Mon, 16 Nov 2026 12:02:20 +0100 (CET)
-Date: Mon, 16 Nov 2026 12:02:20 +0100
-From: Jan Kara <jack@suse.cz>
-To: Mike Snitzer <snitzer@kernel.org>
-Cc: Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>, 
-	linux-mm@kvack.org, Christian Brauner <brauner@kernel.org>, 
-	linux-fsdevel@vger.kernel.org, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v12 0/7] mm, iomap, NFSD: stop DONTCACHE writes reading
- back shared pages
-Message-ID: <iushs6l3mjqkq65srej4gevaf2oeazy5j5miaipy6yxscetzjd@d4ti4qgbhman>
-References: <20261112190911.84702-1-snitzer@kernel.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yv+83Ada
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 086591F000D1;
+	Mon, 16 Nov 2026 11:04:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1794827064;
+	bh=K6hcsOKot76i6ofOuhnqMqhE4PYGjzAJldUZv2AbfjY=;
+	h=From:Subject:Date:To:Cc;
+	b=Yv+83AdaI+rMIF6ZcVumQESxSFqk/+q4KEQ/dNYe1vqGAjhO4UZuY0f32upeyeIcL
+	 U7luNKMRuAsOI84eZrIlAJi/zJYCE8A/tcPIQNVv+qkGeMR+iT2Qd/a23r3cWeRQU+
+	 uTSVeXg9wu6s2JknLRPylmOgOMgs4JvwAc752i150GOLDrUHLrkFmN2Gzfynarvx/9
+	 MQjhumagM8tTagR1n3h7iQmHaV8zyZ3rBpUM5zVesg7Yce9jIpL6WN2evAWJQVcUQz
+	 5lL6SvuerYCNW4EDL0oKuEOdAKrLTwc4zYsCSCXp8DAReNjFGyaadFvjQMB+WH5CwD
+	 iQFheHbOkWpOg==
+From: Christian Brauner <brauner@kernel.org>
+Subject: [PATCH v2 00/17] fs: take freeze protection for writes to backing
+ files
+Date: Mon, 16 Nov 2026 12:03:40 +0100
+Message-Id: <20261116-work-fs-frozen_writes-v2-0-ecc4a2aac40e@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -112,160 +54,110 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261112190911.84702-1-snitzer@kernel.org>
-X-Spamd-Result: default: False [-12.80 / 50.00];
-	SUSE_INTERNAL_BYPASS(-9.00)[];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	URIBL_BLOCKED(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo];
-	RCVD_COUNT_THREE(0.00)[3];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	RCPT_COUNT_SEVEN(0.00)[9];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	RCVD_TLS_LAST(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -12.80
-X-Spam-Level: 
-X-Spam-Flag: NO
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOQQ6CMBBFr0K6toRWRHTlPQwxbZ1CxbRmBkEl3
+ F2KceHC5Zv8eXkjI0AHxPbJyBB6Ry74GeQqYaZRvgbuzjMzmclCCLHmQ8CWW+IWwwv8aUDXAfE
+ sl0ZtC6mtLtn8e0Ow7rF4j9WH6a4vYLooiwutCLhG5U0TT1GbWkp/tGkcxXHjqAv4XCp7EaXfo
+ PxPUC94xu1GQSFMuSu1OLSAHq5pwJpV0zS9AYIJ+TH6AAAA
+X-Change-ID: 20261113-work-fs-frozen_writes-042ca762bfb8
+To: Jan Kara <jack@suse.cz>
+Cc: Shakeel Butt <shakeel.butt@linux.dev>, 
+ Alexander Viro <viro@zeniv.linux.org.uk>, Jens Axboe <axboe@kernel.dk>, 
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ io-uring@vger.kernel.org, Christoph Hellwig <hch@lst.de>, 
+ linux-block@vger.kernel.org, linux-nvme@lists.infradead.org, 
+ linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
+ linux-unionfs@vger.kernel.org, bpf@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, 
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org, 
+ Amir Goldstein <amir73il@gmail.com>
+X-Mailer: b4 0.17-dev-ce4c1
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3938; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=aJ8lkhUZfSAZD0d0zDSWnIQ89Aj8tUdfJ3u4ID7PtUE=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9eixbv91/Cx9PdNTthXsErvIYvLi4cEr/18tX/HtEJ
+ pfvP/W+sKOUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAie24w/A+ctEfepmXaNH6+
+ fUv+voy9HejBG/Od15BdYyPzrWxh5+WMDKe+GJ5fa2TqoDH18nZZNmF57r7kO2y31r/wVrK0UDL
+ h4QAA
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Hi!
+While testing the pseudo filesystem series I noticed that zloop, the
+nvme target's file backend and the fileio backend of the scsi target
+with fd_async_io=1 call ->write_iter() of their backing files without
+taking freeze protection. So their writes go straight through to a
+frozen filesystem. ext4 complains loudly:
 
-On Thu 12-11-26 14:09:03, Mike Snitzer wrote:
-> An RWF_DONTCACHE write is buffered IO: its data goes through the page
-> cache, and writeback drops each folio once the folio is written back.
-> A write that starts or ends inside a folio covers that folio only
-> partially.  Usually another write covers the rest of the folio.  If
-> writeback drops the folio before the other write writes its part, the
-> other write must first read the folio back from disk.  32 threads
-> writing interleaved records to one XFS file, 4 KiB pages, before and
-> after 5/7:
-> 
->   record  pwritev2() flags          4 KiB device       MiB/s
->   bytes                             reads per write
->                                     before   after     before  after
->   47008   RWF_DONTCACHE             0.97     0.0005    831     2281
->   47008   RWF_DONTCACHE|RWF_DSYNC   0.99     0.0005    601     1227
->   6000    RWF_DONTCACHE             0.97     0.0001    121      488
->   6000    RWF_DONTCACHE|RWF_DSYNC   0.99     0.0002     90      206
-> 
-> 47008 bytes is the transfer size of IO500's ior-hard, in which each
-> rank writes interleaved records to one shared file.  Any record size
-> that is not a multiple of the page size has the same problem.  6000
-> bytes is a second example.
+    WARNING: fs/ext4/ext4_jbd2.c:90 at ext4_journal_check_start+0x1f6/0x2d0
 
-OK, I understand the problem but frankly I hate the complexity this
-introduces. Patches 1-3 are good improvements, patch 4 is OK but 5 & 6 look
-too complex for too niche usecase to me. I didn't really pay attention to
-previous revisions of this patch set so I'm sorry if this was discussed but
-can't we just make iomap for unaligned RWF_DONTCACHE write ask for
-minimum-sized folios for the partial edges without FGP_DONTCACHE and
-use FGP_DONTCACHE only for folios fully within write? That will also solve
-the problem with the following write having to read again from the disk and
-it will be much simpler. Sure the edge folios will not be dropped after IO
-completion which may have smaller or larger effect (depending on the
-overall write size) but I'd say that's the cost of userspace making life
-hard for the kernel :-p
+Loop doesn't get it right for discard and write zeroes. Those end up
+calling ->fallocate() of the backing file directly. The fileio backend
+does the same for UNMAP. And zloop records its write pointers on flush
+with vfs_setxattr() which leaves freeze protection to the caller. So all
+of them modify a frozen filesystem just the same. Fix them too.
 
-								Honza
+Looking for more of the same turned up a few simple ones. coredump
+truncates the core file, overlayfs stores its uuid xattr on mount, nfsd
+truncates on OPEN and the BPF xattr kfuncs modify xattrs, all without
+freeze protection. Fix those as well. The ones that need more work in
+their subsystems I have reported separately.
 
-> 
-> The test program and script: https://lore.kernel.org/linux-nfs/atqJBS8MlYfeUU-t@kernel.org/
-> 
-> - 1/7 moves code into a helper, with no functional change.
-> - 2/7 fixes 88d6f128d06d ("mm: track DONTCACHE dirty pages per
->   bdi_writeback"), in v7.3: WB_DONTCACHE_DIRTY could drift.
-> - 3/7 reports WB_DONTCACHE_DIRTY in the bdi debugfs stats.
-> - 4/7 adds folio_mark_dropbehind() for a folio that is already dirty.
-> - 5/7 keeps a partially covered folio until the write that completes it.
-> - 6/7 lets a writer that syncs its own write complete those folios
->   itself, after the sync.
-> - 7/7 makes NFSD do that for the misaligned ends of a direct-mode WRITE.
-> 
-> Merging: Chuck suggested taking the series through the mm tree.  1/7 to
-> 6/7 apply cleanly to each of these mm branches:
-> 
->   mm-unstable  4318887a3efa ("fs/proc/task_mmu: fix lost maps entries above 2^63")
->   mm-new       daed51c91051 ("riscv: mm: fix concurrency in mark_new_valid_map()")
->   mm-stable    fa4ad798f6f6 ("Merge tag 'for-7.4-rc1-tag' of git://git.kernel.org/pub/scm/linux/kernel/git/kdave/linux")
-> 
-> 7/7 needs the NFSD direct-mode changes that are in cel/nfsd-testing.
-> The whole series applies to cel/nfsd-testing at ab036e3a0dd4 ("NFSD:
-> Refuse a direct READ whose aligned range exceeds the reply pages"),
-> where each patch builds with W=1 with no warnings.  So 7/7 could follow
-> in the nfsd tree once the mm part is merged.
-> 
-> Changes since v11:
-> - 4/7: folio_mark_dropbehind() leaves a mapped folio unmarked.  Through
->   its page table, a mapped folio can be dirtied without the folio lock,
->   and PG_dirty set before the folio is counted.  With a stale dirty tag,
->   folio_mark_dropbehind() then counted the folio in WB_DONTCACHE_DIRTY,
->   and the dirtier counted it again.  sashiko found this in its review of
->   v11 4/7 (https://lore.kernel.org/r/sashiko-outbox-210121@kernel.org).
->   The folio lock keeps an unmapped folio unmapped, so the window is
->   closed for every dirtier that does not use buffer heads.
->   filemap_end_dropbehind() does not drop a mapped folio either.
-> - 6/7: filemap_dontcache_edge_complete() leaves a mapped folio alone,
->   dirty or clean, to match.
-> - Jeff's Reviewed-by is dropped from 4/7, which now has a code change.
-> - Testing: a KUnit test (not in this series) runs the interleaving from
->   sashiko's review step by step.  On an unmapped folio, the folio is
->   counted twice.  On a mapped folio, v12 leaves it unmarked and the
->   count is correct.  The v11 tests through NFSD and with RWF_DONTCACHE
->   give the same results with v12.
-> - Rebased on the current cel/nfsd-testing.
-> 
-> v11: https://lore.kernel.org/linux-nfs/20261111015607.46338-1-snitzer@kernel.org/
-> v10: https://lore.kernel.org/linux-nfs/20261103211754.35352-1-snitzer@kernel.org/
-> v9: https://lore.kernel.org/linux-nfs/20261024221152.6965-1-snitzer@kernel.org/
-> v8: https://lore.kernel.org/linux-nfs/20261023024548.71123-1-snitzer@kernel.org/
-> v7: https://lore.kernel.org/linux-nfs/20261020220346.28020-1-snitzer@kernel.org/
-> v6: https://lore.kernel.org/linux-nfs/atbfEbgMU6UGkn2X@kernel.org/
-> v5: https://lore.kernel.org/linux-nfs/20261019150725.1507-1-snitzer@kernel.org/
-> v4: https://lore.kernel.org/linux-nfs/20261015233309.42999-1-snitzer@kernel.org/
-> v3: https://lore.kernel.org/linux-nfs/20261001045502.48381-1-snitzer@kernel.org/
-> v2: https://lore.kernel.org/linux-nfs/20260929231329.22018-1-snitzer@kernel.org/
-> v1: https://lore.kernel.org/linux-nfs/20260929173423.16149-1-snitzer@kernel.org/
-> 
-> Thanks,
-> Mike
-> 
-> Mike Snitzer (7):
->   mm: move clearing the dropbehind flag of a found folio into a helper
->   mm: take a folio off WB_DONTCACHE_DIRTY only if it was counted there
->   mm: expose WB_DONTCACHE_DIRTY in bdi debugfs stats
->   mm: add folio_mark_dropbehind() to mark a folio dropbehind and account it
->   mm, iomap: keep a partially covered page until a DONTCACHE write completes it
->   mm, iomap: let a DONTCACHE writer complete its shared pages itself
->   NFSD: drop a shared boundary page only once both WRITEs have written it
-> 
->  .../filesystems/nfs/nfsd-io-modes.rst         |  18 ++
->  fs/iomap/buffered-io.c                        |  30 ++-
->  fs/iomap/trace.h                              |   3 +-
->  fs/nfsd/vfs.c                                 | 107 ++++++++-
->  include/linux/fs.h                            |   5 +-
->  include/linux/iomap.h                         |   1 +
->  include/linux/pagemap.h                       |  12 +
->  mm/backing-dev.c                              |   6 +
->  mm/filemap.c                                  | 219 ++++++++++++++++--
->  9 files changed, 370 insertions(+), 31 deletions(-)
-> 
-> 
-> base-commit: ab036e3a0dd410f762192f33d6244e7993b36f8d
-> -- 
-> 2.52.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+The fileio backend also frees its aio command in the completion handler
+while the filesystem may still be using the kiocb. KASAN catches ext4
+doing that for direct reads on v7.4-rc1. ext4 gets its own fix (cf. [1])
+but fileio should hold a reference across the submission like loop,
+zloop and fs/backing-file.c do.
+
+[1]: https://lore.kernel.org/r/20261113-work-ext4-dio_read_kiocb-v1-1-172a88be803c@kernel.org
+[2]: https://lore.kernel.org/r/20261116064654.GA2964@lst.de
+
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
+---
+Changes in v2:
+- Add kiocb_write_iter() and kiocb_end_write_iter() and use them for
+  zloop, the nvme target and fileio as per Christoph's suggestion.
+- Add a file_write guard and use it for loop discard and write zeroes
+  and fileio unmap.
+- Convert loop, vfs_iocb_iter_write() and fs/backing-file.c to the new
+  helpers.
+- Only complete the fileio target command when the last reference to
+  the aio command is dropped.
+- Link to v1: https://patch.msgid.link/20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org
+
+---
+Christian Brauner (17):
+      fs: add kiocb_start_write_trylock()
+      fs: add kiocb_write_iter() and kiocb_end_write_iter()
+      fs: add file_write guard
+      zloop: take freeze protection for writes
+      nvmet: take freeze protection for writes to files
+      target: fileio: don't free the aio command under the filesystem
+      target: fileio: take freeze protection for aio writes
+      loop: take freeze protection for discard and write zeroes
+      zloop: take freeze protection when recording write pointers
+      target: fileio: take freeze protection for unmap
+      coredump: take freeze protection for the truncate
+      ovl: take freeze protection when storing the uuid
+      bpf: fs/xattr: take freeze protection in the xattr kfuncs
+      nfsd: take freeze protection for the truncate on open
+      loop: use kiocb_write_iter()
+      fs: use kiocb_write_iter() in vfs_iocb_iter_write()
+      backing-file: use kiocb_end_write_iter()
+
+ drivers/block/loop.c              | 13 ++++---
+ drivers/block/zloop.c             | 12 +++++--
+ drivers/nvme/target/io-cmd-file.c | 20 +++++++----
+ drivers/target/target_core_file.c | 31 +++++++++++-----
+ fs/backing-file.c                 |  8 ++---
+ fs/bpf_fs_kfuncs.c                |  8 +++++
+ fs/coredump.c                     |  6 ++--
+ fs/nfsd/nfs4state.c               | 10 +++++-
+ fs/overlayfs/util.c               |  8 +++--
+ fs/read_write.c                   |  7 ++--
+ include/linux/fs.h                | 75 +++++++++++++++++++++++++++++++++++++++
+ io_uring/rw.c                     |  9 +----
+ 12 files changed, 158 insertions(+), 49 deletions(-)
+---
+base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
+change-id: 20261113-work-fs-frozen_writes-042ca762bfb8
+
