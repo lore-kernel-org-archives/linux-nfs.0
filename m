@@ -1,50 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827065;
-	b=Mp2w7l8puSqP3/mF7EOi+lC0EvA2gs2oy/OCov4A4yEuYtHGHgdcOggC0KZvLGtvLDFx
-	 0XCvFqOW1MT5GKYnKhJ9LXdGi1Ahod1onLqDJoBM/I8RMM7grpdXtmvimAU7xFMa8jWWa
-	 01ndclItPf2lv0VY0WmWVAbSkjzr3nr9UTjEFcrySVlXxfofvUq6CiMBGptfwfC9Zulw5
-	 OeuOIglFzgaM91DzhdgchTsEobJFFM5Xzr9my9PIh9Y67NnDgBiBzaGp+9NogYn/mDtKz
-	 Dya/fJjjNd05LyAvhBE9UAQFRcpjBTY9HW44lF7BShYnYJ1kDk3oHXcdGeawFqtdhGg==
+	t=1794827073;
+	b=GOMSSvwdKNocb8h/Doe4204ARIaPYkNZaqBEBIpdnutIBAz6vY8/fExSD7ZM8IacNtdN
+	 q7V21hsDxUWh9NIU4p2wtn4bYngDK/5pqlKjL36D52+gMAZ40gQrtvxKKy7t5AJ5GZyk8
+	 I47hMTEbk4ktjydpERId9OU7sZoh/H6DKFOQbZHffRf7RJ5snUq14xBB+2gsn/bVDx0jM
+	 3VkIe4yGmentbmTSDMm0iWCasphabIl7eyB0SsMIXd+dAQyPgqw1W6/dJt+RygtXg+4g8
+	 An+cxCc14VuLrS5RHMbqcUTfakaf6fWNipd2qrW5Nt1Xa5vIyqiBHi1huP0DTnzrWIg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827065;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=K6hcsOKot76i6ofOuhnqMqhE4PYGjzAJldUZv2AbfjY=;
-	b=TZYjSp03rT+BhHwAj4k+bVnSSruv9QB2cqbeYrkt/vay3puYzYIsXEWTANx4zREiIf0c
-	 TDLOQSXShhPwQ/qU6NfrdnahhpaES3HY4LJsSLnd4iRT7Zxqt9MU5dJ6lIMU4+j3Yi00w
-	 yiWx3YqE9OZ9bmYljqx44ihORSPhK1DyM2wuUlZgG+jIpdSPYsSnT5XEPUAISs6MnCX2D
-	 ADmy6O8HgfjKfIeGIAx2Wn82pRJChEBFHtC6iKMXq6D9QRQ2AmKUqcelP8BfOIg2dIyP5
-	 EXHr1zObHA4sRK9oN5BULjo1puzSzVAdYDo6vNVulLxwgChhAy+S+9vdV8OsMiMzKdg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827073;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=YVy4G1eZ8haJVwqyLqtsl+I1DFI8cmbWjfidq7pwrZ4=;
+	b=nrp3KN82Cjxsp3HbZhvzArUNFgm61exhJslpGhpbBcC3Oj10mZsERcfRP0CCBewhA0nQ
+	 TSteBoj0Wg/7cd2P5aXwF9tnz3ihuyvehEhcj5CDJ0ZGuAXpHufjBmq8tUvhcGZCyeOQH
+	 oU/E2RfQ5gqla77KmYGg4BEXcuMYI9OEG4CgKq8fd0JBkjB6k+Y+vM7abl+ospmSrbQMr
+	 PeRvXUuW5ts0Ppmyp0B01+tpPYadFJsLMF7TiHAMCPQtAUpKd8KO8qI3thAiUpFP85hT8
+	 kwbu6BWIY9OpKbViwBd+6OjyTFfB58g1QaYrMuXF7AOz/00o3wYzl7Ih8Y6o/SNp7VA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yv+83Ada;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fPSzXz73;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1331E606A323;
-	Mon, 16 Nov 2026 11:04:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50DDE606A897;
+	Mon, 16 Nov 2026 11:04:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Yv+83Ada
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 086591F000D1;
-	Mon, 16 Nov 2026 11:04:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=fPSzXz73
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 74D6C1F000C4;
+	Mon, 16 Nov 2026 11:04:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794827064;
-	bh=K6hcsOKot76i6ofOuhnqMqhE4PYGjzAJldUZv2AbfjY=;
-	h=From:Subject:Date:To:Cc;
-	b=Yv+83AdaI+rMIF6ZcVumQESxSFqk/+q4KEQ/dNYe1vqGAjhO4UZuY0f32upeyeIcL
-	 U7luNKMRuAsOI84eZrIlAJi/zJYCE8A/tcPIQNVv+qkGeMR+iT2Qd/a23r3cWeRQU+
-	 uTSVeXg9wu6s2JknLRPylmOgOMgs4JvwAc752i150GOLDrUHLrkFmN2Gzfynarvx/9
-	 MQjhumagM8tTagR1n3h7iQmHaV8zyZ3rBpUM5zVesg7Yce9jIpL6WN2evAWJQVcUQz
-	 5lL6SvuerYCNW4EDL0oKuEOdAKrLTwc4zYsCSCXp8DAReNjFGyaadFvjQMB+WH5CwD
-	 iQFheHbOkWpOg==
+	s=k20260515; t=1794827073;
+	bh=YVy4G1eZ8haJVwqyLqtsl+I1DFI8cmbWjfidq7pwrZ4=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=fPSzXz73bjVa06/0iuO/37JnOSLJ9HRuT/+Z7E6XEb49sBBuYFQcpUletptQKreqO
+	 D3AFX3jRKzrA6S5yC8NGtKQjLEhF7QhnoyA8aOWWk0DY7919niA7ghLb53siANFQgv
+	 Ecrnxqoi4LK5xPlghNAoAqEexGlfv1c6VEJQZVWQ6cWxQDuK6MMZxRyf0x+jZQ18Bu
+	 hldXu78p2ezjPZ3CfwG8x0GkHJ8fLE5LhJjsQKa+FmA3FdWcHiwwW1TJfkQHYeeCAT
+	 9gYeUpu9DD98fu2Pm1bHW18gcae9wNb/4cI1CDs1AMrb9uZ6lx15MuNDPxzFreCaNW
+	 A9rLmF4q1w5og==
 From: Christian Brauner <brauner@kernel.org>
-Subject: [PATCH v2 00/17] fs: take freeze protection for writes to backing
- files
-Date: Mon, 16 Nov 2026 12:03:40 +0100
-Message-Id: <20261116-work-fs-frozen_writes-v2-0-ecc4a2aac40e@kernel.org>
+Date: Mon, 16 Nov 2026 12:03:42 +0100
+Subject: [PATCH v2 02/17] fs: add kiocb_write_iter() and
+ kiocb_end_write_iter()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -56,11 +55,9 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOQQ6CMBBFr0K6toRWRHTlPQwxbZ1CxbRmBkEl3
- F2KceHC5Zv8eXkjI0AHxPbJyBB6Ry74GeQqYaZRvgbuzjMzmclCCLHmQ8CWW+IWwwv8aUDXAfE
- sl0ZtC6mtLtn8e0Ow7rF4j9WH6a4vYLooiwutCLhG5U0TT1GbWkp/tGkcxXHjqAv4XCp7EaXfo
- PxPUC94xu1GQSFMuSu1OLSAHq5pwJpV0zS9AYIJ+TH6AAAA
-X-Change-ID: 20261113-work-fs-frozen_writes-042ca762bfb8
+Message-Id: <20261116-work-fs-frozen_writes-v2-2-ecc4a2aac40e@kernel.org>
+References: <20261116-work-fs-frozen_writes-v2-0-ecc4a2aac40e@kernel.org>
+In-Reply-To: <20261116-work-fs-frozen_writes-v2-0-ecc4a2aac40e@kernel.org>
 To: Jan Kara <jack@suse.cz>
 Cc: Shakeel Butt <shakeel.butt@linux.dev>, 
  Alexander Viro <viro@zeniv.linux.org.uk>, Jens Axboe <axboe@kernel.dk>, 
@@ -70,94 +67,105 @@ Cc: Shakeel Butt <shakeel.butt@linux.dev>,
  linux-scsi@vger.kernel.org, target-devel@vger.kernel.org, 
  linux-unionfs@vger.kernel.org, bpf@vger.kernel.org, 
  linux-nfs@vger.kernel.org, 
- "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org, 
- Amir Goldstein <amir73il@gmail.com>
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3938; i=brauner@kernel.org;
- h=from:subject:message-id; bh=aJ8lkhUZfSAZD0d0zDSWnIQ89Aj8tUdfJ3u4ID7PtUE=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9eixbv91/Cx9PdNTthXsErvIYvLi4cEr/18tX/HtEJ
- pfvP/W+sKOUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAie24w/A+ctEfepmXaNH6+
- fUv+voy9HejBG/Od15BdYyPzrWxh5+WMDKe+GJ5fa2TqoDH18nZZNmF57r7kO2y31r/wVrK0UDL
- h4QAA
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3468; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=b1QjShsXrXl9uCeQCmrAqMQU14wS2tzSxu+AvqrM/tM=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9eiyfxCOx6XeMi/rNnAX/tY1CP5Z+/aBfxxSeIuH9k
+ vHi3LXmHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABPJT2L4p3lMV9+Ma9v9vIka
+ rjL8q+7N25C7+IBDZQO3c5NErfXDKob/gRpvXq2Y/mf3AqGNbi1Tu71qPjXoROfsmVr2ctems4F
+ vmQE=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-While testing the pseudo filesystem series I noticed that zloop, the
-nvme target's file backend and the fileio backend of the scsi target
-with fd_async_io=1 call ->write_iter() of their backing files without
-taking freeze protection. So their writes go straight through to a
-frozen filesystem. ext4 complains loudly:
+Calling ->write_iter() with a kiocb of your own means taking freeze
+protection, calling ->write_iter() and dropping freeze protection again
+unless the write was queued. The completion callback then has to know
+whether it completes a write that still holds freeze protection. loop
+open-codes this and keys the completion on the request op. zloop, the
+nvme target and target fileio need the same. Christoph pointed out that
+open-coding this everywhere is fragile (cf. [1]).
 
-    WARNING: fs/ext4/ext4_jbd2.c:90 at ext4_journal_check_start+0x1f6/0x2d0
+Add kiocb_write_iter(). It takes freeze protection, marks the kiocb
+with IOCB_WRITE like aio, io_uring and cachefiles do and calls
+->write_iter(). If the write wasn't queued freeze protection is dropped
+right away. With IOCB_NOWAIT it only tries to get freeze protection and
+fails with -EAGAIN instead of waiting for the thaw.
 
-Loop doesn't get it right for discard and write zeroes. Those end up
-calling ->fallocate() of the backing file directly. The fileio backend
-does the same for UNMAP. And zloop records its write pointers on flush
-with vfs_setxattr() which leaves freeze protection to the caller. So all
-of them modify a frozen filesystem just the same. Fix them too.
+kiocb_end_write_iter() drops freeze protection if the kiocb still holds
+it and clears IOCB_WRITE. So a completion callback can call it for any
+I/O. That matters for drivers that complete I/O that wasn't queued
+through the same callback and for drivers that reuse their kiocbs.
 
-Looking for more of the same turned up a few simple ones. coredump
-truncates the core file, overlayfs stores its uuid xattr on mount, nfsd
-truncates on OPEN and the BPF xattr kfuncs modify xattrs, all without
-freeze protection. Fix those as well. The ones that need more work in
-their subsystems I have reported separately.
+[1]: https://lore.kernel.org/r/20261116064654.GA2964@lst.de
 
-The fileio backend also frees its aio command in the completion handler
-while the filesystem may still be using the kiocb. KASAN catches ext4
-doing that for direct reads on v7.4-rc1. ext4 gets its own fix (cf. [1])
-but fileio should hold a reference across the submission like loop,
-zloop and fs/backing-file.c do.
-
-[1]: https://lore.kernel.org/r/20261113-work-ext4-dio_read_kiocb-v1-1-172a88be803c@kernel.org
-[2]: https://lore.kernel.org/r/20261116064654.GA2964@lst.de
-
+Suggested-by: Christoph Hellwig <hch@lst.de>
+Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
-Changes in v2:
-- Add kiocb_write_iter() and kiocb_end_write_iter() and use them for
-  zloop, the nvme target and fileio as per Christoph's suggestion.
-- Add a file_write guard and use it for loop discard and write zeroes
-  and fileio unmap.
-- Convert loop, vfs_iocb_iter_write() and fs/backing-file.c to the new
-  helpers.
-- Only complete the fileio target command when the last reference to
-  the aio command is dropped.
-- Link to v1: https://patch.msgid.link/20261114-work-fs-frozen_writes-v1-0-f5ae61c898b1@kernel.org
+ include/linux/fs.h | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
 
----
-Christian Brauner (17):
-      fs: add kiocb_start_write_trylock()
-      fs: add kiocb_write_iter() and kiocb_end_write_iter()
-      fs: add file_write guard
-      zloop: take freeze protection for writes
-      nvmet: take freeze protection for writes to files
-      target: fileio: don't free the aio command under the filesystem
-      target: fileio: take freeze protection for aio writes
-      loop: take freeze protection for discard and write zeroes
-      zloop: take freeze protection when recording write pointers
-      target: fileio: take freeze protection for unmap
-      coredump: take freeze protection for the truncate
-      ovl: take freeze protection when storing the uuid
-      bpf: fs/xattr: take freeze protection in the xattr kfuncs
-      nfsd: take freeze protection for the truncate on open
-      loop: use kiocb_write_iter()
-      fs: use kiocb_write_iter() in vfs_iocb_iter_write()
-      backing-file: use kiocb_end_write_iter()
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index eefc2c9d4af19..0b66a09fb686a 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2840,6 +2840,54 @@ static inline void kiocb_end_write(struct kiocb *iocb)
+ 	sb_end_write(inode->i_sb);
+ }
+ 
++/**
++ * kiocb_end_write_iter - drop write access after kiocb_write_iter()
++ * @iocb: the io context the write was submitted with
++ *
++ * Drop write access if @iocb still holds it and clear IOCB_WRITE. This
++ * does nothing for reads and for writes kiocb_write_iter() already
++ * finished. So the completion callback can call it for any I/O.
++ */
++static inline void kiocb_end_write_iter(struct kiocb *iocb)
++{
++	if (!(iocb->ki_flags & IOCB_WRITE))
++		return;
++	iocb->ki_flags &= ~IOCB_WRITE;
++	kiocb_end_write(iocb);
++}
++
++/**
++ * kiocb_write_iter - submit a write with write access to the superblock
++ * @iocb: the io context to submit the write with
++ * @iter: the data to write
++ *
++ * Get write access, mark @iocb with IOCB_WRITE and call ->write_iter().
++ * A write that wasn't queued drops write access before this returns. A
++ * queued write keeps it until the completion callback calls
++ * kiocb_end_write_iter(). With IOCB_NOWAIT this fails with -EAGAIN
++ * instead of waiting for a frozen filesystem.
++ *
++ * Return: On success the number of bytes written or -EIOCBQUEUED is
++ *         returned. On failure a negative error code is returned.
++ */
++static inline ssize_t kiocb_write_iter(struct kiocb *iocb,
++				       struct iov_iter *iter)
++{
++	ssize_t ret;
++
++	if (iocb->ki_flags & IOCB_NOWAIT) {
++		if (!kiocb_start_write_trylock(iocb))
++			return -EAGAIN;
++	} else {
++		kiocb_start_write(iocb);
++	}
++	iocb->ki_flags |= IOCB_WRITE;
++	ret = iocb->ki_filp->f_op->write_iter(iocb, iter);
++	if (ret != -EIOCBQUEUED)
++		kiocb_end_write_iter(iocb);
++	return ret;
++}
++
+ /*
+  * This is used for regular files where some users -- especially the
+  * currently executed binary in a process, previously handled via
 
- drivers/block/loop.c              | 13 ++++---
- drivers/block/zloop.c             | 12 +++++--
- drivers/nvme/target/io-cmd-file.c | 20 +++++++----
- drivers/target/target_core_file.c | 31 +++++++++++-----
- fs/backing-file.c                 |  8 ++---
- fs/bpf_fs_kfuncs.c                |  8 +++++
- fs/coredump.c                     |  6 ++--
- fs/nfsd/nfs4state.c               | 10 +++++-
- fs/overlayfs/util.c               |  8 +++--
- fs/read_write.c                   |  7 ++--
- include/linux/fs.h                | 75 +++++++++++++++++++++++++++++++++++++++
- io_uring/rw.c                     |  9 +----
- 12 files changed, 158 insertions(+), 49 deletions(-)
----
-base-commit: 6628e7d4c6b25c8d18f1345e3a20d21829aae7e4
-change-id: 20261113-work-fs-frozen_writes-042ca762bfb8
+-- 
+2.53.0
 
