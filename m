@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794827270;
-	b=ZuQaJCpnkDt7vlymnxMsyl7JIKr7axaBH08K6XnDT36qU9etIZkhPPL3Lq7mwDbqwP1h
-	 uSbhEWng6tE2rVAXH3fWrGisGlPcNe2erTYjAUB2+G88eU+3AsyOaNulIrm/9c1p+1Zhm
-	 XScEaB1rXwcJVXo5jMfL4uZ39EIqiKNEcLUhsH9Cda2i8xR8w+ztMBgjVBRmsKOy6w1WP
-	 yclqkHMaR9Coj63ds+X2laz4beQ5cxBmD7XvAjGt037GGh1SglllptTJbP7dlpnuvmWnh
-	 E+1+3rQsawFHEhNI5tOtb+3WcMWh+ZbdkdjPdCOcrxYXhl+AbPGMz/6KBTusmFdM5nw==
+	t=1794827277;
+	b=4tF7mR9P6cXleCybKD9S7Oz1lZHFy6LOf/hYhPhQqSGrwAjyUCk4/hQzxNeQz3JbxRES
+	 ees6/kMI6pZsPS+20A1iNYxyttkypog2GwStOptv9SEJGuBH9KtEsxr/YbYhlWkn8nvBT
+	 62sGUH4P04Yzm55n8tl6B1qPVIY16Jip9WVEi+SuOFvKKRirw55Jq50TTzN1HX4fSY68R
+	 si8OIwVxlykt42Ounoivyi8GstluEnsi7rFGVK4t/4my4mEG5iLtp/qqUcXn7AvW/PpuC
+	 1OElzt6YanippP+G/NbbN1d5VbuccKsfh8IfkURjD1fwByD1K/3m2GUz8EPbYYoPdYg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794827270;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794827277;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=noVXPKL/og69bpc9W91xJU4Acp5mP0BVhDE9sjv3SIE=;
-	b=x6ZGJs99YpukYouoy/zg7tyzK49Km44/ZfaC+7sJEEX3IW2zFDSMz7co3qz3f2Arm3e7
-	 eW8KCxxoLympPAbZXJfTnYC8GV1GV6wTfjzrQnD1NbYTPLZ83CgjfuCZ9L4H48A+34Zqd
-	 BQo/MEA17F6Jxakc3EJ2x2cy3iQ+21ASfPiSHVVado3FELa4YvmfolqTEH1gvxCw69Nm8
-	 Kt3PL2l0eJllbrbaIOWZI9Xw7L42gbI3xUGVNtJpLR4FrtS8B24QBsU2z3DQMYbfBdy7E
-	 GBoRKHmMOxe5XxHkl0KXE+olQgLAnfyhjvBUC4Pd46nAUXMO4NcQvOEcnJ9OgWCpdZQ==
+	bh=PqfeLGmjk4y0+kxRkxjSur2IdVXjx1oPYJuREevbBc0=;
+	b=RuCq7Z4K2cJNUwD+AEZhNNJ8uFs++oR946dv19ACXr1Iu4qfm1uwez9ocOELtnMuf0z8
+	 7aFoa8TtCf2kLIyyxVKONzJJXePXIQQLbDrQduDy1fk5QP2SwZqt6FvheWCQiJutsNOZ6
+	 o/tS0JfgyMUpAXkOxzZfnn+7v+h6wR2eCZuy8cSX9cgAEhSZHIbmKdPaAN2Ttxrz5COQi
+	 0psjbmpmiHrWQp+LWgzlk1oHLq88Gj8/RHj0fSBxdAXq/GgVdwRwJy+p4fi0QCG2mtVR/
+	 hjvTkbmpOBJoo3DQLBFo2K8V8RRAEIt2GFNAVGpm1+HGGKt2unm/+wuK9sWh8T8nYBA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d4AsBCAD;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="YvkLPRy/";
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B5D2606B1B1;
-	Mon, 16 Nov 2026 11:07:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF0C3606AB45;
+	Mon, 16 Nov 2026 11:07:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=d4AsBCAD
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F09EA1F000C4;
-	Mon, 16 Nov 2026 11:07:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YvkLPRy/
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 88D961F000C5;
+	Mon, 16 Nov 2026 11:07:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794827270;
-	bh=noVXPKL/og69bpc9W91xJU4Acp5mP0BVhDE9sjv3SIE=;
+	s=k20260515; t=1794827277;
+	bh=PqfeLGmjk4y0+kxRkxjSur2IdVXjx1oPYJuREevbBc0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=d4AsBCADtblGWR9WmNzc/DEiDFBjSUivsWERw3pTmg4xXqpyh2WyGQku9f8392N4s
-	 lfp7IFHxwJWFFx4/59deH/zuDtHGCY6wN7yNaETZqW9wHK/nTklbztbkm3Wwcrl5rs
-	 /PJrwjLnB2b8CQO7J05TacPexxC4CdTFDq6H0mUnYoCkhrcI8qk+w4xvBTttcE0blv
-	 o5BvIuIcseSCY08bFNm0BzpUGXQUSuzvPjVlG78Ls3ZLMo4LLkvGz8bdDEukYq7Vao
-	 aHiqggmt77TpKf0+EPd6nrKM/u0GR6gducTj/TJI46cLCwmRKEJBv1/6Cyuu7zx5LS
-	 hfk7yo69L3CNQ==
+	b=YvkLPRy/TdN3pcwscLXBhpcduUBjYfqgxZuCJwXsSL+UDnogKKD+92Xz/+diWB7NI
+	 0mqTTOVlCiRH9R0uBfT3YiIB2BmI3UU7ll0jcE3kk2lC7TLroBC6Pkv/qkjCb2pKNw
+	 zDc5Qqdo1HgBsZBD3BoeHwLBK/Raft20V7BmIejOzs9J/6v/WXVyn+g9CQ2gGm+AqX
+	 J1BdMMjoyxnVFZYvSfydNC+8KMf09MmPJr+eYY10D9OpdtxnRAAZVeQJdaGrm0Le+R
+	 4Rzjk+4/AJ7X87jNNtb5qnMUVnAQtEquA0JDBGjIxtZx98uV2qTRkccJqkx7xTRA3w
+	 c7AFtct/ZdTHA==
 From: Christian Brauner <brauner@kernel.org>
-Date: Mon, 16 Nov 2026 12:04:47 +0100
-Subject: [PATCH RFC v3 14/44] debugfs: use fc_init_pseudo()
+Date: Mon, 16 Nov 2026 12:04:48 +0100
+Subject: [PATCH RFC v3 15/44] tracefs: use fc_init_pseudo()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,7 +54,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261116-work-loop-pseudo-v3-14-8cbbea1cf34f@kernel.org>
+Message-Id: <20261116-work-loop-pseudo-v3-15-8cbbea1cf34f@kernel.org>
 References: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 In-Reply-To: <20261116-work-loop-pseudo-v3-0-8cbbea1cf34f@kernel.org>
 To: linux-fsdevel@vger.kernel.org
@@ -77,48 +77,48 @@ Cc: Jann Horn <jannh@google.com>, Chris Mason <mason@kernel.org>,
  Alexander Mikhalitsyn <alex@amutable.com>, 
  Chris Down <chris@chrisdown.name>
 X-Mailer: b4 0.17-dev-ce4c1
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1179; i=brauner@kernel.org;
- h=from:subject:message-id; bh=BMUOzEt5tvGDwdfnxxzb3r0lJ0rbiII34CFK/yH29Y0=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9epxnx7/ATlD2sfyF6Q/Ob+LauKkocK0zM9/G/RKir
- je4M2+zdZSyMIhxMciKKbI4tJuEyy3nqdhslKkBM4eVCWQIAxenAEzk40+G/3WuJ83uZj8TS2Pv
- P+y8X7rLQErNXSRM4ffcO+2RcrZsBgz/k29eZL535s1/3bTPB6VDJWd2vyq4ffGpScB+y0nHBXn
- MeQE=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1157; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=jWsk7jA40wU8aE/ukx0Eq/KUmnvJ+ql3poj8uK0lOp0=;
+ b=kA0DAAoWkcYbwGV43KIByyZiAGr643Cha2aEDzogEHXFHDf4ItcyB4+yUL4ANkviCVs/P6sGm
+ 4h1BAAWCgAdFiEEQIc0Vx6nDHizMmkokcYbwGV43KIFAmr643AACgkQkcYbwGV43KI/pwEA638U
+ 1d15U79N804Xlrmzg1WVT0YbKUtsgjGXa9iRx+MA/RH2I1+OACZjxtKr5OTHN7a/GnbvmGcfgyl
+ DomehAAUO
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Initialize debugfs as a pseudo filesystem. This raises SB_I_PSEUDO and
-also SB_I_NOEXEC and SB_I_NODEV. debugfs never holds executables or
+Initialize tracefs as a pseudo filesystem. This raises SB_I_PSEUDO and
+also SB_I_NOEXEC and SB_I_NODEV. tracefs never holds executables or
 device nodes.
 
-SB_I_NOEXEC also refuses PROT_EXEC mappings. The debugfs files that
-can be mapped, kcov, relay channels and powernv's memtrace, map data.
+SB_I_NOEXEC also refuses PROT_EXEC mappings. The only tracefs files
+that can be mapped are the ring buffers and __rb_map_vma() refuses
+VM_EXEC already.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Alexander Mikhalitsyn <alex@amutable.com>
 Reviewed-by: Chris Down <chris@chrisdown.name>
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/debugfs/inode.c | 2 ++
+ fs/tracefs/inode.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
-index b4915551ad315..f163f0bc5703a 100644
---- a/fs/debugfs/inode.c
-+++ b/fs/debugfs/inode.c
-@@ -15,6 +15,7 @@
+diff --git a/fs/tracefs/inode.c b/fs/tracefs/inode.c
+index 5020365ca7048..e04febd868eb4 100644
+--- a/fs/tracefs/inode.c
++++ b/fs/tracefs/inode.c
+@@ -12,6 +12,7 @@
  #include <linux/module.h>
  #include <linux/fs.h>
  #include <linux/fs_context.h>
 +#include <linux/pseudo_fs.h>
  #include <linux/fs_parser.h>
- #include <linux/pagemap.h>
- #include <linux/init.h>
-@@ -317,6 +318,7 @@ static int debugfs_init_fs_context(struct fs_context *fc)
- 	fsi->mode = DEBUGFS_DEFAULT_MODE;
+ #include <linux/kobject.h>
+ #include <linux/namei.h>
+@@ -510,6 +511,7 @@ static int tracefs_init_fs_context(struct fs_context *fc)
+ 	fsi->mode = TRACEFS_DEFAULT_MODE;
  
  	fc->s_fs_info = fsi;
 +	fc_init_pseudo(fc);
- 	fc->ops = &debugfs_context_ops;
+ 	fc->ops = &tracefs_context_ops;
  	return 0;
  }
 
