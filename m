@@ -1,65 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794936072;
-	b=Wi/ShcowmCCbrrtewVxpjZGUtoWgPtUFMPcEFNfh9bEYWJ6MCC+sFo+gcqs6wESaYFm5
-	 r9sVfKGsBh6RC6MpvK0a2xI5TxmoTo5/vAd/h09Z4JS4loqGvR1hHjGHVd05D9GZ+NwCO
-	 FJbqQpHPKa35C3wRbkP2R2AN/3KPhM3xnm+UKyeCOdxGVs4y2/opFGQ/pkWqiUDy2k7hT
-	 xwNGz8bdvRxHXcPOdCos7cP6NW7nYJRPd6kth1KGm7KOslHGAIooFtrFQ1eKy2V/Gv+n/
-	 gUUqpEWHDIhNSAueP3TVL4Bf6aHdiaJ8FGRVyCf3pFNSmfh6SUfrrQjoBCbmkdqDbUg==
+	t=1794936078;
+	b=LHmmqlPJs9Ns9k79ptwzIWHD2t5H2AiKCaLa4bIcZOZ9xUd5amWOs774/nRWwuEwGWNy
+	 Con09mmvCK41x7rDRvIsANmfEy6ZGxl0ptNe6EVz9ObO0Mf88XuRgg0d+LUH8JzIf+FhR
+	 KtLKV3koVVBw167VV67d4CnmtFm0naLgAGUsHCgmJyoV1e6AHJWY/MCGK+6g1Z46BIkrW
+	 bNACtJTuUOeg88kdqcCGI7hO2NUwOQEwnQMplM758/l4hGfM0NIxQ4uChHvckyNgkNEf9
+	 80fMjJvRUMJYt7TVEKt4WXpXsKk/3lJD7xNWAOJJ4IBzedvEKXi9CUHpaP53r0bAL0w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794936072;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794936078;
 	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
 	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
 	 Message-ID:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding:X-Scanned-By;
-	bh=9dk9kL49guxKer+r/d3oR1NNShzzS7x0RBJAR6pZ1HE=;
-	b=VgHSAqW4OAdPtCn2DqZ+/wrl8hhnqOwU0CzRSdnrFSaegqcpeabJFzTSJKSL78dxmXJe
-	 JbjUy7TfiiqBJ+xSA6geyjg12bOybqF+NECG3fBo5qpwlV2CEfaC8q9HCUy7f3lmj1beg
-	 S+2ZIV3LnL6qgidfAuI3AedNc+nNMQGG86IaXnggTjKaQmMvWurYVfu5jTmYSZe2Kq0CR
-	 FBBXF4afLbtJcOicAi1eOneQd2YZ3bdeyFy64kMmBvhZ3Xjci8Zu88nF5wz2TC6udTyVJ
-	 WqMkZu98R/nAQpoqibwShv8rX4wFYvYWmxliUz5oEfVOAb2456QTOAphvtWwIq9FNOQ==
+	bh=+2954zM8XCuzHXARl8C2M1W3XwPc8Gv34Sem+FKL8Mg=;
+	b=DtUYidUW1gOCzhMnWiRa1wK/JYW7QYnEav/Lv3glb/AIPwhyPK7ootxxG5OQfNzR/+XZ
+	 61SUyEpBSxaToySBT9IFOgKDOa8+faVX5UCMm+Ry9pX4UAdMrv6LJoKHBO2VnrzVdqzp3
+	 wD4fVN6NutF6p5j3804+Bqj1cZmwBxMim/mcYw9KwYF9fVVOKs5Fcv/IM40Y5MKAarju5
+	 bP/cUG8/hR5kyxn/kun0cBMC49dhVe6RTQqZDB5drn+w5ZF71nGoCHDtdGQwVZIO57Rrd
+	 EJtLRvqngE9GRlw41zxbKWJDLPEcMk8puO0YuNh1e4u4wzbBFfz8O15hM4JMOuq6Waw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=redhat.com;
 	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=MIiqXIL9;
-	arc=none smtp.remote-ip=170.10.129.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=WnXMF9yN;
+	arc=none smtp.remote-ip=170.10.133.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2B97606A8AB
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2026 17:21:11 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B2B97606A8AB
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 318F560A2605
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2026 17:21:18 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 318F560A2605
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=MIiqXIL9
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=WnXMF9yN
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1794936071;
+	s=mimecast20190719; t=1794936077;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=9dk9kL49guxKer+r/d3oR1NNShzzS7x0RBJAR6pZ1HE=;
-	b=MIiqXIL9Sv8VAUBXjza8gpx1V1Di20xyyZKKLHQqC/CLpSd255DqDAJbyZBeQqpn09q5K9
-	50Jl0tyO05lCf9Ipq+oHzEYR8AT3Z6wKx7PymTq/QUqmr3+l9yKIN20cN6x751sgPxniO3
-	szc661S/fs4J2jOVn8ZY91TrokTsbQA=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=+2954zM8XCuzHXARl8C2M1W3XwPc8Gv34Sem+FKL8Mg=;
+	b=WnXMF9yNEEMKhnnJH4yg6noYwY03R2eCxpk72cILBiWwB8nGlgJpJc0Qy04ZYH0EPWqG7n
+	fQkF0uxBLn6P4K8rkjXN67PjtiEvvcybWZTGYeuv7q516Pp9fvabfvSUUO0aisT4UUcYlq
+	hcvA9emCGz/svnG2FPtsKqZcuyEHwJM=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-27-C6G4NVEZOxKLspGpx-mH_g-1; Tue,
- 17 Nov 2026 12:21:07 -0500
-X-MC-Unique: C6G4NVEZOxKLspGpx-mH_g-1
-X-Mimecast-MFC-AGG-ID: C6G4NVEZOxKLspGpx-mH_g_1794936065
-Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-606-P6Haj55JP7ybFQ3w61FLTA-1; Tue,
+ 17 Nov 2026 12:21:12 -0500
+X-MC-Unique: P6Haj55JP7ybFQ3w61FLTA-1
+X-Mimecast-MFC-AGG-ID: P6Haj55JP7ybFQ3w61FLTA_1794936070
+Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 01FA91955F37;
-	Tue, 17 Nov 2026 17:21:05 +0000 (UTC)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id EC00518002D1;
+	Tue, 17 Nov 2026 17:21:09 +0000 (UTC)
 Received: from dhowells-thinkpadp1gen8.rmtgb.csb (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
-	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 2D8111956054;
-	Tue, 17 Nov 2026 17:21:01 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 444A2195B3C7;
+	Tue, 17 Nov 2026 17:21:06 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>
 Cc: David Howells <dhowells@redhat.com>,
@@ -80,9 +80,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH v18 08/17] netfs: Explicitly pass tail padding to netfs_writeback_single()
-Date: Tue, 17 Nov 2026 17:19:06 +0000
-Message-ID: <20261117171958.2982801-9-dhowells@redhat.com>
+Subject: [PATCH v18 09/17] netfs: Change netfs_writeback_single() to not look inside the iterator
+Date: Tue, 17 Nov 2026 17:19:07 +0000
+Message-ID: <20261117171958.2982801-10-dhowells@redhat.com>
 In-Reply-To: <20261117171958.2982801-1-dhowells@redhat.com>
 References: <20261117171958.2982801-1-dhowells@redhat.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -95,24 +95,29 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-Change netfs_writeback_single() so that the function is now given an
-explicit content length in addition to the buffer iterator.  The buffer
-must be rounded out to the cache DIO block size and netfslib will then draw
-on this excess space to write padding into the cache beyond the content
-length specified.  The caller must also now clear the padding space.
+Change netfs_writeback_single() so that it doesn't look around inside the
+data buffer iterator it is given and doesn't try to submit the folios from
+the list individually.  Instead, it treats it as a DIO write and pushes the
+iterator directly, unsliced, to the cache (or the filesystem) to write
+from.
 
-AFS directory code is modified to comply with this, including allocating
-pre-zeroed buffer space and clearing excess buffer space if the content is
-shrunk by a third party.  It's not done during writeback as that may happen
-many times for a directory.
+There are also some changes of behaviour:
 
-AFS symlink code, however, is modified such that the clearing is done when
-the content is written to the cache (expected to be a one-off per symlink,
-if it happens).
+ (1) netfs_writeback_single() will make a single unbounded monolithic write
+     to the cache.
 
-A further patch will make better use of the two different lengths.
+ (2) When writing, sreq_max_len/segs are ignored as the "single" type
+     mandates all the data be transferred in a single op.  Whilst this is
+     not strictly necessary for the cache as the contract is really with
+     the server, it simplifies things for now.
+
+ (3) An explicit wait is added to the function to make sure that the write
+     is concluded before returning as there's currently no mechanism to
+     check if the write is completed as page flags aren't used.  This can
+     be fixed later, but may require AFS's dir and symlink handling to
+     check for write completion before allowing further changes be made.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Paulo Alcantara <pc@manguebit.org>
@@ -123,246 +128,223 @@ cc: linux-afs@lists.infradead.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- Documentation/filesystems/netfs_library.rst | 47 +++++++++++++++------
- fs/afs/dir.c                                | 17 ++++++--
- fs/afs/dir_edit.c                           |  2 +-
- fs/afs/symlink.c                            | 16 ++++++-
- fs/netfs/write_issue.c                      | 13 ++++--
- include/linux/netfs.h                       |  2 +-
- 6 files changed, 73 insertions(+), 24 deletions(-)
+ fs/netfs/write_issue.c | 172 +++++++----------------------------------
+ 1 file changed, 28 insertions(+), 144 deletions(-)
 
-diff --git a/Documentation/filesystems/netfs_library.rst b/Documentation/filesystems/netfs_library.rst
-index 215a6621f3d3..1fe110ceb3f1 100644
---- a/Documentation/filesystems/netfs_library.rst
-+++ b/Documentation/filesystems/netfs_library.rst
-@@ -437,22 +437,43 @@ Monolithic Files API
- 
- There is also a special API set for files for which the content must be read in
- a single RPC (and not written back) and is maintained as a monolithic blob
--(e.g. an AFS directory), though it can be stored and updated in the local cache::
-+(e.g. an AFS directory), though it can be stored and updated in the local
-+cache.
-+
-+To start with, there's a function to synchronously read the contents of such a
-+file into a buffer in a single operation::
-+
-+	ssize_t netfs_read_single(struct inode *inode,
-+				  struct file *file,
-+				  struct iov_iter *iter);
-+
-+If such a file is modified locally, it can be marked dirty with::
- 
--	ssize_t netfs_read_single(struct inode *inode, struct file *file, struct iov_iter *iter);
- 	void netfs_single_mark_inode_dirty(struct inode *inode);
-+
-+which will schedule it for writeback later.  When the writeback eventually
-+happens, the filesystem should call::
-+
- 	int netfs_writeback_single(struct address_space *mapping,
- 				   struct writeback_control *wbc,
--				   struct iov_iter *iter);
-+				   struct iov_iter *iter,
-+				   size_t len);
-+
-+to write the data to the cache from its writepages method.
- 
--The first function reads from a file into the given buffer, reading from the
--cache in preference if the data is cached there; the second function allows the
--inode to be marked dirty, causing a later writeback; and the third function can
--be called from the writeback code to write the data to the cache, if there is
--one.
-+In both the read and writeback functions, the buffer needs to be rounded up to
-+a multiple of the cache DIO size, with ``iter->count`` indicating the size of
-+the buffer.  For the write function, ``len`` should indicate the size of the
-+content which may be less than the buffer size.  The gap between ``len`` and the
-+buffer size should be cleared by the filesystem as this will be used as padding
-+if the write size has to be increased (e.g. for the cache DIO).
-+
-+Note that, for the moment, rounding the buffer up to a multiple of PAGE_SIZE
-+instead of the cache DIO size should suffice.  DIO size > PAGE_SIZE is not
-+currently supported.
- 
- The inode should be marked ``NETFS_ICTX_SINGLE_NO_UPLOAD`` if this API is to be
--used.  The writeback function requires the buffer to be of ITER_FOLIOQ type.
-+used.
- 
- Clearing Stale Post-EOF Pagecache
- ---------------------------------
-@@ -859,12 +880,12 @@ The methods defined in the table are:
-    paths to ask the filesystem to update its idea of the file size.  If not
-    given, netfslib will set i_size and i_blocks and update the local cache
-    cookie.
--   
-+
-  * ``post_modify()``
- 
-    [Optional] This is called after netfslib writes to the pagecache or when it
-    allows an mmap'd page to be marked as writable.
--   
-+
-  * ``begin_writeback()``
- 
-    [Optional] Netfslib calls this when processing a writeback request if it
-@@ -872,7 +893,7 @@ The methods defined in the table are:
-    indicating it must be written to the server.  This allows the filesystem to
-    only set up writeback resources when it knows it's going to have to perform
-    a write.
--   
-+
-  * ``prepare_write()``
- 
-    [Optional] This is called to allow the filesystem to limit the size of a
-@@ -911,7 +932,7 @@ The methods defined in the table are:
-    allows the filesystem to examine the state of the request, the subrequests
-    in the indicated stream and of its own data and make adjustments or
-    renegotiate resources.
--   
-+
-  * ``invalidate_cache()``
- 
-    [Optional] This is called by netfslib to invalidate data stored in the local
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index 75f8f70cfeff..51c158d8f723 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -252,7 +252,8 @@ static ssize_t afs_do_read_single(struct afs_vnode *dvnode, struct file *file)
- 
- 		ret = netfs_alloc_folioq_buffer(NULL,
- 						&dvnode->directory, &cur_size, i_size,
--						mapping_gfp_mask(dvnode->netfs.inode.i_mapping));
-+						mapping_gfp_mask(dvnode->netfs.inode.i_mapping) |
-+						__GFP_ZERO);
- 		dvnode->directory_size = cur_size;
- 		if (ret < 0)
- 			return ret;
-@@ -278,6 +279,13 @@ static ssize_t afs_do_read_single(struct afs_vnode *dvnode, struct file *file)
- 			if (ret2 < 0)
- 				ret = ret2;
- 		}
-+
-+		if (ret >= 0 && ret < dvnode->directory_size) {
-+			iov_iter_folio_queue(&iter, ITER_DEST, dvnode->directory,
-+					     0, 0, dvnode->directory_size);
-+			iov_iter_advance(&iter, ret);
-+			iov_iter_zero(dvnode->directory_size - ret, &iter);
-+		}
- 	}
- 
- 	return ret;
-@@ -2228,9 +2236,10 @@ static int afs_dir_writepages(struct address_space *mapping,
- 	}
- 
- 	if (test_bit(AFS_VNODE_DIR_VALID, &dvnode->flags)) {
--		iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0,
--				     i_size_read(&dvnode->netfs.inode));
--		ret = netfs_writeback_single(mapping, wbc, &iter);
-+		iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory,
-+				     0, 0, dvnode->directory_size);
-+		ret = netfs_writeback_single(mapping, wbc, &iter,
-+					     i_size_read(&dvnode->netfs.inode));
- 		if (ret == 1)
- 			ret = 0; /* Skipped write due to lock conflict. */
- 	}
-diff --git a/fs/afs/dir_edit.c b/fs/afs/dir_edit.c
-index c31303059444..185e8819e424 100644
---- a/fs/afs/dir_edit.c
-+++ b/fs/afs/dir_edit.c
-@@ -122,7 +122,7 @@ static union afs_xdr_dir_block *afs_dir_get_block(struct afs_dir_iter *iter, siz
- 
- 		ret = netfs_alloc_folioq_buffer(
- 			NULL, &dvnode->directory, &cur_size, blend,
--			mapping_gfp_mask(dvnode->netfs.inode.i_mapping));
-+			mapping_gfp_mask(dvnode->netfs.inode.i_mapping) | __GFP_ZERO);
- 		dvnode->directory_size = cur_size;
- 		if (ret < 0)
- 			goto fail;
-diff --git a/fs/afs/symlink.c b/fs/afs/symlink.c
-index a1dbd552ddff..c18e4f806423 100644
---- a/fs/afs/symlink.c
-+++ b/fs/afs/symlink.c
-@@ -228,6 +228,10 @@ int afs_readlink(struct dentry *dentry, char __user *buffer, int buflen)
- /*
-  * Write the symlink contents to the cache as a single blob.  We then throw
-  * away the page we used to receive it.
-+ *
-+ * Note that the buffer tail is cleared under a shared lock on ->validate_lock
-+ * - though hopefully there won't be racing writers since the only
-+ * 'modification' is to be either read from the server or locally created.
-  */
- int afs_symlink_writepages(struct address_space *mapping,
- 			   struct writeback_control *wbc)
-@@ -247,9 +251,17 @@ int afs_symlink_writepages(struct address_space *mapping,
- 
- 	if (vnode->directory &&
- 	    atomic64_read(&vnode->cb_expires_at) != AFS_NO_CB_PROMISE) {
-+		size_t i_size = i_size_read(&vnode->netfs.inode);
-+
-+		if (i_size < vnode->directory_size) {
-+			iov_iter_folio_queue(&iter, ITER_DEST, vnode->directory, 0, 0,
-+					     vnode->directory_size);
-+			iov_iter_advance(&iter, i_size);
-+			iov_iter_zero(vnode->directory_size - i_size, &iter);
-+		}
- 		iov_iter_folio_queue(&iter, ITER_SOURCE, vnode->directory, 0, 0,
--				     i_size_read(&vnode->netfs.inode));
--		ret = netfs_writeback_single(mapping, wbc, &iter);
-+				     vnode->directory_size);
-+		ret = netfs_writeback_single(mapping, wbc, &iter, i_size);
- 	}
- 
- 	if (ret == 0) {
 diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
-index f23364116421..63b0e2599c3c 100644
+index 63b0e2599c3c..0fcfb5ab49bd 100644
 --- a/fs/netfs/write_issue.c
 +++ b/fs/netfs/write_issue.c
-@@ -749,26 +749,33 @@ static int netfs_write_folio_single(struct netfs_io_request *wreq,
-  * netfs_writeback_single - Write back a monolithic payload
+@@ -627,133 +627,15 @@ int netfs_writepages(struct address_space *mapping,
+ }
+ EXPORT_SYMBOL(netfs_writepages);
+ 
+-/*
+- * Write some of a pending folio data back to the server and/or the cache.
+- */
+-static int netfs_write_folio_single(struct netfs_io_request *wreq,
+-				    struct folio *folio)
+-{
+-	struct netfs_io_stream *upload = &wreq->io_streams[0];
+-	struct netfs_io_stream *cache  = &wreq->io_streams[1];
+-	struct netfs_io_stream *stream;
+-	size_t iter_off = 0;
+-	size_t fsize = folio_size(folio), flen;
+-	uoff_t fpos = folio_pos(folio);
+-	ssize_t ret;
+-	bool to_eof = false;
+-	bool no_debug = false;
+-
+-	_enter("");
+-
+-	flen = folio_size(folio);
+-	if (flen > wreq->i_size - fpos) {
+-		flen = wreq->i_size - fpos;
+-		folio_zero_segment(folio, flen, fsize);
+-		to_eof = true;
+-	} else if (flen == wreq->i_size - fpos) {
+-		to_eof = true;
+-	}
+-
+-	_debug("folio %zx/%zx", flen, fsize);
+-
+-	if (!upload->avail && !cache->avail) {
+-		trace_netfs_folio(folio, netfs_folio_trace_cancel_store);
+-		return 0;
+-	}
+-
+-	if (!upload->construct)
+-		trace_netfs_folio(folio, netfs_folio_trace_store);
+-	else
+-		trace_netfs_folio(folio, netfs_folio_trace_store_plus);
+-
+-	/* Attach the folio to the rolling buffer. */
+-	folio_get(folio);
+-	ret = rolling_buffer_append(&wreq->buffer, folio, NETFS_ROLLBUF_PUT_MARK, wreq->gfp);
+-	if (ret < 0) {
+-		folio_put(folio);
+-		return ret;
+-	}
+-
+-	/* Move the submission point forward to allow for write-streaming data
+-	 * not starting at the front of the page.  We don't do write-streaming
+-	 * with the cache as the cache requires DIO alignment.
+-	 *
+-	 * Also skip uploading for data that's been read and just needs copying
+-	 * to the cache.
+-	 */
+-	for (int s = 0; s < NR_IO_STREAMS; s++) {
+-		stream = &wreq->io_streams[s];
+-		stream->submit_off = 0;
+-		stream->submit_len = flen;
+-		if (!stream->avail) {
+-			stream->submit_off = UINT_MAX;
+-			stream->submit_len = 0;
+-		}
+-	}
+-
+-	/* Attach the folio to one or more subrequests.  For a big folio, we
+-	 * could end up with thousands of subrequests if the wsize is small -
+-	 * but we might need to wait during the creation of subrequests for
+-	 * network resources (eg. SMB credits).
+-	 */
+-	for (;;) {
+-		ssize_t part;
+-		size_t lowest_off = ULONG_MAX;
+-		int choose_s = -1;
+-
+-		/* Always add to the lowest-submitted stream first. */
+-		for (int s = 0; s < NR_IO_STREAMS; s++) {
+-			stream = &wreq->io_streams[s];
+-			if (stream->submit_len > 0 &&
+-			    stream->submit_off < lowest_off) {
+-				lowest_off = stream->submit_off;
+-				choose_s = s;
+-			}
+-		}
+-
+-		if (choose_s < 0)
+-			break;
+-		stream = &wreq->io_streams[choose_s];
+-
+-		/* Advance the iterator(s). */
+-		if (stream->submit_off > iter_off) {
+-			rolling_buffer_advance(&wreq->buffer, stream->submit_off - iter_off);
+-			iter_off = stream->submit_off;
+-		}
+-
+-		atomic64_set(&wreq->issued_to, fpos + stream->submit_off);
+-		stream->submit_extendable_to = fsize - stream->submit_off;
+-		part = netfs_advance_write(wreq, stream, fpos + stream->submit_off,
+-					   stream->submit_len, to_eof);
+-		stream->submit_off += part;
+-		if (part > stream->submit_len)
+-			stream->submit_len = 0;
+-		else
+-			stream->submit_len -= part;
+-		if (part > 0)
+-			no_debug = true;
+-	}
+-
+-	wreq->buffer.iter.iov_offset = 0;
+-	if (fsize > iter_off)
+-		rolling_buffer_advance(&wreq->buffer, fsize - iter_off);
+-	atomic64_set(&wreq->issued_to, fpos + fsize);
+-
+-	if (!no_debug)
+-		kdebug("R=%x: No submit", wreq->debug_id);
+-	_leave(" = 0");
+-	return 0;
+-}
+-
+ /**
+- * netfs_writeback_single - Write back a monolithic payload
++ * netfs_writeback_single - Write back a monolithic payload to cache
   * @mapping: The mapping to write from
   * @wbc: Hints from the VM
-- * @iter: Data to write, must be ITER_FOLIOQ.
-+ * @iter: Data buffer to write from, must be ITER_FOLIOQ.
-+ * @len: Amount of data to write.
+- * @iter: Data buffer to write from, must be ITER_FOLIOQ.
++ * @iter: Data buffer to write from.
+  * @len: Amount of data to write.
   *
-  * Write a monolithic, non-pagecache object back to the server and/or
-  * the cache.
+- * Write a monolithic, non-pagecache object back to the server and/or
+- * the cache.
++ * Write a monolithic, non-pagecache object back to the cache only.  The data
++ * is not written to the server.
   *
-+ * The data buffer may be bigger than @len (as set in @iter's count), and if
-+ * so, this function will use the extra as needed to provide padding into the
-+ * cache to handle DIO rounding, so the caller should clear it.
-+ *
-  * Return: 0 if successful; 1 if skipped due to lock conflict and WB_SYNC_NONE;
-  * or a negative error code.
-  */
- int netfs_writeback_single(struct address_space *mapping,
- 			   struct writeback_control *wbc,
--			   struct iov_iter *iter)
-+			   struct iov_iter *iter, size_t len)
+  * The data buffer may be bigger than @len (as set in @iter's count), and if
+  * so, this function will use the extra as needed to provide padding into the
+@@ -768,12 +650,8 @@ int netfs_writeback_single(struct address_space *mapping,
  {
  	struct netfs_io_request *wreq;
  	struct netfs_inode *ictx = netfs_inode(mapping->host);
- 	struct folio_queue *fq;
--	size_t size = iov_iter_count(iter);
-+	size_t size = len;
+-	struct folio_queue *fq;
+-	size_t size = len;
  	int ret;
  
- 	if (WARN_ON_ONCE(!iov_iter_is_folioq(iter)))
+-	if (WARN_ON_ONCE(!iov_iter_is_folioq(iter)))
+-		return -EIO;
+ 	if (WARN_ON_ONCE(iov_iter_count(iter) < len))
  		return -EIO;
-+	if (WARN_ON_ONCE(iov_iter_count(iter) < len))
-+		return -EIO;
  
- 	if (!netfs_wb_begin(ictx, wbc->sync_mode == WB_SYNC_NONE)) {
- 		/* The VFS will have undirtied the inode. */
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index 2cf1163aafa6..375fd415b4e5 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -430,7 +430,7 @@ void netfs_single_mark_inode_dirty(struct inode *inode);
- ssize_t netfs_read_single(struct inode *inode, struct file *file, struct iov_iter *iter);
- int netfs_writeback_single(struct address_space *mapping,
- 			   struct writeback_control *wbc,
--			   struct iov_iter *iter);
-+			   struct iov_iter *iter, size_t len);
+@@ -789,36 +667,42 @@ int netfs_writeback_single(struct address_space *mapping,
+ 		goto couldnt_start;
+ 	}
  
- /* Address operations API */
- struct readahead_control;
++	wreq->buffer.iter = *iter;
++	wreq->len = len;
++	wreq->submitted = wreq->len;
++
+ 	__set_bit(NETFS_RREQ_OFFLOAD_COLLECTION, &wreq->flags);
+ 	trace_netfs_write(wreq, netfs_write_trace_writeback_single);
+ 	netfs_stat(&netfs_n_wh_writepages);
+ 
+-	if (__test_and_set_bit(NETFS_RREQ_UPLOAD_TO_SERVER, &wreq->flags))
+-		wreq->netfs_ops->begin_writeback(wreq);
++	for (int s = 0; s < NR_IO_STREAMS; s++) {
++		struct netfs_io_subrequest *subreq;
++		struct netfs_io_stream *stream = &wreq->io_streams[s];
++
++		if (!stream->avail)
++			continue;
+ 
+-	for (fq = (struct folio_queue *)iter->folioq; fq; fq = fq->next) {
+-		for (int slot = 0; slot < folioq_count(fq); slot++) {
+-			struct folio *folio = folioq_folio(fq, slot);
+-			size_t part = umin(folioq_folio_size(fq, slot), size);
++		netfs_prepare_write(wreq, stream, 0);
++		/* Allocation not allowed to fail in writeback. */
+ 
+-			_debug("wbiter %lx %llx", folio->index, atomic64_read(&wreq->issued_to));
++		subreq = stream->construct;
++		subreq->len = wreq->len;
++		stream->submit_len = subreq->len;
++		stream->submit_extendable_to = iov_iter_count(iter) - len;
+ 
+-			ret = netfs_write_folio_single(wreq, folio);
+-			if (ret < 0)
+-				goto stop;
+-			size -= part;
+-			if (size <= 0)
+-				goto stop;
+-		}
++		netfs_issue_write(wreq, stream);
+ 	}
+ 
+-stop:
+-	for (int s = 0; s < NR_IO_STREAMS; s++)
+-		netfs_issue_write(wreq, &wreq->io_streams[s]);
+ 	netfs_all_subreqs_queued(wreq);
+-
+ 	netfs_wake_collector(wreq);
+ 
++	/* TODO: Might want to be async here if WB_SYNC_NONE, but then need to
++	 * wait before modifying.
++	 */
++	ret = netfs_wait_for_write(wreq);
++	if (ret > 0)
++		ret = 0;
++
+ 	netfs_put_request(wreq, netfs_rreq_trace_put_return);
+ 	_leave(" = %d", ret);
+ 	return ret;
 
