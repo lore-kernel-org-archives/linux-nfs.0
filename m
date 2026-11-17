@@ -1,110 +1,95 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.216.98
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=62.89.141.173
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794940080;
-	b=wmKS2eqrxCP+yHACXR6iFuOOz4Ff8Vhq4QobrVyDjU4IMBdQF3/6PJFRxmL617ayldnP
-	 +qQ+8rvuBNHwq80dszz0FmKUF3JHBjcgu76U8AFwiRMQWbzj/HUvIwoVtuxNtEvIQ1Yhr
-	 rKwnEZrdHAXpkf14YOxkatyy6N+O7dRdVY7DVJ/mPXI0RZJQdNuDXsdLrdMVQ5gXF0/Oy
-	 6SgXjNeatb45SxTZ81MNLs+749KsTS/omGsHzTgW1z6vajAZIjIDw940lZT/dlx+gk8Zc
-	 Lv9/qDOhUQUPy3xE+J/CMOw/BzyfNHOGDXuDbVOmFfL0240Goz5yQQpwLzBH1BAbDNA==
+	t=1794940308;
+	b=sRzOi9MCHueqMjYvnJ50wjfd3NUFtiH0gRyTBi02uByy09fmz2YE4NvEZ0+ZJHj38itV
+	 4svhvdV39xn5quGkko5mdRAkdfH25lClNmtEaLLQ0K8cZ6+b1FVmoqSwGttmzL4Ypx4rO
+	 iwsoqRcIjTV3abgGB8u3MZsIwECMsJYan79A6uYejY17gHAfyP5/hcETvJnAzuSmTWRMf
+	 Nm/7FL8vd9yl+ByRG4kbodju6wrJ5ac5hzLoS0bxN+uYUZvaEE/7u2WPapsLNSBOnxxT6
+	 diYFE6GiuJZ2uESyXwTX5YCnRwK2URF4+U5vzbd+pZfE3h83ufpe2NV+Wm6lPz1uiGA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794940080;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
-	 X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=4HIDElfk1fUBR+g3gRBqfDseCIheuM9kcM5hnFH2Y+g=;
-	b=W277MLJNbX3lY8LwWE0fCJ1U971qE4jaTaI7BxC8nmzlrTLF+ZMGdSnb8kpupos639VX
-	 4X0y4lzDEu6JPjYvVRcSqkV5BxiqAdGtmEtq5oSQxE602bW77oP2Qu7iNbMpMz4ciNqan
-	 QMOcUNCfPoSeCIMO7DGxiwcMT9RE2taoDW98YRXewuKnV3ckGlhRs9EkUJPkRUApdMmmO
-	 9qJTPYUCfTpBl2GL4ZHrEI7WNWCD51fin8pXiGdAqmOpoUKDrjeNZSPVM1QbeBzVZdNMI
-	 AeKCtF5k2R3Zo6YCRHvAWwphcemf1extnG6g6sWWQGpAn0L7o5uD72jH+94h090OiUA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794940308;
+	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:Sender;
+	bh=tMKIL4Tw6+P8nxVMgy3ZxNBt370rRgm0QxvRZlxxhD0=;
+	b=EClkbosfKAeJf6HCAeKJoO17u1/4G2wsuTm2saFNIgbt9QwRPG30uFhEMFmcDubN+TgA
+	 uxFTZmDW8EQjPkHJk4ZfsrzkLhk6wApLINr0kTJxe2dBockrPONqsJy11dnNmYPR057MA
+	 rumi48mj2G5fIWRHdCrqjea5FlJs8buaQXIcIjt7QThVSF5zmC4y+NLbKmApYKVQoLr71
+	 r3AGzNbXKA6N2lpz7V1qPnqLC0dDpPiKhNNkH2Nlf+zlgS8msCCa6Vloz+Vme4q6qEdf+
+	 CLmVw5C2b3qd99KioHX+na6IrcN52Ew/coMz6OtMKATryctc7YQ/AS/Dxv5Y98e0ZyQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=everpuredata.com;
-	spf=pass smtp.mailfrom=everpuredata.com;
-	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=uOs3Ahgj;
-	arc=none smtp.remote-ip=209.85.216.98
-Received: from mail-pj1-f98.google.com (mail-pj1-f98.google.com [209.85.216.98])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=zeniv.linux.org.uk;
+	spf=none smtp.mailfrom=ftp.linux.org.uk;
+	dkim=pass header.d=linux.org.uk header.i=@linux.org.uk header.a=rsa-sha256 header.s=zeniv-20220401 header.b=TDuWQEHo;
+	arc=none smtp.remote-ip=62.89.141.173
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AC4C606A335
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2026 18:27:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2AC4C606A335
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F302606A336;
+	Tue, 17 Nov 2026 18:31:46 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2F302606A336
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=uOs3Ahgj
-Received: by mail-pj1-f98.google.com with SMTP id 98e67ed59e1d1-3ac78f4c10bso3745a91.1
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2026 10:27:58 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1794940078; x=1795544878; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=4HIDElfk1fUBR+g3gRBqfDseCIheuM9kcM5hnFH2Y+g=;
-        b=uOs3Ahgj9+nx34cROVVGq20lgcXGJt2vVPpnszE6xPya+N5tpyTvWqV2gfQ0r597kQ
-         u7OsHsx+A7t/z+rXxrCwGza0CSjZD6bMOgOUg0n+rqq3U3M40TIKsaC2vgg1HqbNkSLM
-         sRvpK2gq1/qjHMc/LU6b4IQKPPTsHsqL/nITdkzcL0HOh/kDRXL75jTdDQ8s3dEkGWGm
-         CRnGH/pPh0XydxUFACuGxsOn/gdkqSXeTToq/fctuyImgwYaE+OkDZR8gLb36ux8ELL9
-         sZiUpJDnJwu+QOgjCUagnIkqaS4xu2BIg/6ufW608Ooyjt0mYI1+38OhK2vxwyEMhCr2
-         AysQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1794940078; x=1795544878;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=4HIDElfk1fUBR+g3gRBqfDseCIheuM9kcM5hnFH2Y+g=;
-        b=eWu8gf50EIFvQclEbUq5WnXd1sEOU2hXHfwyvnN9qutMzBldEDNhL64m81nXM1wzdM
-         bnhb/rOj68mPEh4zbv8cMl2B9ajSa4p4gizU1bP/sC99CBvWVM9kzkK6mhiyjFGuKMm5
-         pt5xLWc3LhMiT2oG+G2+DiWaybvvmHFkf0BZlGr7PVnmgvxxl6wgVVWL1OPwALyIA+zd
-         PtFl2x94M5E60uGPX4ZPLexnuuWrpaufUG0RbYYEIG3jHoYROBU2H3Lxj3eyX+B5MGEo
-         k2i62qZyCADaL0MAz49lIC0zwEuKoQD+lLUGNcUAJNgZAVdPowBhGa4jmpKJmtzwsNRX
-         Azpg==
-X-Forwarded-Encrypted: i=1; AL+hErFEHdCASWXkcMSJCPq6f1oldu0a6gS7oX0p5MApkcE+/LiiwgmmXUw/jFi1omHFD86kcAMtoSZEqxQ=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+NFia0cVR16SVThyvwqFI0/vaTT9U2Oli/l85f+T7Si8rwAP9q
-	SVbzk1y8vDl8ULYsW0/yptAlmbiB2YRd+7Lrde33+TNdgm1cZ1llifAOTk0PGQ9pKpG9l0Uwigs
-	QIgCpXyAXmP9PLLAJfy76IGaPnr3qxUYyC2TEcHJwfJr2642Mae0c+I6aPSM8w0JKBusrmU33It
-	vvA3h6eWA2XHH0RdQIIqJt4aE4jb/iDt0Ckza2Za0NO1vsQw9A6lpAz3hmSAA6QHlDi5XT0ysfq
-	Uxb2uldCDXOhMXpas9EJ5pOgPg=
-X-Gm-Gg: AZFdTZepDjTGtzmPuG4P7I8p61TiyXKqd52gkL7E/0yy3iwqqwNcK5A0MifeL0ZiFbL
-	qHdXdtEjxhk2E8lr7Z3v0dx+5SgzDfjny5gTWyXTFzMBrJ/oCawG4aPdXGL+PO7+crO7oCIGqM4
-	pvk6pU7ElJejnsbqhp7GcYcaiiwdF9dqkMebChcXgiRLT8J11O487CAWFhfN8UL2PElW5yWT5oU
-	zy3rYd2TtZfjz3wniR4yb155n+qBqO0vSmkoNP0gWCBbZ+e/ne0H2Atk7ex9ThMbkLaDLHxg4Qp
-	be7nRTgmhCAkg0I5u7JUvF7ktMpd2KenDgsK/4lIJf43J5X4ZZDA4yX6Fig07JsvN240NQxPnLL
-	0iI88mM/rMAFPcBFea6E3VszUo2rqM9cKgbD/Qts=
-X-Received: by 2002:a17:90b:4c0a:b0:3b0:934c:5e41 with SMTP id 98e67ed59e1d1-3b3d07aa71bmr289902a91.29.1794940078336;
-        Tue, 17 Nov 2026 10:27:58 -0800 (PST)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
-        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3b3d0987ac9sm136956a91.0.2026.11.17.10.27.58
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 17 Nov 2026 10:27:58 -0800 (PST)
-X-Relaying-Domain: everpuredata.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 1C2BE34052C;
-	Tue, 17 Nov 2026 10:27:27 -0800 (PST)
-From: Tim Menninger <tmenninger@everpuredata.com>
-To: lixiasong1@huawei.com
-Cc: Dai.Ngo@oracle.com,
-	anna@kernel.org,
-	cel@kernel.org,
-	jlayton@kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-rdma@vger.kernel.org,
-	neil@brown.name,
-	okorniev@redhat.com,
-	stable@vger.kernel.org,
-	tom@talpey.com,
-	trondmy@kernel.org,
-	weiyongjun1@huawei.com,
-	yuehaibing@huawei.com,
-	zhangchangzhong@huawei.com
-Subject: Re: [PATCH v2 3/3] xprtrdma: Wake connect worker on device removal
-Date: Tue, 17 Nov 2026 18:27:27 +0000
-Message-ID: <20261117182727.104697-1-tmenninger@everpuredata.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20261103032758.1302493-4-lixiasong1@huawei.com>
-References: <20261103032758.1302493-4-lixiasong1@huawei.com>
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.a=rsa-sha256 header.s=zeniv-20220401 header.b=TDuWQEHo
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=tMKIL4Tw6+P8nxVMgy3ZxNBt370rRgm0QxvRZlxxhD0=; b=TDuWQEHovmiau7VCBkXgVGRkK3
+	qNI48Oggv+Q9HlViFP5Rd1pkrId3BRYTeyBJkobYwVJZE7XOYZzoqC602DkJXl7YWtyNs8fQ4bQ1L
+	M6cPQgYfkx0upaukkTT3E34ETIPOyT4fFspAnBM5n9bcLPULu0wWsA834gK6NUjfnXpbq3TAM82xS
+	uV7aZps0RQ5OTIfQqNdoCCC7QUluccfpo2tdFmSFByN7VFcTvuonxWf4PQHfxLS9lo3t3ghaFn1DA
+	JcC+4RHlrKT/uuMSV2ANjxnXiR7J0vGVyq2V03OYSPpBUGVE9s0IewlWxIKgY9gMLtnLB721HnM7Q
+	+Sab7DYQ==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.100.1 #2 (Red Hat Linux))
+	id 1xTNxL-00000002J6d-49Dd;
+	Tue, 17 Nov 2026 18:31:00 +0000
+Date: Tue, 17 Nov 2026 18:30:59 +0000
+From: Al Viro <viro@zeniv.linux.org.uk>
+To: Cai Xinchen <caixinchen1@huawei.com>
+Cc: mic@digikod.net, gnoack@google.com, paul@paul-moore.com,
+	brauner@kernel.org, jack@suse.cz, amir73il@gmail.com,
+	andrii@kernel.org, apparmor@lists.ubuntu.com, ast@kernel.org,
+	axboe@kernel.dk, bpf@vger.kernel.org, casey@schaufler-ca.com,
+	cel@kernel.org, cem@kernel.org, chenxiaosong@chenxiaosong.com,
+	code@tyhicks.com, corbet@lwn.net, Dai.Ngo@oracle.com,
+	dakr@kernel.org, daniel@iogearbox.net, dhowells@redhat.com,
+	dlemoal@kernel.org, dmitry.kasatkin@gmail.com,
+	driver-core@lists.linux.dev, dsterba@suse.com,
+	ecryptfs@vger.kernel.org, eddyz87@gmail.com, emil@etsalapatis.com,
+	eric.snowberg@oracle.com, exfat@lists.linux.dev,
+	georgia.garcia@canonical.com, gregkh@linuxfoundation.org,
+	hch@lst.de, hirofumi@mail.parknet.co.jp, hyc.lee@gmail.com,
+	ihor.solodrai@linux.dev, jlayton@kernel.org, jmorris@namei.org,
+	johan@kernel.org, john.fastabend@gmail.com,
+	john.johansen@canonical.com, jolsa@kernel.org, kpsingh@kernel.org,
+	linkinjeon@kernel.org, linux-api@vger.kernel.org,
+	linux-block@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org, linux-doc@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-integrity@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+	linux-trace-kernel@vger.kernel.org, linux-unionfs@vger.kernel.org,
+	linux-xfs@vger.kernel.org, liubaolin12138@163.com,
+	martin.lau@linux.dev, mason@kernel.org,
+	mathieu.desnoyers@efficios.com, matt@bobrowski.net,
+	memxor@gmail.com, mhiramat@kernel.org, miklos@szeredi.hu,
+	neil@brown.name, netfs@lists.linux.dev, ntfs@lists.linux.dev,
+	okorniev@redhat.com, omosnacek@gmail.com,
+	penguin-kernel@i-love.sakura.ne.jp, rafael@kernel.org,
+	rdunlap@infradead.org, roberto.sassu@huawei.com,
+	rostedt@goodmis.org, selinux@vger.kernel.org,
+	senozhatsky@chromium.org, serge@hallyn.com, sj1557.seo@samsung.com,
+	skhan@linuxfoundation.org, song@kernel.org,
+	stephen.smalley.work@gmail.com, takedakn@nttdata.co.jp,
+	tom@talpey.com, yonghong.song@linux.dev, yuezhang.mo@sony.com,
+	zohar@linux.ibm.com, utilityemal77@gmail.com, lujialin4@huawei.com
+Subject: Re: [PATCH -next -v4 01/17] fs: pass struct path to notify_change()
+Message-ID: <20261117183059.GP989762@ZenIV>
+References: <20261117150542.1169451-1-caixinchen1@huawei.com>
+ <20261117150542.1169451-2-caixinchen1@huawei.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -114,16 +99,63 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261117150542.1169451-2-caixinchen1@huawei.com>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 
-I encountered a refcount_t underflow warning in rpcrdma_ep_put() on
-7.4.0-rc3 during a pNFS flexfiles read workload with one MDS and one DS.
-The trigger was restarting the NFS engine on the DS while reads were
-in flight. The warning came from xprt_rdma_connect_worker via
-rpcrdma_xprt_disconnect() -> rpcrdma_ep_put().
+On Tue, Nov 17, 2026 at 11:05:26PM +0800, Cai Xinchen wrote:
 
-With all three patches from this v2 series applied to 7.4-rc3, the
-warning no longer occurred under the same test. This test did not
-involve removing the RDMA device.
+> +notify_change() and do_truncate() now take a const struct path * instead
+> +of a struct dentry *.  They use path->dentry, so callers that only have a
+> +dentry must provide a struct path.  struct iattr has a new ia_path member,
+> +which notify_change() sets for the duration of the call; it must not be
+> +stored beyond that.  Filesystems that forward a change to another inode
+> +can use notify_change_target() to update the target dentry while keeping
+> +the caller-supplied path in ia_path.
 
-Tested-by: Tim Menninger <tmenninger@everpuredata.com>
+That needs a bit along the lines of "path MUST be consistent - don't combine
+a dentry from one filesystem with mount of another".  All in-kernel callers
+might have appropriate struct mount references on hand, but for out-of-tree
+code that might be not true and we'd better be upfront about the headache
+we are inflicting.
+
+I'm not sure we really want to provide those mount references, TBH - it does
+add a constraint not just on out-of-tree callers, but upon the future uses
+in the kernel.  If NTFS is the only reason... ugh.
+
+> diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+> index 11c70888f38b..410906a66ee9 100644
+> --- a/drivers/base/devtmpfs.c
+> +++ b/drivers/base/devtmpfs.c
+> @@ -284,13 +284,14 @@ static int handle_create(const char *nodename, umode_t mode, kuid_t uid,
+>  			dev->devt, NULL);
+>  	if (!err) {
+>  		struct iattr newattrs;
+> +		struct path attr_path = { .mnt = path.mnt, .dentry = dentry };
+>  
+>  		newattrs.ia_mode = mode;
+>  		newattrs.ia_uid = uid;
+>  		newattrs.ia_gid = gid;
+>  		newattrs.ia_valid = ATTR_MODE|ATTR_UID|ATTR_GID;
+>  		inode_lock(d_inode(dentry));
+> -		notify_change(&nop_mnt_idmap, dentry, &newattrs, NULL);
+> +		notify_change(&nop_mnt_idmap, &attr_path, &newattrs, NULL);
+
+BTW, why not something like
+
+		notify_change(&nop_mnt_idmap,
+			      &(struct path){.mnt = path.mnt, .dentry = dentry},
+			      &newattrs, NULL);
+instead of that named local?  Same question for other places like that...
+
+> +int notify_change_target(const struct mnt_idmap *idmap,
+> +			 const struct path *path, struct dentry *target,
+> +			 struct iattr *attr,
+> +			 struct delegated_inode *delegated_inode)
+> +{
+> +	if (WARN_ON_ONCE(!target))
+> +		return -EINVAL;
+> +	return do_notify_change(path, idmap, target, attr, delegated_inode);
+> +}
+
