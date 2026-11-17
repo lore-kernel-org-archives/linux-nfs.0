@@ -1,114 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=103.168.172.152
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=18.194.254.142
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794884465;
-	b=PTD835emRMe52fZTDjhdDE6qUm1YSUQQi8YEuQPYRntLSoSOiMe1pEk1Mn8ZFJzcdrTQ
-	 ldJBP6XxRyK10MUuqp6tGZXtsM8b/9PuWeOjnJi8Mdyl2G9cpKChuX+jftlRI8S7TMsex
-	 WQVyXAkdK23r+v5VhzGJcBJ4x6qOVhiH/IyE+BjZDY5PBtGbZSjLKJHBpc07gZeReFfhb
-	 ESEumnDdicm+AaZ86O64Rk481HnO+DrfuwIj2CNMULjNNWtl05RpBB/Echucr1tLr4Y4o
-	 JGT3Q7Rqh7TdNDBj0CPPK7WOCNGiHqPdZ2OiKQ2jo5s22HxFrx/l3P/HgTdTSLPaGhg==
+	t=1794885132;
+	b=GdZSoxjMLzYfnetqX5Pfh3oEA42Wp6BTw0rW285RGiR/hzpR0IHeymEp9ipBECJzP/WZ
+	 V1eyN7oOTR7jizam0LyAdte8Bor1FtJL3n2hotUASv8VGTPr9iDVzW/PD5aeAA0o4oNNR
+	 Hu7R0Q8oyOj5yNftrxnN9kzZx1A+MyhQPpelB50PXcy1oXRI1FgZxbve1HgZv3zZ0JxmU
+	 bC/Gd5BiTVntGydsTvew2MH1iR67MSkZwfmsFvV3CFeCKH69lXbL+NGSee0Mpj2+UGR1o
+	 zoEMRbLpScbnzG8vJOQCZidh20bAAFc75SrugYUhIr42t63WmxzyJ+i1h691ONp18dw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794884465;
-	h=DMARC-Filter:Received:Received:DKIM-Signature:DKIM-Signature:
-	 X-DKIM2-Info:DKIM2-Signature:X-DKIM2-Info:Message-Instance:
-	 X-ME-Sender:X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:
-	 Received:Content-Type:Content-Transfer-Encoding:MIME-Version:From:To:
-	 Cc:Subject:In-reply-to:References:Date:Message-id:Reply-To;
-	bh=36M+zBqzwV+UofiBww7U0Hvs36Q7P09aHPOOs9tQWMU=;
-	b=kD4OIzLS7qlL02/GdW5SCH9qy06OlcZShKrGuLC23PqW0YpYgb8Sc4dolNXNd1k+ACwg
-	 jzjltRg4PPQ1jVSacsBs2QDV9Z4h6VFqJWOicQzrBQsUVwH8ivIn5G84bF52rbG1RLCMq
-	 wvV0gxHDy5zurgFLImDkguui8YnaaaDYwlKxShhQeQdVyybKgOosTNT5EZzfA1rSZhUTK
-	 cDSYTc9qmLwWOdhoW7uSMFC0JEBAVNXrW/6O1d9jJ2OkM0TFdpHaTUvFTD55W49vh3Zrz
-	 iIdBfhW8tu13pAbSw6TXXsBfQkotMlxLy87dvgHmXydx8H0lsXWvBpM9tyYE108RQbQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1794885132;
+	h=DMARC-Filter:DKIM-Signature:X-QQ-mid:X-QQ-Originating-IP:Received:
+	 X-QQ-SSF:X-QQ-GoodBg:X-BIZMAIL-ID:From:To:Cc:Subject:Date:Message-Id:
+	 X-Mailer:MIME-Version:Content-Transfer-Encoding:X-QQ-SENDSIZE:
+	 Feedback-ID:X-QQ-XMAILINFO:X-QQ-XMRINFO:X-QQ-RECHKSPAM;
+	bh=BJ556ecJR4Jd8JuWQ1rM7zpdNzlHdcT1E+BDUM2gyOo=;
+	b=yOjom5zHcdLNOKbG1BlZV2M2KUUtgqBOYCzRWHk2+RdvJfiHw+GJH4xuJ3ihRaXvSsyx
+	 9G6ch87A3cdz0pmBbhfZRuEbJdYFUGOuZ1B4aQ4ZwVJed1XdjjQllHyQ7gUJS7v6b9OhQ
+	 WNA55kqc7cQMFLJztGPpWzn2jKSONDLzC+gCKlb+h0eRs9v8oH9TlYl0bpX6YGnMtfy50
+	 iD8tif3pruOX6mBTw45lbApOgNyJDNQMHM6Jj0n1JmFZarNeioAQ3+PbqU0vyTKqv0I7h
+	 8l8JrDl4+n3r0hxqk/pTKlSWSrQyOwXmCG7IRwlY/Wkh9YbB8CpCHRj5ubif3c9SEdQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=ownmail.net;
-	spf=pass smtp.mailfrom=ownmail.net;
-	dkim=pass header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm3 header.b=JqKXWgag;
-	dkim=pass header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm3 header.b=5kenHVoO;
-	arc=none smtp.remote-ip=103.168.172.152
-Received: from fhigh-a1-smtp.messagingengine.com (fhigh-a1-smtp.messagingengine.com [103.168.172.152])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=pass header.from=uniontech.com;
+	spf=pass smtp.mailfrom=uniontech.com;
+	dkim=pass header.d=uniontech.com header.i=@uniontech.com header.a=rsa-sha256 header.s=onoh2408 header.b=PIllbhmr;
+	arc=none smtp.remote-ip=18.194.254.142
+Received: from smtpbgeu2.qq.com (smtpbgeu2.qq.com [18.194.254.142])
+	(using TLSv1.2 with cipher ECDHE-ECDSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBE2A606A31C
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2026 03:01:04 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org CBE2A606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4EBD6606A323
+	for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2026 03:12:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4EBD6606A323
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=uniontech.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=uniontech.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=ownmail.net header.i=@ownmail.net header.a=rsa-sha256 header.s=fm3 header.b=JqKXWgag;
-	dkim=pass (2048-bit key, unprotected) header.d=messagingengine.com header.i=@messagingengine.com header.a=rsa-sha256 header.s=fm3 header.b=5kenHVoO
-Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id B97D014000CA
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Nov 2026 22:01:03 -0500 (EST)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-01.internal (MEProxy); Mon, 16 Nov 2026 22:01:03 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1794884463; x=1794970863; bh=36M+zBqzwV+UofiBww7U0Hvs36Q7P09aHPO
-	Os9tQWMU=; b=JqKXWgagLQUQDq2jG5B9+DPzhSxQkUWJ4op7gdRgxjEHO0YX6ov
-	05+oD3nSynWEf+kFN7AHcCb12PRh08WdJFZo/D8bv7MHubqX55ek83xbc7f1cGJ6
-	1+hlJxt1v51t2dwKHphfWDXcrxYVt9O+Rrjtp0FjWGMA92d+N30zDjnpUOQon9y5
-	1qh6J2wbC9ob46FggC5nJbXjCtPi9KNJKaO9QTdXUQjW+ktmL85jdMcDuy3NQPMZ
-	tnaw33W9+kO0IpXqQpGyd0PVveyjbilcvQbI0aUv4HNt61mggn7GIPMW4pJhz75+
-	CauSGALgvf209VJwfpHnANuYJ9NbLTPs7gA==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1794884463; x=
-	1794970863; bh=36M+zBqzwV+UofiBww7U0Hvs36Q7P09aHPOOs9tQWMU=; b=5
-	kenHVoObOno2bcp7k5zNvzlZnUWogIyhTYf4PR0R4UbF7QMJh2KCnOxjvyeso5AS
-	7hShN0H9NGxCxCPhaCzdvb4P5byPDbh4aqZnyemE+DEFNn+zhwwxRNVN0LKNlOdI
-	+xOSXTF6RffBs37f50Ga7U5ERat/XnBdMvd9RXUWE6kGAodiq82yi0YPwaWudKpU
-	tGK0tBQ/16k5YNT7UXc2anxaWQnEgs9eTKOxb1ViNhwXy2h16FbhM+0TtuCGi/SD
-	LTNNkr7xPsGRVeUu49h70LHJoI68witcQPPAD7k3PxV5etzsZhli3X5/1SarxxH9
-	BuUs6p8Ltf6sgA3g/a0cg==
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-09;
-	repo=github.com/dkim2wg/interop; date=2026-11-03; sw=lmtpprox;
-	action=sign d=ownmail.net a=rsa-sha256;
-DKIM2-Signature: i=1; m=1; t=1794884463; d=ownmail.net;
-	mf=PG5laWxiQG93bm1haWwubmV0Pg==;
-	rt=PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+;
-	s=fm3:rsa-sha256:lb4Mhd71NdT1YjAjV+sdFg14IQNPK1a0zh6LfWTQ0Um8wmP
-	AQLeObUB4TmcBKD1mH576e29N2EhQ2T11FftiYdlpQzCbTYacVBSe+RBb84iLKHC
-	q72iFz9GRb+TFZ91YdC/VRtJmKbeeYVMPoZMN4vmKp42Nzb+e/JXVdwTOqUuevT1
-	ZHAYsyFEjtMY/sonxfsuebJpgMj0EqQGdNpJEIx+zqwB8Q5Zk35ob7lPYI8lyjXe
-	L8qnLzcHCIUBecCpq0JUNFACapEKdT3MDVrEqp2N6E1rhstODzom8HSwyclKzNSw
-	Cd9n5HIvoTtDSaiGEt5rEusnWkPW9pTE563nQCg==;
-X-DKIM2-Info: draft=ietf-dkim-dkim2-spec-09;
-	repo=github.com/dkim2wg/interop; date=2026-11-03; sw=lmtpprox;
-	action=mi-m=1; hc=13;
-	hn=cc,content-transfer-encoding,content-type,date,feedback-id,
-	from,in-reply-to,message-id,mime-version,references,reply-to,
-	subject,to;
-Message-Instance: m=1; h=sha256:lTxqzXnTSWKZtnAjfKsv5Bza5hH6fMZvnjJeGaLWW8s=:RR0ulbXLhdfg0zXbjzTfde9f+R7K4wb83PL/FmDq9Z0=;
-X-ME-Sender: <xms:b8P7asYEp4k5AEwGzXMqT0eHv6P4voX1um6iuTDnP4-hk4quNYGuVg>
-    <xme:b8P7auTSG-CjOAs6ZSQFyAOMCvi2cvxoNdgy6oNnNRQFVtS1HNFZUAtUCAaWTsy3h
-    -A3AzMRXB47jXD_4-ZXIQrOSw3UTRdR82X3ZIBheWFcag2vkR4>
-X-ME-Received: <xmr:b8P7avQ1lDAJRIjkYOmcpX99d6rJfoDVqE_mK5Taq-xm45N69fd4OEzIUXbuGtyLLE_eZhBKnr5Au91xO9v5__JS4y10R-I>
-X-ME-Proxy-Cause: dmFkZTGSz9S1/Zr80RmDc069yJ1hGwhp7aoOqkqVwqDGCx7W64GPxL4FvbUnTrcVkevljt
-    1Jqcs668klymdM3u+8LdgYBPVyWFJbcRKyumOXDc9sotN+1vrnY1QV1DOjlYlirLL9QJ8c
-    pMOljTZOnpXcl7vzC8g/NhjSClUKszbGLjBKHawab54ihth4cvFExmR705pM0n/GxwEeQj
-    HSIL6enAqDQ4QAb6pNzkRiOmqBRoGKKcJxRtMpExhr1yYe/zz7NOO1FY+VKZaEAoNy9ga1
-    iV0KSIii6XyXgk1QBK0KwzKJHY2oqKMsSxNQjBiK9tZ67WZuwxSz9eL7OBP00Ep4jdjkIb
-    yMCcU4ViLqRyycXznX/9RO/YETvJCUMJHGfugLxRUNSeF/YWwCrhCIautBf96Amdn+GH9K
-    pl44JhrXEvqPvM9GIRdJbmJOM8RjNncBgH8Ete9Z2gF1gAMb1ZYmLQjKxZ/PoGa5IEmkFo
-    ImGmPQNttssiT8sUxO0Nt6XjTKull5iWnS9WSZzs0U9lIcowQCxOVYse9B9pjlQVIPfBFa
-    Fd7RRrKQ1e4T10CjpxCe3DG1qgX33NHLjbzDvnmfJb92RnyBJvO+x0MkkBgk13NSzjh2Sm
-    8QGnmQGEVg+zHhyLGiPrW7wT7PSCbI8sgXo3MFrP8NKFV1S4JcfIZ2puDr1w
-X-ME-Proxy: <xmx:b8P7aiRbJbLfP3V3pQXEh5Ss0uDNWDgB9YP4RwQonjKylc8y2f7q8w>
-    <xmx:b8P7ak7jD9x134KFHG6zDoPNvoKy_HTjj9RLv1LhcvCwdPIb5oVD9Q>
-    <xmx:b8P7au014Cz4t97wOiRBtdV_5rvwWIWtK3BUokPrHRkX8VSEVFUtJA>
-    <xmx:b8P7avArnx5i3SF0SB8CxRZVKHR6_Wem7-BlGPzdhWKzF4abpad5Yg>
-    <xmx:b8P7ameyaySuXkUYGHRaE0KbvGkaD1EbloWYxJRQUTpklgrL70dzbkD->
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 16 Nov 2026 22:01:01 -0500 (EST)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (1024-bit key, unprotected) header.d=uniontech.com header.i=@uniontech.com header.a=rsa-sha256 header.s=onoh2408 header.b=PIllbhmr
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=uniontech.com;
+	s=onoh2408; t=1794885108;
+	bh=BJ556ecJR4Jd8JuWQ1rM7zpdNzlHdcT1E+BDUM2gyOo=;
+	h=From:To:Subject:Date:Message-Id:MIME-Version;
+	b=PIllbhmrmtg1lmEX24JoVg5f8wnIQevVnfLVjCkcsIexsJdTLDS6GAzbikPQSmi1+
+	 5ZVyxFLisFtM+UdwsQEH2rXiBQfZ75YrxuGiqceG3Cp6n0oNrG5z6HqA+NZiDvn4u8
+	 JTCN/k5Rh+OmaWBbseb6RMTcWcwxqht10AA4bgVE=
+X-QQ-mid: esmtpsz18t1794885104tb6fad94a
+X-QQ-Originating-IP: 25MguXpvtI2AgLPtzZCztXSfAog0cMKUOSnpT28dVZ4=
+Received: from localhost.localdomain ( [1.202.39.170])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Tue, 17 Nov 2026 11:11:38 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 1
+X-BIZMAIL-ID: 17942564023683854382
+From: Haolin Xue <xuehaolin@uniontech.com>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com
+Subject: [PATCH v2] fsloc: fix crash on an invalid entry in a locations list
+Date: Tue, 17 Nov 2026 11:11:32 +0800
+Message-Id: <20261117031132.258227-1-xuehaolin@uniontech.com>
+X-Mailer: git-send-email 2.20.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -118,48 +64,300 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Jonathan Flynn" <jonathan.flynn@hammerspace.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 0/8] nfs: prepare for locking changes.
-In-reply-to: <20261109005504.1804605-1-neilb@ownmail.net>
-References: <20261109005504.1804605-1-neilb@ownmail.net>
-Date: Tue, 17 Nov 2026 14:00:58 +1100
-Message-id: <179488445814.1728055.9049767251296971441@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Transfer-Encoding: 8bit
+X-QQ-SENDSIZE: 520
+Feedback-ID: esmtpsz:uniontech.com:qybglogicsvrgz:qybglogicsvrgz6b-0
+X-QQ-XMAILINFO: M5z4lLHHBhdazGABNUlEMfO7KMFbIZzQG+TG604qJqLUnoe94cELnwVu
+	yz3kao1htKnfe6/mBxAS6isK0diLaqUo+XbsgxN1r8kib5nIHFBErhOkxM8WqXI7OVAGLf3
+	9lOyl5smTQj4mmRj1XPiKdfAF3fY2hOaDlN2X9LE2LWVNNkW9fYwnmR/gruTSm/J1WelogA
+	jkSf3jvmlJ661cZoppSsswxC9iFaKjcepTuZLMiYrgy65tzjhNHCYDoAgdVSg7t9RAuv7oa
+	gqOVA2R5xL2u807DA5xkVxACBb4+KsZ53gxlnsLArZWREMTKCWH9DWJ6PvRfA4u/7nBWYUz
+	MeNW2tRpkMdf8lp2+loF6Scoy9TxQwirUCdiIcv4K4vyKs9YcblCbgYDIdKjKCIVYEtdKDh
+	4Aw/Q7s2OPEiPKM/ZY7lizqlCe2FHoUE6Wgdg7P86A9GepwokxAjddhUhYsrSn1aKLuG47Y
+	0LebOXqvh/puy4l6kvjiR13MTaiWV66Iht1Qw+WOKCB/gjPsOFyGPGWNjlTbFUQFsqQQzS8
+	e7NfqsuRaSjVzIyLrIF3KLxWthkAyXBfQxfrwKtRKe6Ni3QVEQHjHSvbVUrKSeC9zpq2z3r
+	G8ulVK14gtDQkw5+GarBkAxKLl6n3JtsTJWy52l2uU53/ysrtO5sTZCeTmydnYyPWdDUZew
+	foApomCFl7lM3Fm+1jVxqS7VkW5D3FYiwC0/p3pU5V1fcqMdh0DB2NoFt2E3+5GQwFQ966t
+	DC9ldXY5NBsNr61LMhsPx5oerViohI+K1CeXPraBu+qYPg0Hb04FkTQ7psftLt/QBsYROr/
+	eRZHvjk/Km4ZEyxFl/p6Nd2ItNciV2/euzzDUUALdJFn1GFVRAJmq1qZ0hG0LHA6osLxdAC
+	l3fW8u5kPHVKtKfS/rHN9ueh0inw2EAlzc39GGNkZBSX5x2zV3N6OHA3ucvcpqcSu/CO0IH
+	MqycAxzyxAt+bbYyXsJhAzWnTWmEGiLyuwxkuLbnwcHFBMXqo2Re4NsDn2ARTSeSwA8zsg5
+	oOg7M7fDfSuep7Fn4ScwK3YSFHbIVZY7v60909w5giTEjtAdEc
+X-QQ-XMRINFO: MSVp+SPm3vtSI1QTLgDHQqIV1w2oNKDqfg==
+X-QQ-RECHKSPAM: 0
 
+parse_list() stores each parsed entry in res->h_mp[i] using the loop
+index, but only increments res->h_num for entries that pass validation.
+An entry that is rejected and skipped with "continue" therefore leaves
+h_mp[i] unset while i has already moved on, so a later valid entry is
+stored above the slot that h_num accounts for.  Every consumer walks
+h_mp[0] .. h_mp[h_num - 1] (replicas_print(), release_replicas() and
+write_fsloc()), so one skipped entry makes them dereference an
+uninitialized element of the malloc()ed servers structure.
 
-Hi Anna/Trond,
-is there any chance this series might land for the next merge window?
+With a malformed "refer=" or "replicas=" option in /etc/exports, e.g.
 
-Thanks,
-NeilBrown
+	/export *(refer=/export:/export@server2)
 
+where the first location is missing its host, rpc.mountd dereferences
+heap garbage while it (re)builds the export cache: it either takes a
+SIGSEGV or aborts in free() from release_replicas().  A typo in the
+exports file should at worst produce a warning, not kill the daemon and
+lose the whole export, valid locations included.
 
-On Mon, 09 Nov 2026, NeilBrown wrote:
-> In this v5 I've dropped "nfs: fix nfs_call_unlink()" because it enabled cod=
-e that was
-> buggy.  I have ideas how to fix this properly but it belongs in a separate =
-series.
->=20
-> I've also revised the barriers in "nfs: fix open-blocking with d_fsdata", t=
-hanks
-> in part to Jonathan's input.
->=20
-> I think the rest is unchanged.
->=20
-> Thanks,
-> NeilBrown
->=20
->  [PATCH v5 1/8] nfs: fix open-blocking with d_fsdata
->  [PATCH v5 2/8] nfs: remove d_drop()/d_alloc_parallel() from
->  [PATCH v5 3/8] nfs: use d_splice_alias() in nfs_link()
->  [PATCH v5 4/8] nfs: don't d_drop() before d_splice_alias()
->  [PATCH v5 5/8] nfs: don't d_drop() before d_splice_alias() in
->  [PATCH v5 6/8] nfs: Use d_alloc_trylock() in nfs_prime_dcache()
->  [PATCH v5 7/8] nfs: use d_alloc_trylock() in silly-rename
->  [PATCH v5 8/8] nfs: use d_duplicate()
->=20
->=20
+Number the array slots independently so that h_mp[] is always dense and
+h_num always matches it.  Valid lists are unaffected: FSLOC_MAX_LIST
+still bounds the number of entries kept, and rejected entries are still
+reported with the same L_WARNING.
+
+Add a tests/ regression case that feeds malformed lists to
+replicas_lookup() and checks that the surviving locations are parsed
+with a dense h_mp[].
+
+Fixes: ec75fd41fcf2 ("Add missing fsloc.[ch] files - oops.")
+Signed-off-by: Haolin Xue <xuehaolin@uniontech.com>
+---
+Changes in v2:
+- Rebased onto the current upstream master (c1f521c4, tag
+  nfs-utils-3-1-2.rc4).  support/export/fsloc.c is untouched upstream since
+  v1 was posted, so that hunk re-applies verbatim (blob 1b869b60).
+- Resolved one conflict, in tests/Makefile.am: upstream gained a new test
+  (t0003-get-maintainer.sh, commit bbb50905, 2026-11-13) after v1 was
+  posted.  The rebased patch keeps t0003 in TESTS and appends
+  fsloc_parse_test, and lists the shell test scripts explicitly in
+  EXTRA_DIST so that the built fsloc_parse_test binary is not distributed;
+  v1 had replaced the whole $(TESTS) list, which would have dropped t0003
+  from the tarball.
+- No change to the fix or to the test's expectations.
+
+Verified on this base: "make check" passes 3/3
+(t0001-statd-basic-mon-unmon.sh, t0003-get-maintainer.sh,
+fsloc_parse_test); restoring only the old fsloc.c makes
+fsloc_parse_test abort with SIGABRT ("double free or corruption (out)").
+
+ support/export/fsloc.c   |   6 +-
+ tests/Makefile.am        |  11 ++-
+ tests/fsloc_parse_test.c | 152 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 163 insertions(+), 6 deletions(-)
+ create mode 100644 tests/fsloc_parse_test.c
+
+diff --git a/support/export/fsloc.c b/support/export/fsloc.c
+index 1b869b60..a9e5a86b 100644
+--- a/support/export/fsloc.c
++++ b/support/export/fsloc.c
+@@ -82,7 +82,7 @@ static struct servers *method_stub(char *key)
+  */
+ static struct servers *parse_list(char **list)
+ {
+-	int i;
++	int i, n;
+ 	struct servers *res;
+ 	struct mount_point *mp;
+ 	char *cp;
+@@ -93,7 +93,7 @@ static struct servers *parse_list(char **list)
+ 	res->h_num = 0;
+ 
+ 	/* parse each of the answers in sucession. */
+-	for (i=0; list[i] && i<FSLOC_MAX_LIST; i++) {
++	for (i = 0, n = 0; list[i] && n < FSLOC_MAX_LIST; i++) {
+ 		mp = calloc(1, sizeof(struct mount_point));
+ 		if (!mp) {
+ 			release_replicas(res);
+@@ -105,7 +105,7 @@ static struct servers *parse_list(char **list)
+ 			free(mp);
+ 			continue; /* XXX Need better error handling */
+ 		}
+-		res->h_mp[i] = mp;
++		res->h_mp[n++] = mp;
+ 		res->h_num++;
+ 		mp->h_path = strndup(list[i], cp - list[i]);
+ 		cp++;
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 851b88ac..29a639dd 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -1,15 +1,20 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-check_PROGRAMS = statdb_dump
++check_PROGRAMS = statdb_dump fsloc_parse_test
+ statdb_dump_SOURCES = statdb_dump.c
+ 
+ statdb_dump_LDADD = ../support/nfs/.libs/libnfs.a \
+ 		    ../support/nsm/libnsm.a \
+ 		    ../support/misc/libmisc.a $(LIBCAP)
+ 
++fsloc_parse_test_SOURCES = fsloc_parse_test.c
++fsloc_parse_test_LDADD = ../support/export/libexport.a \
++			 ../support/nfs/.libs/libnfs.a \
++			 ../support/misc/libmisc.a $(LIBCAP)
++
+ SUBDIRS = nsm_client
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+-TESTS = t0001-statd-basic-mon-unmon.sh t0003-get-maintainer.sh
+-EXTRA_DIST = test-lib.sh $(TESTS)
++TESTS = t0001-statd-basic-mon-unmon.sh t0003-get-maintainer.sh fsloc_parse_test
++EXTRA_DIST = test-lib.sh t0001-statd-basic-mon-unmon.sh t0003-get-maintainer.sh
+diff --git a/tests/fsloc_parse_test.c b/tests/fsloc_parse_test.c
+new file mode 100644
+index 00000000..347858fc
+--- /dev/null
++++ b/tests/fsloc_parse_test.c
+@@ -0,0 +1,152 @@
++/*
++ * fsloc_parse_test.c -- regression test for parse_list() in fsloc.c
++ *
++ * parse_list() used to index res->h_mp[] with the loop counter while
++ * res->h_num only counted the entries that passed validation.  A rejected
++ * entry (one without an "@host", or not starting with '/') therefore left a
++ * hole in h_mp[] that h_num did not account for, and every consumer walks
++ * h_mp[0] .. h_mp[h_num - 1]: replicas_print() dereferenced the uninitialized
++ * slot and release_replicas() free()d it, taking rpc.mountd down on a mere
++ * typo in a "refer=" / "replicas=" list in /etc/exports.  This test feeds
++ * such lists to replicas_lookup() and checks that the valid entries survive
++ * with a dense, correctly numbered h_mp[].
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "exportfs.h"
++#include "fsloc.h"
++
++#define MAX_LIST 64
++
++static int failures;
++
++static void
++check_list(const char *data, int expected_num, const char *const expected[])
++{
++	struct servers *servers;
++	int i;
++
++	/* replicas_lookup() internally prints the list, so a leftover hole in
++	 * h_mp[] makes the process die here rather than return. */
++	servers = replicas_lookup(FSLOC_REFER, (char *)data);
++	if (!servers) {
++		fprintf(stderr, "FAIL: replicas_lookup(\"%s\") returned NULL\n",
++			data);
++		failures++;
++		return;
++	}
++
++	if (servers->h_num != expected_num) {
++		fprintf(stderr, "FAIL: \"%s\": expected %d entries, got %d\n",
++			data, expected_num, servers->h_num);
++		failures++;
++	}
++
++	for (i = 0; i < expected_num && i < servers->h_num; i++) {
++		char buf[512];
++		int n = snprintf(buf, sizeof(buf), "%s:%s",
++				 servers->h_mp[i]->h_host,
++				 servers->h_mp[i]->h_path);
++
++		if (n < 0 || (size_t)n >= sizeof(buf) ||
++		    strcmp(buf, expected[i]) != 0) {
++			fprintf(stderr, "FAIL: \"%s\": entry %d is \"%s\", expected \"%s\"\n",
++				data, i, buf, expected[i]);
++			failures++;
++		}
++	}
++
++	release_replicas(servers);
++}
++
++static void
++check_rejected(const char *data)
++{
++	check_list(data, 0, NULL);
++}
++
++int
++main(void)
++{
++	/* Invalid entry first: the whole point of the fix. */
++	static const char *const two_with_leading_bad[] = { "server2:/export" };
++	/* Invalid entry in the middle. */
++	static const char *const two_around_bad[] = {
++		"server1:/export", "server3:/export"
++	};
++	/* Nothing invalid: valid lists must be parsed as before. */
++	static const char *const two_valid[] = {
++		"server1:/export", "server2:/export"
++	};
++	/* Invalid entry last: worked before too, guard against regressions. */
++	static const char *const one_with_trailing_bad[] = { "server1:/export" };
++
++	char many[8192];
++	char entries[FSLOC_MAX_LIST][32];
++	char *expected[MAX_LIST];
++	int i;
++
++	/* An invalid entry must not take the daemon down, and the valid
++	 * entries on either side of it must be kept. */
++	check_list("/export:/export@server2", 1, two_with_leading_bad);
++	check_list("/export@server1:/export:/export@server3", 2, two_around_bad);
++	check_list("/export@server1:/export@server2", 2, two_valid);
++	check_list("/export@server1:/export", 1, one_with_trailing_bad);
++
++	/* Entirely invalid lists simply yield no locations. */
++	check_rejected("/export");
++	check_rejected("garbage");
++
++	/* The 40-entry FSLOC_MAX_LIST bound still applies, and it counts the
++	 * entries that are kept, not the ones that were scanned. */
++	many[0] = '\0';
++	for (i = 0; i < FSLOC_MAX_LIST + 1; i++) {
++		char entry[32];
++		if (i)
++			strcat(many, ":");
++		snprintf(entry, sizeof(entry), "/export@server%d", i + 1);
++		strcat(many, entry);
++	}
++	for (i = 0; i < FSLOC_MAX_LIST; i++) {
++		snprintf(entries[i], sizeof(entries[i]), "server%d:/export", i + 1);
++		expected[i] = entries[i];
++	}
++	check_list(many, FSLOC_MAX_LIST, (const char *const *)expected);
++
++	/* One rejected entry in front of an over-long list: the rejected entry
++	 * must not push a valid entry out of the array (the old code kept
++	 * server1..server39 here). */
++	snprintf(many, sizeof(many), "/export");
++	for (i = 0; i < FSLOC_MAX_LIST + 5; i++) {
++		char entry[32];
++		snprintf(entry, sizeof(entry), ":/export@server%d", i + 1);
++		strcat(many, entry);
++	}
++	check_list(many, FSLOC_MAX_LIST, (const char *const *)expected);
++
++	if (failures) {
++		fprintf(stderr, "fsloc_parse_test: %d check(s) failed\n", failures);
++		return 1;
++	}
++
++	printf("fsloc_parse_test: all checks passed\n");
++	return 0;
++}
+-- 
+2.43.0
 
