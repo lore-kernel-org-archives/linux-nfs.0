@@ -1,72 +1,72 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794945760;
-	b=PmM4HgW4iccy2tR5FBDL0YGTc/kA5EjT/X9zkn71nb+y0TkPLIqPJpPNGSmg3PlSvYnf
-	 oykEFVhXr07+K1x1tkDfPYoIZ1dn+Tpa/40Id8kRjMYjCzswBzfI6TJB7zXk1YgoFh2Jl
-	 PxQEx6qHlcd2OvCCo/oAmqdjsmWucoYZwsWQ8IK/N75XxMY9cGNma03ZteF1H1Dz9yIkz
-	 50cqoyoA1ivJcNpVc3Fzj/QmNet36MXjQD0TcjUv2LQ/AY2sSgEiDUqbnoBn5MiaStqsn
-	 Zo7xa1FYEAJk1TkigatiVzpXhJrNGXDRYRzueDN+WHfp17jVjzywZhqOk+RRFHfgnNQ==
+	t=1794952926;
+	b=nKNbcQWJTe8NiK1VshY8wlA+bomV3akczGQzorHOlgAZoyPbFIMMkPBnIBDmYx+gkoL1
+	 WX0m+56pOC+1/f+zQdDnQgp/17ku4dg9TjWteMrpTBqdgtxfX6X9404F60+SiWSPB7hie
+	 yGLqNhb4CU3E+MwOSVWvgo/hTVVUtocKyYMUTBkLFCLrT5YHU6Qn+A/WRcQdMKWxY0bxw
+	 H8X9EdxbAPH1RUMFgBOq7S5KOA/Rw2p1kacA3TMKXnGxh7uLEgaNxKDgflGW0g2PFj69V
+	 R37HyCPmZ9GpVqKtMNiglQj53sLjpJta9COcCza4i8hlnzZFIZeGVorl2J5SjxUjeJw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794945760;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794952926;
 	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
 	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
 	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
 	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=pH7i3rIEVULR+ZSAOdZjHq+LUo/ew2g18YNxqrflUKo=;
-	b=CvXmTvQ/6bQk1hwJXcUI9qBqoqwjjJr9kWCHf+VxLt8yqx5fwnjuTjfxWOqDP/YE8+CN
-	 RhRJlNqe4E8+hd+fE+mSEkbRpHYu+6vMs6p/fcUpiKOb2Iya8j9Q8oMaZzF4UBsXOANWn
-	 Yf831ZGwL6ky6nTJU1qysZGYL/9/UU0k2d/2KzZSqKlJJXuo3hW9zeWv7jP6SVwYtxACY
-	 pE06h8My+fNNrk5LsP1Ruz4UxUarmVuW3LJhXq1Akluu8qfi3K4U+lybrqgBkO7k2E/NR
-	 RM0F5+w8zZTA0eiSz/3NOsHVV6dwSCPUUIzgi7Besdr+vUeqxjUK1TisqZt9kAHYrNQ==
+	bh=EsQiVnWdklcglRbIqoscQFF5X7p4jGIU+Y0OOx+78ps=;
+	b=1qU5iDcdl4gxYAH9LaV2n9SYqMZYd3YcHobTqL7dbzbcGItri8cjcyCPbVsgA8b3L5uG
+	 +vVekYYykNlaJF5f9u5KoRztmwaY89mXaqBjcFzobTybuzsaJn7PZnFyWHKKBbwoarUUk
+	 XUcxbqE1tyjiTN87ANXu5nceJqDfwfG73hwNA2TIP7Lz7446In21VwUlwf2FjwkmEPDo3
+	 xDsIVpbpe/dA8XrilOgK7n2sMeYzjDahvmkgAldepaw8/2IvX6m+nzR7eVC0wtr+Rs85H
+	 NYULjuRzswMJAqCDPVQ4PoB/X2hvkuA/IzBOPoLiuLXVQBbf7kW5XJ6BpdJw4CjDYjg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BA+we53M;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eRKKuDOC;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BA67B606A32C
-	for <linux-nfs@vger.kernel.org>; Tue, 17 Nov 2026 20:02:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74368606A32A;
+	Tue, 17 Nov 2026 22:02:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BA+we53M
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 64FD61F000C7;
-	Tue, 17 Nov 2026 20:02:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=eRKKuDOC
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1BB3B1F000CC;
+	Tue, 17 Nov 2026 22:02:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1794945760;
-	bh=pH7i3rIEVULR+ZSAOdZjHq+LUo/ew2g18YNxqrflUKo=;
+	s=k20260515; t=1794952926;
+	bh=EsQiVnWdklcglRbIqoscQFF5X7p4jGIU+Y0OOx+78ps=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=BA+we53M4Z4v50M4KA+HBsG91U5zlyLkq+PZK/QeQf5SOcAVmy9D3RvPMRMl5PbY0
-	 BkyBrijaBWrUwtO1S3CTlbpg4SrVucNo/mheNzrFfSkXu7j5SARu7PLMmn+RhspFYz
-	 B4aZ+cvCqGt+z4IbHzPEEIbrLJcOPDMVPuY10XtrpPyyRh3gz+DSt0q/MRrV81nCRW
-	 aZsV0DUWOr5En3HyHhkTHFbu4GSojW3DT7cnbSlmRLt2Zr301QdfGn6X4T5PAWkTuI
-	 5MJLaB76ja71Aj0nnDbzAgU2cUkDYXg7x8kYGfFVACnfjJmR2le6SSZ4HZD4j2wnqi
-	 qvKuiGRyIKDoA==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 8CF4CF40066;
-	Tue, 17 Nov 2026 15:02:39 -0500 (EST)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Tue, 17 Nov 2026 15:02:39 -0500
-X-ME-Sender: <xms:37L8ajRnEA7CKCDpkcG72AKrZdqDxixndO6FDh1rdD5xUtVDlAwIbQ>
-    <xme:37L8avl8M9E9FCQOHSC3Gyo8UItcBpOHW5ripup8WJiTMVCJFiEDfichJ-sUxyXkc
-    fMAaUPw7nIu7-gArBIpvDTCfOMClI2hFz6BGnUHdqYny6W1MiWycHJX>
-X-ME-Proxy-Cause: dmFkZTE2M532g5mZoKvRo7mPdInQOsQvAsWWlSVmjU4F/WCxLVfWkt/2QUbV13XH84/CG7
-    l8LL2Z34uP7Zk6pV5XBN2FdddJ/RkcHEk2eAx6BZLBwl8ndqDubbcgTbMTRZGR8pnEVFkW
-    pDL4qS4oKqQ/VT1yLWJNkR/g4c1MFQoRnDNc34fkaHO3kC14PHL2mOml/lIPgm6bMbQNNS
-    jOm/T2gx2ppAbSZwevgcE0QI5A6gT1Bs6IxzbAgQXJacTo9rmPnIrLRA5R/hlrvozdFAkh
-    xkmN/JXJbFwjyuH2DytA7AmFtI3m8+X1pwCULna1HDOnMT00gNdyA0xDY3T78XKLetYghl
-    wKP7yFp36/saNacub2tP/SKbmLN4+gcdSi7/PbLpgOkam7LG2BEz7iDXnbwf4qIGdjhgVF
-    iqgaf5eN46fhuyuzxqgZEs/a8ZatfD1A91+CL1gk65zFA6WtX7RwRLfQ5ubgmaYGG4zdCV
-    pH15PfzGFjSDHoE9ixtKeFZu6mCKQ56K6dfCYF9q0lK6Ihj9aUjDCmyp7ID/I7kJu0VcNt
-    41rd/wNuhQqUMcN2nIh4mz5nkgeN5v4zrBqd4FQ2BwNrflE1JP7DoUq+8U+zJS0dhOJiqd
-    HwjKaC2u+ebCr4ZwADEBgdclNa2p9vwIDwXoEr60WiTrjfZOJpHi5vM0gMqw
-X-ME-Proxy: <xmx:37L8aqWSy2wi75cX4bNNURqQO_0PzXI4HimA3JvacMSTOQR-dXHaiw>
-    <xmx:37L8aoHYKgSG5d3sFZObeQcVv0Lajip-2uTKBKL3xhQqOWn-hAgScw>
-    <xmx:37L8aufRw-4O69WFgADrcsjHno0mL8sl-XDo2B4zSlPD5jt4mzpnXw>
-    <xmx:37L8ahJD5m4eBbzaAhq9MWOaPCoHNaGSVvpO7SwlEGBHCURepQvMrw>
-    <xmx:37L8arECHt_xJpa7PtRt0Mz_7XQMllfI1LFzBAfGB2brnYAC6lu8yxeU>
-Feedback-ID: i20964851:Fastmail
+	b=eRKKuDOCG4lZI0ZtmAAIpexh5saMlRjXYGgquqnGJHw5xx0hKiSTtEpRMTU0UnEZx
+	 IcVAie3qbTbLtwat8lgNDCP6zhB7QCTVdVvmIBlqP9fuJUX+csyhPtr5Pct2KMF+dr
+	 sKEIWoHciSIaSRbPXtRwsvShsS664//k6GK3BjshzeV1onoC5SB/aS7wLmCyLKJ9K8
+	 m5LAARW1i0RM6erGJTXwnJLIbMj19kpQzxaJV5KdnARcC1GmD4YHak/fh/wBY2ukPa
+	 yhfRyDN1zjqulKDzMqoKKSTFXathlkGd8lIzu3DnyeBMJBeCEbjKT0GFxDySnJK8UV
+	 YAtD4XE3Ry5Ag==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 50504F40066;
+	Tue, 17 Nov 2026 17:02:04 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Tue, 17 Nov 2026 17:02:04 -0500
+X-ME-Sender: <xms:3M78aq1jfwU6kkpHJYfkamLb7k26diePkGr8HYaND-ZrMBjnohMrzQ>
+    <xme:3M78an6y1Y_GR0u1TwtOXDhTJSDOYemr1m9Hmyh5XEDGdsDAx71bEoAOEShnFinjM
+    69EF-AeO1bjSPJvAvqEXXhgqHUGSfFOCO013H2g38lm6F7OfmUkmU4v>
+X-ME-Proxy-Cause: dmFkZTEFWk4jFRq2Ypvh/OGGpN3RYf9yAIcrjwoio2l5SxvidVJI3djILaxgpL7LyuOL7E
+    lli1okH5QEaMWzCUMyMt49RTjdtkb7p5j8SnJ7vko/DXCHPESNoXMFqc8eAYVU7BGtrfNE
+    O8Wkt/X+eQscT/cb/kG8LbWg6SuLpK+A11UAMB+QAdy5UWJZaV2trmsj/oQjP/6lPcVVP0
+    p+nLQemqrSyF8f9utiFf/d15PjZvnAYnKe5plmCnfbGuYaAIvR4RuHbeaDv3ZwgaqwEoTc
+    O56V45wyKdQUyvAqx58jhwnrJqlfVvWKvX0EJKReKmJux7PwleYyLgjD7P44v937Li49Qw
+    3PfPZt4Tz5Ch4ICbtemCoWAFkhd9LpRHHoQMM6xH+uQv2Cf4FlSCV6BNrPskaFpbE2Gt1a
+    ss+P7AhsTRHraYWbE5wed0xL9iCm70tSnIKB//n/ZBAuWR+D7Nfc9NMkA+fe4C2g5UFBLM
+    HmApoPfgE08+h48RscbkJ1zXPfd8wMImQd71BRZR8wJOu7FYt+A09ttWsoXwQ9M7voSEdh
+    iRB9mHPKZYTCf5j5tYY9XJfVHu4mQQzGd7r79LEO7RpJ1QmejEfUCnIUQqmekcp8PP/D1n
+    CB+FZEcYdo/YsJxNiNswgtVIPlyCf6Ab0g19TFApN5j+o5xqL9Y5EgaGlC7g
+X-ME-Proxy: <xmx:3M78anU0MJ35zJ3NF5t0f4ScxkcsT3P7nBy3grYqehD-Bs0aT3fDkg>
+    <xmx:3M78ai64XGO4B10f_mx5toxFs_hI5crqdE1ZqJkyW4lQCVpizqa6Sw>
+    <xmx:3M78avOt7UDMa5ZXcad-yrMZ1xx7rDvSS6ajIf1O1pvu-h3fvDtK-Q>
+    <xmx:3M78algMt1NSKEj31TOL76bmFCAw6QHR4dwEMMeuS0i8PnqzpbVH4Q>
+    <xmx:3M78alib9v_mERwNSmE9KLKWOVL58rpYH24tW96EQor0v_frdN4CGY3f>
+Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 6B2FCB6006E; Tue, 17 Nov 2026 15:02:39 -0500 (EST)
+	id 219C2780077; Tue, 17 Nov 2026 17:02:04 -0500 (EST)
 X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -77,79 +77,91 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: A1ErcsuEOLNc
-Date: Tue, 17 Nov 2026 15:02:19 -0500
-From: "Anna Schumaker" <anna@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
+X-ThreadId: AgKvhXN-CN1w
+Date: Tue, 17 Nov 2026 17:01:43 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: koraynilay <koray.fra@gmail.com>, "David Sterba" <dsterba@suse.com>,
+ "Namjae Jeon" <linkinjeon@kernel.org>,
+ "Sungjong Seo" <sj1557.seo@samsung.com>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
  "Jeff Layton" <jlayton@kernel.org>,
- "Jonathan Flynn" <jonathan.flynn@hammerspace.com>, linux-nfs@vger.kernel.org
-Message-Id: <2ae94011-4981-4507-b75e-cd0d326989b8@app.fastmail.com>
-In-Reply-To: 
- <179494500179.1728055.16539025879082560214@noble.neil.brown.name>
-References: <20261109005504.1804605-1-neilb@ownmail.net>
- <179488445814.1728055.9049767251296971441@noble.neil.brown.name>
- <759d7deb-f380-4094-bb6b-35a4db945d56@app.fastmail.com>
- <179494500179.1728055.16539025879082560214@noble.neil.brown.name>
-Subject: Re: [PATCH v5 0/8] nfs: prepare for locking changes.
+ "Konstantin Komarov" <almaz.alexandrovich@paragon-software.com>,
+ "Paulo Alcantara" <pc@manguebit.org>
+Cc: "Chris Mason" <mason@kernel.org>, "Yuezhang Mo" <yuezhang.mo@sony.com>,
+ "Jan Kara" <jack@suse.cz>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Ronnie Sahlberg" <ronniesahlberg@gmail.com>,
+ "Shyam Prasad N" <sprasad@microsoft.com>,
+ "Bharath SM" <bharathsm@microsoft.com>,
+ "Sergey Senozhatsky" <senozhatsky@chromium.org>,
+ ChenXiaoSong <chenxiaosong@chenxiaosong.com>,
+ "Darrick J. Wong" <djwong@kernel.org>,
+ "Sean Smith" <defendthedisabled@gmail.com>,
+ "Andrey Albershteyn" <aalbersh@kernel.org>,
+ "Pedro Falcato" <pfalcato@suse.de>, "Amir Goldstein" <amir73il@gmail.com>,
+ =?UTF-8?Q?Pali_Roh=C3=A1r?= <pali@kernel.org>, linux-btrfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ exfat@lists.linux.dev, ntfs3@lists.linux.dev, linux-cifs@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
+Message-Id: <f297d9ea-ebd7-47f4-ab7b-de5c45980000@app.fastmail.com>
+In-Reply-To: <20261115180343.576773-8-koray.fra@gmail.com>
+References: <20261115180343.576773-1-koray.fra@gmail.com>
+ <20261115180343.576773-8-koray.fra@gmail.com>
+Subject: Re: [RFC PATCH v4 07/10] nfsd: add provenance time (ptime) via
+ FATTR4_TIME_CREATE
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
 
-On Tue, Nov 17, 2026, at 2:50 PM, NeilBrown wrote:
-> On Wed, 18 Nov 2026, Anna Schumaker wrote:
->> Hi Neil,
->> 
->> On Mon, Nov 16, 2026, at 10:00 PM, NeilBrown wrote:
->> > Hi Anna/Trond,
->> > is there any chance this series might land for the next merge window?
->> 
->> That's what I was expecting. The patches looked okay to me!
+On Sun, Nov 15, 2026, at 1:03 PM, koraynilay wrote:
+> Implement provenance time (ptime) in NFSD, as introduced in a
+> previous commit ("vfs: add provenance time (ptime)").
 >
-> Great - thanks.  I was expecting to see them in -next by now if you were
-> okay with them.  When did you think they might land there?
+> Map ptime to FATTR4_TIME_CREATE, allowing clients to set it across
+> CREATE, OPEN and SETATTR compounds.
+>
+> If the underlying filesystem supports it, use __vfs_fileattr_set_locked()
+> to set it, returning -EOPNOTSUPP in case it's not supported (i.e. when
+> __vfs_fileattr_set_locked() returns -ENOIOCTLCMD).
+>
+> When querying FATTR4_TIME_CREATE, request both STATX_PTIME and
+> STATX_BTIME, preferring ptime over btime if available, and advertise
+> FATTR4_TIME_CREATE support if either ptime or btime is available.
+>
+> Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.5.7
+> Signed-off-by: koraynilay <koray.fra@gmail.com>
 
-I don't know. The 7.5 merge is Trond's turn, and I'm not sure when he'll
-get a chance to start building a linux-next for it. I have been keeping a
-private branch with changes that I expect to go into 7.5 so nothing gets
-missed, however. I'll ask Trond what his plans are next time I talk to him.
+> @@ -3646,7 +3649,14 @@ static __be32 
+> nfsd4_encode_fattr4_time_access(struct xdr_stream *xdr,
+>  static __be32 nfsd4_encode_fattr4_time_create(struct xdr_stream *xdr,
+>  					      const struct nfsd4_fattr_args *args)
+>  {
+> -	return nfsd4_encode_nfstime4(xdr, &args->stat.btime);
+> +	const struct timespec64 *ts;
+> +
+> +	if (args->stat.result_mask & STATX_PTIME)
+> +		ts = &args->stat.ptime;
+> +	else
+> +		ts = &args->stat.btime;
+> +
+> +	return nfsd4_encode_nfstime4(xdr, ts);
+>  }
 
-Anna
+I have trouble with this approach.
 
->
-> Thanks,
-> NeilBrown
->
->
->> 
->> Anna
->> 
->> >
->> > Thanks,
->> > NeilBrown
->> >
->> >
->> > On Mon, 09 Nov 2026, NeilBrown wrote:
->> >> In this v5 I've dropped "nfs: fix nfs_call_unlink()" because it enabled code that was
->> >> buggy.  I have ideas how to fix this properly but it belongs in a separate series.
->> >> 
->> >> I've also revised the barriers in "nfs: fix open-blocking with d_fsdata", thanks
->> >> in part to Jonathan's input.
->> >> 
->> >> I think the rest is unchanged.
->> >> 
->> >> Thanks,
->> >> NeilBrown
->> >> 
->> >>  [PATCH v5 1/8] nfs: fix open-blocking with d_fsdata
->> >>  [PATCH v5 2/8] nfs: remove d_drop()/d_alloc_parallel() from
->> >>  [PATCH v5 3/8] nfs: use d_splice_alias() in nfs_link()
->> >>  [PATCH v5 4/8] nfs: don't d_drop() before d_splice_alias()
->> >>  [PATCH v5 5/8] nfs: don't d_drop() before d_splice_alias() in
->> >>  [PATCH v5 6/8] nfs: Use d_alloc_trylock() in nfs_prime_dcache()
->> >>  [PATCH v5 7/8] nfs: use d_alloc_trylock() in silly-rename
->> >>  [PATCH v5 8/8] nfs: use d_duplicate()
->> >> 
->> >>
->>
+We've already established that, for the Linux in-kernel NFS server
+implementation, FATTR4_TIME_CREATE reports a file's birth time and
+does not permit NFS clients to modify that.
+
+After this patch is applied, the server reports the ptime instead
+of the btime on some filesystems but not others.
+
+Essentially this changes the semantics of existing files that have
+a btime set -- technically that's a regression.
+
+
+-- 
+Chuck Lever (Come to NFS bake-a-thon! https://nfsv4bat.org)
