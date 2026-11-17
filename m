@@ -1,55 +1,55 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.217
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.227
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794926019;
-	b=pFmSiYRBrYCv/w8WTxBg36P9TQfr/d6kcdgAhNYiZsZ+irgjou0ImbCaXoKWDZuGjakU
-	 RcU7h22z9LTNSW0C403ipBUZLvf6cFQd16oXZ2FJVxPzMKBCiWSZNKl217vNx5+Kszo5R
-	 UwozkVQ5DS+mJ2PbFgcQGgEqZ/mHwOkDjvPNz8mXOUFUSsO0nkWC3Jl8MfzDGMzAcZ1Fh
-	 8d6pIksm7IGse2uOWyR+VZkk/SIwRuQ/CMaH74ntNytt/4+Sp0qXHm/wI1eNfR8sFj60P
-	 jFAyOWSBaIUYMtRmgeL4zNU5VppQrnJ9AAU1IUdujRSrzm6MKjipz23yNYFB8cOGyqQ==
+	t=1794926024;
+	b=a58aY8lc+AL9KcdvHpxIHaswBeoZhRDvhDePx6ltnfSReImbtajrxKIedgVcUTKyRBqV
+	 C7fK0LnieV4Gzsdee6qLHCxCq4PyIur2ixXYwW/AgU4joVkmH4vIn3yyV//HHReK9rLUw
+	 Em8Z7jJgHsRdVC8RMIRVtJElvvYDL8EyYwfuaB8YzOIARRIs6fHDsoxDu2VnJHlogVwrc
+	 DYGxZ6Rv854oZDJFQbcmtzAJa6N94ScxyPDH0NViAswGkoLC1+jL3TTf0UWxNsr2XmsdY
+	 5gMWLZGvcni3daP++YbOVFzzdrCKNxkE4bYaiycex82KLpDmUQck6i78asOuV8P0W7g==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794926019;
+	a=rsa-sha256; c=relaxed/relaxed; t=1794926024;
 	h=DMARC-Filter:dkim-signature:Received:Received:Received:From:To:CC:
-	 Subject:Date:Message-ID:X-Mailer:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:X-Originating-IP:X-ClientProxiedBy;
-	bh=By2TgM9Xeiq5fwyI6d3OB7CNRr7DwQCDNevlT/7vutY=;
-	b=1lmiG/sUBHJEkcbeRUXDRODjtrzpGl8f76dPrZX0JxcWGSOEq4PwxFRY1kmfRYqVlGNR
-	 ACGZ/LCRNVqdlVgdSKs7zh3n/sDp29Ejtl3oY5OJsOcRQKund5rQYzxq1jo1AOucltwSI
-	 sXRrpegTF215zSi1NCINQQT4edAp4RBfdki2aKjaXjLeEuvXFw4zMLqDJwuiZxau6yHZP
-	 i17byLJYbmEXi1FEVoXtL3N9RbLYtS8O7vt45K2ZbXZcBMo9sz8zfKT/8qxZb8KTuNZ1C
-	 NqzyEcaW+4Pr+MkVmqRehDYV3GYaC8JtstBZXoaMayapg0LQa0V22fMxclabC8tGOSQ==
+	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Type:X-Originating-IP:X-ClientProxiedBy;
+	bh=+blmclYTHUIFVMxCJHl3f9J+YfDsKaUYylbH6PcF+3c=;
+	b=bg0JhGH60cIoFCE8QlkLTwpNogQJbR0ou7WDauRfib/tMnPtSEUJufOZPenz2A9+LmGS
+	 f6PQ0aWuxZSeEFAYrze/JAcKwfgrzsAzyKa/GYRDZo1O0pjXtvj5dcEhrgEbRDpAFXydK
+	 BRBpHWbgvz47id4+deJ0P9XAGfQbV1uiRI9M+fjQfEBFLUHBN3zhLyDl1atkuA618ozC5
+	 PAdbOn28Zffxng4INQaz3sTVOjH1RgAatMhVwGPDEiPMtzsvU8CONPVV9Vv6LapWQsqJp
+	 GAOzVeqHDfs++r2UMzn9R5DOSAXZ+HYFIbMjruwB+dYr4rQ1ZVUK5MZo2Z1ylVkkXwQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=huawei.com;
 	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=fmE8M1h5;
-	arc=none smtp.remote-ip=113.46.200.217
-Received: from canpmsgout02.his.huawei.com (canpmsgout02.his.huawei.com [113.46.200.217])
+	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=BDpSR8nF;
+	arc=none smtp.remote-ip=113.46.200.227
+Received: from canpmsgout12.his.huawei.com (canpmsgout12.his.huawei.com [113.46.200.227])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23CB7606A882;
-	Tue, 17 Nov 2026 14:33:37 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 23CB7606A882
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FF6F606A884;
+	Tue, 17 Nov 2026 14:33:43 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5FF6F606A884
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=fmE8M1h5
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=BDpSR8nF
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=By2TgM9Xeiq5fwyI6d3OB7CNRr7DwQCDNevlT/7vutY=;
-	b=fmE8M1h5jCOHDWXgeJCJFeb0hX7leMPaHPbVAUYxGt8hzFBowo9Z2rEnwEM2Ez5r8Ka6rpuE6
-	fQfdQkYAzFq3InspAmYMT/Q1LWAGscF3EBrD7IpGRyf97gtdnnwp61LHAuyS/9PH/5bg4Hjc0Wp
-	6DdiHT2efGkXmfXx1MI9Whg=
-Received: from mail.maildlp.com (unknown [172.19.163.104])
-	by canpmsgout02.his.huawei.com (SkyGuard) with ESMTPS id 4jTRym4C4Gzcb3H;
-	Tue, 17 Nov 2026 22:32:32 +0800 (CST)
+	bh=+blmclYTHUIFVMxCJHl3f9J+YfDsKaUYylbH6PcF+3c=;
+	b=BDpSR8nFZ/CUgK/MGFT87v4f9yczPhwCoM8d6UhZQ6Nv4sWi4BfidSLwCUSx1TQQOqi3DwPiv
+	X3fM8ZMMW2/Kvh2Iku0GMTOl/DfFQ5bzKNqR86jD2oCECrtjtVN56iL5DyPHU8SgKBrWI0xynPv
+	FhWdxUfnlixUGXZ8mkgKs3w=
+Received: from mail.maildlp.com (unknown [172.19.163.214])
+	by canpmsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4jTRyx1fXnznTZv;
+	Tue, 17 Nov 2026 22:32:41 +0800 (CST)
 Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
-	by mail.maildlp.com (Postfix) with ESMTPS id A5EA34057F;
-	Tue, 17 Nov 2026 22:33:23 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id BB1B04057C;
+	Tue, 17 Nov 2026 22:33:34 +0800 (CST)
 Received: from octopus.huawei.com (10.67.174.191) by
  whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Tue, 17 Nov 2026 22:33:17 +0800
+ 15.2.2562.45; Tue, 17 Nov 2026 22:33:28 +0800
 From: Cai Xinchen <caixinchen1@huawei.com>
 To: <mic@digikod.net>, <gnoack@google.com>, <paul@paul-moore.com>,
 	<brauner@kernel.org>, <jack@suse.cz>, <caixinchen1@huawei.com>
@@ -86,10 +86,12 @@ CC: <amir73il@gmail.com>, <andrii@kernel.org>, <apparmor@lists.ubuntu.com>,
 	<stephen.smalley.work@gmail.com>, <takedakn@nttdata.co.jp>, <tom@talpey.com>,
 	<viro@zeniv.linux.org.uk>, <yonghong.song@linux.dev>, <yuezhang.mo@sony.com>,
 	<zohar@linux.ibm.com>, <utilityemal77@gmail.com>, <lujialin4@huawei.com>
-Subject: [PATCH -next -v4 00/17] landlock: Add READ_METADATA and WRITE_METADATA access rights
-Date: Tue, 17 Nov 2026 23:05:25 +0800
-Message-ID: <20261117150542.1169451-1-caixinchen1@huawei.com>
+Subject: [PATCH -next -v4 02/17] LSM: pass struct path to the inode_setsecctx hook
+Date: Tue, 17 Nov 2026 23:05:27 +0800
+Message-ID: <20261117150542.1169451-3-caixinchen1@huawei.com>
 X-Mailer: git-send-email 2.18.0.huawei.25
+In-Reply-To: <20261117150542.1169451-1-caixinchen1@huawei.com>
+References: <20261117150542.1169451-1-caixinchen1@huawei.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -99,312 +101,156 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 X-ClientProxiedBy: kwepems100002.china.huawei.com (7.221.188.206) To
  whupemk100010.china.huawei.com (7.152.184.41)
 
-This series adds two new Landlock filesystem access rights,
-LANDLOCK_ACCESS_FS_READ_METADATA and LANDLOCK_ACCESS_FS_WRITE_METADATA,
-which control access to file and directory metadata such as inode
-attributes (mode, ownership, timestamps), extended attributes, POSIX
-ACLs and chattr(1)-style flags.  It picks up the work from the
-"landlock: add chmod and chown support" series [1] and follows the
-coarse-grained grouping discussed in that thread [2]: instead of
-separate chmod/chown rights, metadata operations are grouped into one
-read and one write right.
+The inode_setsecctx hook and its security_inode_setsecctx() caller in
+fs/nfsd operate on a dentry even though both have a struct path
+available.  Pass a const struct path so that the coming conversion of the
+xattr helpers can be reflected in the implementations; for now SELinux
+and Smack keep passing path->dentry and &nop_mnt_idmap to
+__vfs_setxattr_locked().
 
-Landlock evaluates access rights on a per-path basis, but the
-metadata related LSM hooks (inode_setattr, inode_setsecctx, the inode
-xattr, POSIX ACL and fileattr hooks) only receive the dentry of the
-accessed object.  Patches 1-8 therefore first pass struct path
-instead of dentry through the metadata-related VFS helpers and LSM
-hooks.  The hooks also receive a struct file argument, set by the
-VFS to the file through which the operation is requested when there
-is one (i.e. for the file descriptor-based system calls such as
-fchmod(2), fchown(2), fgetxattr(2), utimensat(2) on an empty path,
-and for the FS_IOC_* ioctls and file_[gs]etattr(2) with
-AT_EMPTY_PATH), and NULL otherwise (i.e. for the path-based system
-calls and for kernel-internal accesses).  This is a pure refactoring
-with no behavior change for the other LSMs, which only have their
-hook implementations' signatures updated; the file argument is only
-consumed by Landlock (patch 14).  The series is split so that every
-patch builds on its own:
+Also document in lsm_hook_defs.h what a struct path argument may be used
+for: it can be passed to VFS helpers taking a struct path, but nothing is
+guaranteed about path->mnt.
 
-  1: notify_change() and its callers
-  2: inode_setsecctx hook (must come before 3: the SELinux and Smack
-     implementations call __vfs_setxattr_locked internally)
-  3: xattr helpers, which also drops a redundant EVM xattr size sanity
-     check whose vfs_getxattr() call only has a dentry and therefore
-     cannot be migrated to the new path-based signature
-  4: POSIX ACL helpers
-  5: inode xattr hooks, threaded through the xattr helpers so that
-     the f[gs]etxattr(2) and io_uring flows pass their file
-  6: inode POSIX ACL hooks, threaded through do_set_acl()/do_get_acl()
-  7: inode fileattr hooks (FS_IOC_[GS]ETFLAGS, FS_IOC_FS[SG]ETXATTR,
-     file_[gs]etattr(2)), which also adds a __vfs_fileattr_get()
-     counterpart without security checks for the kernel-internal
-     readers (nfsd), and removes the ovl_security_fileattr() hack by
-     forwarding the real upper/lower path to the checked
-     vfs_fileattr_get()/_set() from ecryptfs and overlayfs
-  8: inode_setattr hook, which now receives the struct file held by
-     the fd-based callers (fchmod(2), fchown(2), fchmodat2(2) and
-     fchownat(2) with AT_EMPTY_PATH, utimensat(2) on an empty path);
-     do_truncate() passes NULL because size changes are governed by
-     the truncate hooks.  The hook is renamed to path_setattr in the
-     same patch, so that a stale BPF LSM program attaching to
-     lsm/inode_setattr fails to load instead of reading dentry->d_flags
-     where it expects iattr->ia_valid (see below)
+Signed-off-by: Cai Xinchen <caixinchen1@huawei.com>
+---
+ fs/nfsd/vfs.c                 | 2 +-
+ include/linux/lsm_hook_defs.h | 9 ++++++++-
+ include/linux/security.h      | 5 +++--
+ security/security.c           | 6 +++---
+ security/selinux/hooks.c      | 7 ++++---
+ security/smack/smack_lsm.c    | 6 +++---
+ 6 files changed, 22 insertions(+), 13 deletions(-)
 
-Three deliberate scoping decisions for this refactor:
-
-- The hooks consistently take struct path rather than struct file as
-  their primary object.  The VFS call sites involved (chmod(2),
-  chown(2), utimensat(2), xattr(2) and ACL syscalls) operate on
-  paths, and several of them (lstat(2), lchown(2), llistxattr(2),
-  ...) have no struct file to begin with.  The optional struct file
-  argument carries the open-time semantic described below.
-
-- struct inode_operations->setattr still receives (idmap, dentry, attr).
-  Only the VFS boundary (notify_change()) and the LSM hook layer see the
-  path, which keeps the refactor contained to fs/attr.c and the LSM
-  infrastructure instead of touching every filesystem.
-
-- The path argument of the hooks is only meant to be handed to VFS
-  helpers taking a struct path (e.g., notify_change(), the xattr
-  helpers): the VFS makes no guarantees with regard to path->mnt,
-  whose layout and implementation details are subject to change, and
-  implementations must not rely on its properties.  The idmap, in
-  contrast, is passed separately so that the VFS and the filesystem
-  are guaranteed to see the same idmap.
-
-Unlike what was done for LANDLOCK_ACCESS_FS_TRUNCATE, no new file_*
-hooks are introduced for the file descriptor flows: the metadata
-hooks are already consumed by other LSMs (SELinux, Smack, EVM, IMA,
-AppArmor, TOMOYO) on these flows, and routing them to new hooks
-would either silently remove the other LSMs' checks, or keep the
-path_* hooks as well and check twice with Landlock.  Passing the
-struct file to the existing path_* hooks instead keeps the pipeline
-and the other LSMs' behavior unchanged, while giving Landlock the
-information it needs to apply the open-time semantic below.
-
-Since these hooks now operate on paths rather than inodes, patches
-8-13 rename them to the path_* naming convention used by the other
-hooks that take a struct path (path_chmod, path_chown, path_link,
-...).  The inode_setattr hook is renamed in patch 8, in the same patch
-that changes its ctx layout: BPF LSM program arguments are retyped
-from the hook prototype at verification time and are not checked
-against a versioned ABI, so leaving the old name in place for a few
-patches would let a stale program read dentry->d_flags where it
-expects iattr->ia_valid, silently inverting a deny rule.  The
-inode_getattr hook, which already received a struct path, is renamed
-to path_getattr as well; patch 9 also threads the struct file held by
-the fd-based vfs_fstat() and vfs_statx_fd() callers through it, while
-the many kernel-internal vfs_getattr() callers keep a wrapper which
-passes NULL.  Apart from patch 8 and the file threading in patch 9,
-these renames are purely mechanical and can be reviewed independently.
-
-Patch 14 then adds the access rights and implements their
-enforcement, and patches 15-17 add the selftests, the sandboxer
-sample update and the documentation.
-
-Patch 14 applies the LANDLOCK_ACCESS_FS_TRUNCATE mechanic to the
-new rights, following Mickaël's confirmation [4]: for operations on
-already opened files, it is the access rights at the time of open(2)
-which decide whether a metadata operation is permitted, not the
-rights of the current thread.  READ_METADATA and WRITE_METADATA are
-looked up at open time, recorded in the opened file, and consumed by
-the metadata hooks when they are called with a file.  As a
-consequence:
-
-- A file descriptor opened before sandboxing keeps allowing metadata
-  operations whatever the current domain is, which resolves the
-  "catch-22" raised by Justin [5]: an already opened file descriptor
-  keeps working, it is not an escape hatch because its rights were
-  fixed when it was legitimate to open the file.
-- Conversely, a restricted file descriptor passed to another
-  (possibly non-landlocked) process keeps denying metadata
-  operations: the file descriptor carries the rights of the process
-  which opened it.
-- ioctl(FS_IOC_GETFLAGS) and friends on a file descriptor opened
-  without READ_METADATA are now denied, which closes the metadata
-  leak Justin was concerned about.
-- O_PATH file descriptors are an exception: they are not opened
-  through the open permission checks (cf. do_dentry_open()) and
-  carry no recorded rights; metadata accesses through them are
-  checked against the current domain, like path-based accesses.
-- File descriptors obtained without going through the file_open
-  hook (e.g. memfd_create(2), pipes, sockets) keep the full access
-  rights granted at file allocation time, consistent with the
-  truncate behavior.
-- deny_masks_t is widened from u8 to u16 to keep tracking one
-  nibble per optional access right for the audit logs.
-
-The Landlock ABI version is incremented from 12 to 13; ABI 12 was
-taken by the capability and namespace use restrictions that are
-already in linux-next.
-
-The series is based on linux-next commit 749a4de37040 ("Add linux-next
-specific files for 20261116").
-
-Changes since v3 [6]:
-
-- The empty-path branch of do_fchmodat(), do_fchownat() and
-  do_utimes_path() used fdget(), which rejects O_PATH file
-  descriptors.  It now uses fd_raw, the same lookup path_init() uses
-  for an empty path, so AT_EMPTY_PATH metadata operations work again
-  on O_PATH descriptors; futimens(2) keeps rejecting O_PATH, and a
-  NULL pathname returns -EFAULT instead of being turned into an empty
-  path (patch 8).
-- Every hook that gained a struct file argument is declared with a
-  strong file__nullable definition in kernel/bpf/bpf_lsm_proto.c, so
-  the verifier requires a NULL check before dereferencing it
-  (patches 5-12).
-- The ntfs named stream setattr no longer bypasses the hooks: it goes
-  through notify_change_target(), which performs the path-based LSM
-  checks on the caller-supplied path while the attributes land on the
-  base inode, and the borrowed path is dropped from the caller-owned
-  struct iattr before notify_change() returns (patch 1).
-- ecryptfs and overlayfs run the fileattr hooks on the real
-  upper/lower path instead of calling unchecked helpers, and the
-  ksmbd xattr helper passes the file it was given instead of NULL
-  (patches 5 and 7).
-- Since a trusted struct path lets BPF LSM programs reach path->dentry
-  and call the dentry xattr kfuncs, the sleepable path hooks that
-  always run under i_rwsem use the _locked kfunc variants, while the
-  hooks that can run either way (path_link, path_rename, path_rmdir,
-  path_unlink and path_getattr, which nfsd reaches with the inode
-  already locked) reject both variants (patch 8).
-- fchmod(2) and fchown(2) are not O_PATH-capable metadata interfaces
-  and are no longer listed as such in the UAPI header and in the
-  userspace documentation (patches 14 and 17).
-- The setattr hook rename is folded into the patch that changes its
-  ctx layout, so that a stale BPF LSM program cannot be silently
-  reinterpreted, and that patch now comes right before the getattr
-  rename (patch 8).
-- ksmbd reports the share root for the ".." entry when follow_up()
-  cannot leave a mount that was detached, instead of using a parent
-  which that mount does not cover (patch 3).
-- The Landlock changelog states that kernel-internal getattr calls
-  made under the caller's credentials, such as NFS localio's
-  post-write attribute refresh, are subject to READ_METADATA too, and
-  that localio discards the resulting error (patch 14).
-
-[1]
-https://lore.kernel.org/all/20220827111215.131442-1-xiujianfeng@huawei.com/
-[2]
-https://lore.kernel.org/all/abc960a1-e66e-792e-6869-cfd201c29dbe@digikod.net/
-[3]
-https://lore.kernel.org/all/20261015125425.3246251-1-caixinchen1@huawei.com/
-[4] https://lore.kernel.org/all/20260929.Ahgoo4yeetai@digikod.net/
-[5] https://lore.kernel.org/all/arvjb0HJYh1KyEBB@suesslenovo/
-[6]
-https://lore.kernel.org/all/20261027121151.1887650-1-caixinchen1@huawei.com/
-
-Cai Xinchen (17):
-  fs: pass struct path to notify_change()
-  LSM: pass struct path to the inode_setsecctx hook
-  fs: pass struct path to xattr helpers
-  fs: pass struct path to POSIX ACL helpers
-  LSM: pass struct path and struct file to the inode xattr hooks
-  LSM: pass struct path and struct file to the inode posix acl hooks
-  LSM: pass struct path and struct file to the inode fileattr hooks
-  LSM: rename inode_setattr to path_setattr and pass struct path and
-    file
-  LSM: rename inode_getattr to path_getattr and pass struct file
-  LSM: rename the inode xattr hooks to path_xattr hooks
-  LSM: rename the inode posix acl hooks to path_*_acl hooks
-  LSM: rename the inode fileattr hooks to path_file_* hooks
-  LSM: rename inode_setsecctx to path_setsecctx
-  landlock: Add READ_METADATA and WRITE_METADATA access rights
-  selftests/landlock: Add tests for metadata access rights
-  samples/landlock: Add metadata rights to sandboxer
-  Documentation: Update landlock doc for metadata rights
-
- Documentation/admin-guide/LSM/landlock.rst    |   2 +
- Documentation/bpf/fs_kfuncs.rst               |   2 +-
- Documentation/filesystems/porting.rst         |  63 ++
- Documentation/trace/events-landlock.rst       |  18 +-
- Documentation/userspace-api/landlock.rst      | 148 ++-
- drivers/base/devtmpfs.c                       |   6 +-
- drivers/block/loop.c                          |  12 +-
- drivers/block/zloop.c                         |  23 +-
- fs/attr.c                                     | 119 ++-
- fs/bpf_fs_kfuncs.c                            |  58 +-
- fs/btrfs/volumes.c                            |   2 +-
- fs/cachefiles/xattr.c                         |  45 +-
- fs/coredump.c                                 |   2 +-
- fs/ecryptfs/inode.c                           |  48 +-
- fs/exfat/file.c                               |   5 +-
- fs/fat/file.c                                 |   5 +-
- fs/file_attr.c                                | 136 ++-
- fs/init.c                                     |   6 +-
- fs/inode.c                                    |   7 +-
- fs/internal.h                                 |  26 +-
- fs/namei.c                                    |   5 +-
- fs/nfsd/nfs4ctl.h                             |   5 +-
- fs/nfsd/nfs4state.c                           |  16 +-
- fs/nfsd/nfs4xdr.c                             |   2 +-
- fs/nfsd/state.h                               |   2 +-
- fs/nfsd/vfs.c                                 |  87 +-
- fs/ntfs/named_stream.c                        |  14 +-
- fs/open.c                                     |  77 +-
- fs/overlayfs/copy_up.c                        |   4 +-
- fs/overlayfs/inode.c                          |  27 +-
- fs/overlayfs/overlayfs.h                      |  44 +-
- fs/overlayfs/xattrs.c                         |  12 +-
- fs/posix_acl.c                                |  61 +-
- fs/smb/server/smb2pdu.c                       |  59 +-
- fs/smb/server/smb_common.c                    |  59 +-
- fs/smb/server/smbacl.c                        |  12 +-
- fs/smb/server/vfs.c                           | 101 +-
- fs/smb/server/vfs.h                           |  19 +-
- fs/stat.c                                     |  82 +-
- fs/utimes.c                                   |  38 +-
- fs/xattr.c                                    | 114 ++-
- fs/xfs/xfs_ioctl.c                            |   2 +-
- include/linux/fileattr.h                      |  10 +-
- include/linux/fs.h                            |  30 +-
- include/linux/landlock.h                      |   4 +-
- include/linux/lsm_hook_defs.h                 |  66 +-
- include/linux/posix_acl.h                     |  25 +-
- include/linux/security.h                      | 131 +--
- include/linux/xattr.h                         |  32 +-
- include/uapi/linux/landlock.h                 |  47 +-
- init/initramfs.c                              |   2 +-
- kernel/bpf/bpf_lsm.c                          |  10 +-
- kernel/bpf/bpf_lsm_proto.c                    | 108 ++
- kernel/bpf/verifier.c                         |  13 +
- kernel/trace/bpf_trace.c                      |   2 +-
- samples/landlock/sandboxer.c                  |  16 +-
- security/apparmor/lsm.c                       |   5 +-
- security/commoncap.c                          |  17 +-
- security/integrity/evm/evm_crypto.c           |   8 +-
- security/integrity/evm/evm_main.c             |  77 +-
- security/integrity/ima/ima_appraise.c         |  41 +-
- security/landlock/access.h                    |  13 +-
- security/landlock/fs.c                        | 235 ++++-
- security/landlock/limits.h                    |   2 +-
- security/landlock/syscalls.c                  |   2 +-
- security/security.c                           | 179 ++--
- security/selinux/hooks.c                      | 105 +-
- security/smack/smack_lsm.c                    | 128 ++-
- security/tomoyo/tomoyo.c                      |   8 +-
- .../testing/selftests/bpf/prog_tests/d_path.c |   2 +-
- .../selftests/bpf/prog_tests/fs_kfuncs.c      |  10 +-
- .../testing/selftests/bpf/progs/test_d_path.c |   5 +-
- .../bpf/progs/test_d_path_check_rdonly_mem.c  |   5 +-
- .../bpf/progs/test_d_path_check_types.c       |   5 +-
- .../selftests/bpf/progs/test_get_xattr.c      |   7 +-
- .../bpf/progs/test_set_remove_xattr.c         |  34 +-
- .../bpf/progs/verifier_lsm_init_xattr.c       |   8 +-
- .../selftests/bpf/progs/verifier_vfs_accept.c |   2 +-
- .../selftests/bpf/progs/verifier_vfs_reject.c |   2 +-
- tools/testing/selftests/landlock/base_test.c  |   2 +-
- tools/testing/selftests/landlock/fs_test.c    | 932 +++++++++++++++++-
- .../selftests/landlock/trace_fs_test.c        |   3 +-
- 82 files changed, 3003 insertions(+), 905 deletions(-)
-
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 359277716fe8..1c686b82e70a 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -626,7 +626,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			break;
+ 	}
+ 	if (attr->na_seclabel && attr->na_seclabel->len)
+-		attr->na_labelerr = security_inode_setsecctx(dentry,
++		attr->na_labelerr = security_inode_setsecctx(&path,
+ 			attr->na_seclabel->data, attr->na_seclabel->len);
+ 	if (IS_ENABLED(CONFIG_FS_POSIX_ACL) && attr->na_dpacl) {
+ 		if (!S_ISDIR(inode->i_mode))
+diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+index 87d9d06710cb..7d3cd5395365 100644
+--- a/include/linux/lsm_hook_defs.h
++++ b/include/linux/lsm_hook_defs.h
+@@ -25,6 +25,12 @@
+  *   #include <linux/lsm_hook_defs.h>
+  *   #undef LSM_HOOK
+  * };
++ *
++ * Hooks that take a struct path argument: the VFS only sanctions passing
++ * the path to VFS helpers that take a struct path (e.g. notify_change());
++ * it makes no guarantees with regard to path->mnt, whose layout and
++ * implementation details are subject to change.  Implementations must
++ * not rely on its properties.
+  */
+ LSM_HOOK(int, 0, binder_set_context_mgr, const struct cred *mgr)
+ LSM_HOOK(int, 0, binder_transaction, const struct cred *from,
+@@ -313,7 +319,8 @@ LSM_HOOK(int, 0, secctx_to_secid, const char *secdata, u32 seclen, u32 *secid)
+ LSM_HOOK(void, LSM_RET_VOID, release_secctx, struct lsm_context *cp)
+ LSM_HOOK(void, LSM_RET_VOID, inode_invalidate_secctx, struct inode *inode)
+ LSM_HOOK(int, 0, inode_notifysecctx, struct inode *inode, void *ctx, u32 ctxlen)
+-LSM_HOOK(int, 0, inode_setsecctx, struct dentry *dentry, void *ctx, u32 ctxlen)
++LSM_HOOK(int, 0, inode_setsecctx, const struct path *path, void *ctx,
++	 u32 ctxlen)
+ LSM_HOOK(int, -EOPNOTSUPP, inode_getsecctx, struct inode *inode,
+ 	 struct lsm_context *cp)
+ 
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 40831fab5470..b9cae538b6fc 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -588,7 +588,7 @@ int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+ void security_release_secctx(struct lsm_context *cp);
+ void security_inode_invalidate_secctx(struct inode *inode);
+ int security_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen);
+-int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen);
++int security_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen);
+ int security_inode_getsecctx(struct inode *inode, struct lsm_context *cp);
+ int security_locked_down(enum lockdown_reason what);
+ int lsm_fill_user_ctx(struct lsm_ctx __user *uctx, u32 *uctx_len,
+@@ -1630,7 +1630,8 @@ static inline int security_inode_notifysecctx(struct inode *inode, void *ctx, u3
+ {
+ 	return -EOPNOTSUPP;
+ }
+-static inline int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
++static inline int security_inode_setsecctx(const struct path *path, void *ctx,
++					   u32 ctxlen)
+ {
+ 	return -EOPNOTSUPP;
+ }
+diff --git a/security/security.c b/security/security.c
+index 4727b8347fc4..7e6a8a2a2ee5 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -4110,7 +4110,7 @@ EXPORT_SYMBOL(security_inode_notifysecctx);
+ 
+ /**
+  * security_inode_setsecctx() - Change the security label of an inode
+- * @dentry: inode
++ * @path: inode (the VFS makes no guarantees with regard to @path->mnt)
+  * @ctx: secctx
+  * @ctxlen: length of secctx
+  *
+@@ -4124,9 +4124,9 @@ EXPORT_SYMBOL(security_inode_notifysecctx);
+  *
+  * Return: Returns 0 on success, error on failure.
+  */
+-int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
++int security_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
+ {
+-	return call_int_hook(inode_setsecctx, dentry, ctx, ctxlen);
++	return call_int_hook(inode_setsecctx, path, ctx, ctxlen);
+ }
+ EXPORT_SYMBOL(security_inode_setsecctx);
+ 
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index da83f4111bdf..6ecb5f9657e6 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -7148,10 +7148,11 @@ static int selinux_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen
+ /*
+  *	called with inode->i_mutex locked
+  */
+-static int selinux_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
++static int selinux_inode_setsecctx(const struct path *path, void *ctx,
++				   u32 ctxlen)
+ {
+-	return __vfs_setxattr_locked(&nop_mnt_idmap, dentry, XATTR_NAME_SELINUX,
+-				     ctx, ctxlen, 0, NULL);
++	return __vfs_setxattr_locked(&nop_mnt_idmap, path->dentry,
++				     XATTR_NAME_SELINUX, ctx, ctxlen, 0, NULL);
+ }
+ 
+ static int selinux_inode_getsecctx(struct inode *inode, struct lsm_context *cp)
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index 2192cdcabfe2..f2c34e9ea4f8 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -4982,10 +4982,10 @@ static int smack_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen)
+ 				       ctxlen, 0);
+ }
+ 
+-static int smack_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
++static int smack_inode_setsecctx(const struct path *path, void *ctx, u32 ctxlen)
+ {
+-	return __vfs_setxattr_locked(&nop_mnt_idmap, dentry, XATTR_NAME_SMACK,
+-				     ctx, ctxlen, 0, NULL);
++	return __vfs_setxattr_locked(&nop_mnt_idmap, path->dentry,
++				     XATTR_NAME_SMACK, ctx, ctxlen, 0, NULL);
+ }
+ 
+ static int smack_inode_getsecctx(struct inode *inode, struct lsm_context *cp)
 -- 
 2.18.0.huawei.25
 
