@@ -1,121 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.129.124
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795044957;
-	b=wvnGMWwpAUoDtWitUDRiQUjWhCvamDqh2lGaQgmp5emMNXILmvZiA/F0VCMa7uTjfISI
-	 QF0+tFpyyrtXyHJfVrYeKZClJ6TNgeCr+diRDjbkP+O34KVvtrxy6Q8wEmYAvYALpwUE4
-	 sC3riLi7fzaeqBXpj4qTiVbJCbp5GQDmMg7wn05PCbQIbESUKgq6RAhRPpOKR/2jL0l7r
-	 DKjmXIZYlp43Lb0f6fZ7vUGgcHe8vxzOE9AZKbhIs08wKX7yOywkyI7U3VWUp4KlOISLC
-	 olzGsegxcVBceAQTVwG99ekaPVLqBS+/B9xKX4E498d7xYTIYM2ika9Agfs0Qj/++IQ==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795044957;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 X-Received:MIME-Version:References:In-Reply-To:From:Date:
-	 X-Gm-Features:Message-ID:Subject:To:Cc:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=1sqaAoxbPYdo18ldNOsiM1TbcJ03Gv+SVlc5ayXI+nY=;
-	b=uIdALrp+Ugqk/EBtmr/tVSwCOow7YXaOdMoXpjx8VX/Fm1SxPpXR3pbwl27YE5d+KbdD
-	 l4n6d6lKWwKlQ0TB2CRcNYHjD6R1uQ9nKT9wr6GkPT4PJHIqlk4EvursF2WsAEW/76qFe
-	 xkjzwrgltzcVPXLS6IM5G5X2ktwE0adTvkm4nlnSLGCt7nsFwiz8kXoa9mhHOzoWMyQfW
-	 unhmJ8kqTsPs/gz1WEIbNHZQvjgjt662hMpJ4mXivHUrFt5xFvHRQk+TzTSYAJqb9OfQm
-	 YnwHD28T2lVLXbZeopkCOdhGtcLBi2DF283O4JDrQgrJOUqIEMC9yeI/9kbOa6kPfEg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=OeZtfPG5;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=VV4lacCc;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.129.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795045944;
+	b=SkZbMiaXNwj+PKqn/9MpuJsaBc6sHXz9XVfgQ89XIC5+VyWm1cfBvK9twERT3NW4fE2R
+	 Fay3iLhhr9Mnw7vY4s61nHCoMh0a7B6M/mrj3N6ko9NzUD/hgz92iy+k9iplu9bdJ8ijh
+	 CCVBN37PDy5vLoma5nmBhktLehzbjZAqiKeP9BwgSdFW5FR47yWlM5aooTFAZp5KRH8vZ
+	 xbHup/A5uewCkpx1LVHqqcpiRKQYbMK/HKgPcDdgV1jWCbErWNAdF8EdfAj5vioeo0A7T
+	 /hDkYg6JNJ2U1PZBSDKwsexhsukE+AnxJBvkJi4+94NxqovsFe9zWOAEM60U7CQ875A==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795045944;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=YKdVs9D+ax7qdcO60WNL2/JpggVcFsh91ItE3dGMV50=;
+	b=C1rbsZAu6Jvx8GjL5G0A7ukkalHFbUG6d1tl7L8/b4aNTSBRfxHhu78IJN5AyNERbD2n
+	 Y9uBhKtfPFTw6J9CipBfK6lK//kzC0Nmi1E4xyv9PIg9BIqfwr4bozpS4RMb5eKchDGUv
+	 3+Z1m+OPImsGwEnmzrZSyFdRo4+/AiOsC0GB3TTzwZCovn4CPmETu95fIQkgML0Wy8qkC
+	 N+wql+NRnVx1ehd1Y0wPUhatZvdcz0jzD8CKHYOLmdDaO+RfROAToWkRoOrNIGn+Vx8aB
+	 U5aqqdpjGvOXI8VdH/nx02dGSMc4weUJySwmaGSJkyqzwmHGQQl6My23rTRlFwljMKw==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XqC1qN51;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BDBC5606A330
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 23:35:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BDBC5606A330
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8628F606A325
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 23:52:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=OeZtfPG5;
-	dkim=pass (2048-bit key, unprotected) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=VV4lacCc
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1795044955;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=1sqaAoxbPYdo18ldNOsiM1TbcJ03Gv+SVlc5ayXI+nY=;
-	b=OeZtfPG50Fjqj40s6Sj+6Did4ufEl3tVHRxceE+mdWNbGwx7fNYk44K7y6G04p78xFCD/R
-	1kv1BumxCx310EyVnA8d4SqhUasQR7TMJCm7IYNKBrDLFc8ygMd69JH4NPy4EA0UV5oaOI
-	oaiqNL+fbnuAUb7jfi3vcX/vMHMt/3w=
-Received: from mail-yx1-f72.google.com (mail-yx1-f72.google.com
- [74.125.224.72]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-7-6ZgDLzdsOwm8FqvJKGAZgQ-1; Wed, 18 Nov 2026 23:35:54 +0000
-X-MC-Unique: 6ZgDLzdsOwm8FqvJKGAZgQ-1
-X-Mimecast-MFC-AGG-ID: 6ZgDLzdsOwm8FqvJKGAZgQ_1795044954
-Received: by mail-yx1-f72.google.com with SMTP id 956f58d0204a3-6755fef4f96so2608495d50.0
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 15:35:54 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795044954; cv=none;
-        d=google.com; s=arc-20260327;
-        b=IKTuSFkHwyyYwRAgZ6d6onj6CLX0OL7Pp3MmYyq9hgmlcyqNiPb1Kn6Yvvp2JdXsxG
-         g1U1N0yF7gwu6N0kv2a1hH2luOMyuhVqbDV/3TW3FBNAduZ4+cjy7XlLs+o2q7xOgIx3
-         k6+R5SlLS2VmXfxW7Gn3c/snjWdpQWZ4WgX1eUrQOqTLox+cmPcpZe932gMQreM4iAmP
-         I22hf+qSV2SglaNkMCZEpU7O4qJPfroIdn2WSihCmw92CGKr+aazwnNePguD7nmqWHBb
-         Bh2fxbWSR4806MoMrQC5VJJ3z+F8qw6Z07qeOXKsa/yjZdJ9gwWp8Eh8LI6vhIshb6BE
-         YzHw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=1sqaAoxbPYdo18ldNOsiM1TbcJ03Gv+SVlc5ayXI+nY=;
-        fh=pzH5/KY3DFXrT1wL46CkeLy/0c240xsGPKY6fgxaer0=;
-        b=m/0aqSI/JetJ+bUhmSpMNQ0DGB6iVM4Gt7RmDnmr7IDgsaRTuD4fRpugFKn20E2ke6
-         gUnOSW5ZenBp7EalMqxksIa0VdWO3qBE6EvqpsaYwgEP9Qas5LYeitkXIZPOU0Is+4qI
-         kCzfEwzcZ98fk7f3r17zBf2lEcIBzzxwHdQ14y7rswwrznpsjp867NeQeXyNfmWnHyow
-         NQEu2m5WJ91xQyQ3zCyVPtvuG4uvfNTTyfh6IezgYIrXB1WP9+S3OqERH3QcAKUJCQZb
-         8Sh7Exrlf/fiM3RWZ0Bwvg+uuA3kKd7ZiJf0j52MQm1wwlceyhuKJrgB3KISPHwF/bs0
-         1byg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1795044954; x=1795649754; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=1sqaAoxbPYdo18ldNOsiM1TbcJ03Gv+SVlc5ayXI+nY=;
-        b=VV4lacCcYXl3jx6oU1yk7ocsmoMzxU9SP0AoOrXpBHytOyD+5/iloPPuTFDwHot85c
-         i1CuguwIDMKYkYwOifW2jU2ON3pcwrl2ze+1M1zXcGvzpEjssC/9u8BP5GrnFxyulUg4
-         m3kl+sBRcRdHC6cSbeJi+MrV0kK8R6nXJ+1+w101Ltg7NsQzens8JvDyW07HuceLJ6GS
-         rA+E2+jV1u9T1OR/mFRBlrYQhI5+p4bfkvpqrJOCTWbtpDO3YyPi5JSYd2/v8scOcjke
-         d/uPzbLWNdLsBIgq0z3OZKLiCCq8cx+Fg79vmPk4t0z6mQMU/UeaNF5w+hvK8lTtE+Iw
-         eTvQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795044954; x=1795649754;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=1sqaAoxbPYdo18ldNOsiM1TbcJ03Gv+SVlc5ayXI+nY=;
-        b=XeR6PpHQGoE21uXK1gLuCRPapRwQYArT2m4DtVGIsSeDcMeDv+mL+H6TlT8ow5ijTx
-         4pb7beaH3onbZcNwRk2eb/StICot/rM5xfzgSsyTYzz5v6M424gE3IoVfaTq+tf9Ql5P
-         Zn2NxCSfXsezXIhK/pqvs/hS92c6oW7xpJvtqwizMeXlsA8U2uQXl+bLVvfn1/KtlIKU
-         dihASuZGlGNcC3o17cT6Dd6PsBmz9jtBdJT/jpyvEf8nlGLv9hRDavhUQ0mn3jK5qc8R
-         ZBrkJiQnFbUB4ZqzBMgkr6jTqOI2BQTfMwVwPW6PagF2VPAejih85jXomEsn/QXVbC7n
-         c1gg==
-X-Forwarded-Encrypted: i=1; AL+hErF4Fq2kwHsaOBuXY0oW2+92Vcp5f+O6ECmKJqT2SQCdeWXBbt6UGpk1+rR4brZ6fpp/F782b2bXJBs=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8xp9vns7VN6ai9iPfpTj2KRMs6bFGV94UUbGT40ohoyatAKVUz
-	35BZ7Z4nZte8nQYt7lIg8VlN/Mc4YdrOjmFMWiYIC/O1M6fYHxHvz+xyopT/yknSNInna4++WWs
-	wKi2nea/J7pjZO4wHP3J6N53DovjnGxPC6w6C5segWNhokzbByAtQYencR//lmTOPRvsZIm10UY
-	C88sIoeeYhGqTBxCtOfmD6Pn6riUXXVVeR+Fux
-X-Gm-Gg: AZFdTZcaCGuzDiSaRm/OQ7ZZx0PMQ6h2WAcH3VyzBK9qGqSBcNtxsozaC9MtFFnBAR2
-	/uGNxbunof4G1Q1FLUPsMoZlvEVE14CLGJ9neZLpbAWt8cWe/IWd+cNsTlnK3jq8QD6weepHGtK
-	EzcrTewK0Y89T0A5DMINhRUN84e0hqC1d2HsFkypTshPvWdRp5XBXVU8dxr2iv3Z5DjsIuj3AWT
-	qcK3pMwxhznoLc/jLsf3wbyGfJW2WBLKmFZnSRIeExn0Q==
-X-Received: by 2002:a05:690e:128a:b0:679:2a90:d3ad with SMTP id 956f58d0204a3-67dd403bf8cmr1618050d50.102.1795044953799;
-        Wed, 18 Nov 2026 15:35:53 -0800 (PST)
-X-Received: by 2002:a05:690e:128a:b0:679:2a90:d3ad with SMTP id
- 956f58d0204a3-67dd403bf8cmr1618023d50.102.1795044953295; Wed, 18 Nov 2026
- 15:35:53 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=XqC1qN51
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 351C51F000C5
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 23:52:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795045944;
+	bh=YKdVs9D+ax7qdcO60WNL2/JpggVcFsh91ItE3dGMV50=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=XqC1qN51YcY2CZ2J/kYalTHxQtS/Q5z35WkwcflrlZF8eII24Ttc8LpN2IGs7QIH/
+	 di2L+SvDtZMjV1FXmdqy6mmi9tU3HpBdew+OyKnhsXwGD4U/tv2+L84YKSnit59xse
+	 zbcW6/t7oOy1+b2hul8sUfhCwWQlfoO6Rj3pFOH0ARxRsHfOumwdN63tdULZ6PBdZd
+	 gCfA6RWJfXk9XUAnqulNBKHB/Fj9h23M6Go9LXmfxv/yNhjQ//JC+MeCUPmWo1gipK
+	 Mq42zUeSOEdyq8pihhejOQKocicYQFYFKm2E6rzWYgnSEiJqLEmfSOpWYPpx825Ud/
+	 DiZGre0dYcLjA==
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 6B3FAF40067;
+	Wed, 18 Nov 2026 18:52:23 -0500 (EST)
+Received: from phl-imap-04 ([10.202.2.82])
+  by phl-compute-02.internal (MEProxy); Wed, 18 Nov 2026 18:52:23 -0500
+X-ME-Sender: <xms:Nzr-ao2MmzwVPTcn-q4W2WoNup_CuOuj7h5w4jEcNVUNAk8Dn5djTw>
+    <xme:Nzr-at5ZDELHlpHr35nZ_RETsF6ueTJjnNc81RvcpyCqdf7VIpACOKt1Nf_AmrPqC
+    JX8WFEFRc1MVqGv58OYeVZec7GedhyctwAGEDbQ91EiizmIbcjbEFJ74w>
+X-ME-Proxy-Cause: dmFkZTFN7gJhcIVvi26vDH15KVIQI0Ac44bP1B5vBjWYOPHDMBZGT+FC7W6MjsCH9fGnpL
+    T94KcstVNYMbSATj33ZdY142l0c4TMeJT0z3eNfmfNwHR9jj4jtpzFc1y6ZDzmZQK3W45A
+    FrLpx36gAcTl6MQjzrqbW2wA8a2+0+dUM3t64RaMLn8B5YG5YKUJZbgoRx1UwkWVSe3U77
+    oMvS55Feswqi3Dr3c6Iz5ScKkXpSj1Y4U0J7H8GKWqj+W2OEABRS8Xcp4kbE2HFY9KHLRO
+    VyzjKii6KBkWo2q1r/1mkak+IimHkHDlzdimK53Ae7eVjmvpjLSzS4KVCusYWuc7kXNGBP
+    BNrVbR4WyXpVJ9T/8kBZT9NqH2u/eR59GnK16H1Q7KQb2zECir/uP4vr2M7GeMV96yqVk6
+    PSSZGJAEbeSB9B2EVsUMuCgvpbNZlZXFE+WnA8u81Nj9Bygz0iLVuSOkdVtUjJDZrj3Ljo
+    FbZvapoNtG2m0NdyHyOQOD/vRlgoACbuKbWARa4yylbyh/EmkdRpaqTyUE+Es6X576CK9x
+    GBtvWE9VqGFFYg6mtL6XnbgEumyNfFztWrbNJjSevigX2g3AOsni0PTTzYw1VeCR+F0QLI
+    c85RZsqcFfLezqIVl2ibtSN3EWX1/AxQkxNv0hjmf5+QFwoFZxFDrVz/TPuA
+X-ME-Proxy: <xmx:Nzr-aucFhKcYCwXXDc_gwbDNYgHVHv1XXNYQDlYu4YovHu9RcuzgoA>
+    <xmx:Nzr-amAbmIxqvpJzZZS4MjLHvcvLXsQt1gli7n0lu8rfEBnJ7tk_yQ>
+    <xmx:Nzr-ap8dHa91g_aW1NbV4FCS_2GwHbkzS4aOz3ewE_MPiSeQKlpwvw>
+    <xmx:Nzr-apLELDdoRUH4rlsQ3qfFYfkG0emS9NUwdRz74NY-F697AkqCoA>
+    <xmx:Nzr-aqjxLRF8WIHl8GSzfuZlQry_tqQAD3WjH-VLX4MNgnhyRYzQAUu0>
+Feedback-ID: i20964851:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 4550FB6006E; Wed, 18 Nov 2026 18:52:23 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -125,84 +77,274 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261116171044.6938-1-jack@suse.cz> <20261118145941.1063127-19-jack@suse.cz>
-In-Reply-To: <20261118145941.1063127-19-jack@suse.cz>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Thu, 19 Nov 2026 00:35:42 +0100
-X-Gm-Features: AclHuK9zTsUN7zuq72-DSL1ny4jnrrzy1tFjBUU4DEu6A9maK7lyiUQZqwV6vuE
-Message-ID: <CAHc6FU7NoZua98SGP9Kuga58gAcco6X__u=kOPfsUqbefAKLFQ@mail.gmail.com>
-Subject: Re: [PATCH 06/13] gfs2: Avoid racy dirtiness check in gfs2_fsync()
-To: Jan Kara <jack@suse.cz>
-Cc: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev, 
-	Mike Marshall <hubcap@omnibond.com>, Martin Brandenburg <martin@omnibond.com>, devel@lists.orangefs.org, 
-	Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net, 
-	Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
-	David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
-	linux-afs@lists.infradead.org, Miklos Szeredi <miklos@szeredi.hu>, 
-	fuse-devel@lists.linux.dev, linux-block@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org, 
-	Eric Biggers <ebiggers@kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>, linux-fscrypt@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+X-ThreadId: Ayo9TARvgBrk
+Date: Wed, 18 Nov 2026 18:52:01 -0500
+From: "Anna Schumaker" <anna@kernel.org>
+To: "Benjamin Coddington" <ben.coddington@hammerspace.com>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Mike Snitzer" <snitzer@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <9ed06167-ca76-4156-95f1-814430ff8ca0@app.fastmail.com>
+In-Reply-To: 
+ <d416d82b18df69d694484ca649c43e8ef5066ef7.1795024981.git.bcodding@hammerspace.com>
+References: <cover.1795024981.git.bcodding@hammerspace.com>
+ <d416d82b18df69d694484ca649c43e8ef5066ef7.1795024981.git.bcodding@hammerspace.com>
+Subject: Re: [PATCH 2/4] pNFS/flexfiles: pace writes that have no layout and can't use
+ the MDS
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-Hi Jan,
+Hi Ben,
 
-On Wed, Nov 18, 2026 at 4:00=E2=80=AFPM Jan Kara <jack@suse.cz> wrote:
-> Check for I_DIRTY_PAGES state in gfs2_fsync() is racy because
-> __writeback_single_inode() unconditionally clears the flag and
-> reinstates it only later based on PAGECACHE_TAG_DIRTY tag. If
-> gfs2_fsync() unlocked read of i_state hits in between, it will not see
-> I_DIRTY_PAGES although there may be dirty folios in the mapping. Check
-> for PAGECACHE_TAG_DIRTY instead and use inode_is_dirty() helper for
-> inode metadata dirtiness check.
+On Wed, Nov 18, 2026, at 1:36 PM, Benjamin Coddington wrote:
+> From: Benjamin Coddington <bcodding@hammerspace.com>
 >
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> When a write has no layout segment and its file's layouts carry
+> FF_FLAGS_NO_IO_THRU_MDS, ff_layout_pg_get_mirror_count_write() returns
+> -EAGAIN.  nfs_writepages() and the O_DIRECT reschedule path resend it at
+> once, so writers spin for as long as pnfs_update_layout() has no layout
+> to give: while NFS_LAYOUT_BULK_RECALL is set, while LAYOUTGETs are
+> blocked, and for the 120 seconds after NFS4ERR_LAYOUTUNAVAILABLE.
+>
+> The check also tests a bit on the layout header.  Once that header has
+> been freed, a new one starts without the bit and the write goes through
+> the MDS.  ff_layout_pg_init_write() has no check at all: when
+> pnfs_generic_pg_check_layout() drops an invalidated segment, the rest of
+> the descriptor's writes go through the MDS.
+>
+> Handle both places the way ff_layout_pg_init_read() handles reads: test
+> the inode's NFS_INO_NO_IO_THRU_MDS bit, return -ERESTARTSYS to a killed
+> or exiting task, and honour io_maxretrans on soft mounts.  Mark a
+> refusal with a new pg_nolayout descriptor bit, and have nfs_writepages()
+> and nfs_direct_write_reschedule() wait a second before they resend,
+> after the pass that was refused has unlocked its folios and requests.
+> Writes marked pg_allow_mds by nfs_writepage_locked() still go through
+> the MDS.
+>
+> The test is ff_layout_inode_no_fallback_to_mds(), which
+> ff_layout_pg_init_read() now uses too, and the refusal is
+> ff_layout_pg_refuse_write().  Emit the MDS-fallback tracepoint only
+> when the write does go through the MDS, and a new
+> pnfs_mds_fallback_write_refused tracepoint when it is refused.
+>
+> Fixes: 1d62e659c0bf ("NFSv4/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS in 
+> pg_get_mirror_count_write")
+> Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 > ---
->  fs/gfs2/file.c | 10 +++-------
->  1 file changed, 3 insertions(+), 7 deletions(-)
+>  fs/nfs/direct.c                        |  2 +
+>  fs/nfs/flexfilelayout/flexfilelayout.c | 66 ++++++++++++++++++++------
+>  fs/nfs/nfs4trace.c                     |  1 +
+>  fs/nfs/nfs4trace.h                     |  1 +
+>  fs/nfs/pagelist.c                      |  1 +
+>  fs/nfs/write.c                         |  2 +
+>  include/linux/nfs_page.h               |  5 ++
+>  7 files changed, 64 insertions(+), 14 deletions(-)
 >
-> diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
-> index 1efd0679badd..f5532f72ab99 100644
-> --- a/fs/gfs2/file.c
-> +++ b/fs/gfs2/file.c
-> @@ -749,7 +749,7 @@ static int gfs2_fsync(struct file *file, loff_t start=
-, loff_t end,
->  {
->         struct address_space *mapping =3D file->f_mapping;
->         struct inode *inode =3D mapping->host;
-> -       int sync_state =3D inode_state_read_once(inode) & I_DIRTY;
-> +       bool dirty_data =3D mapping_tagged(inode->i_mapping, PAGECACHE_TA=
-G_DIRTY);
->         struct gfs2_glock *gl =3D gfs2_inode_glock(inode);
->         struct gfs2_inode *ip =3D GFS2_I(inode);
->         int ret =3D 0, ret1 =3D 0;
-> @@ -760,12 +760,8 @@ static int gfs2_fsync(struct file *file, loff_t star=
-t, loff_t end,
->                         return ret1;
->         }
->
-> -       if (!gfs2_is_jdata(ip))
-> -               sync_state &=3D ~I_DIRTY_PAGES;
-> -       if (datasync)
-> -               sync_state &=3D ~I_DIRTY_SYNC;
-> -
-> -       if (sync_state) {
-> +       if (inode_is_dirty(inode, datasync) ||
-> +           (gfs2_is_jdata(ip) && dirty_data)) {
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index a3c6e8f4ea06..e6a2c6436b44 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -626,6 +626,8 @@ static void nfs_direct_write_reschedule(struct 
+> nfs_direct_req *dreq)
+>  		}
+>  	}
+> 
+> +	if (desc.pg_error == -EAGAIN && desc.pg_nolayout)
+> +		ssleep(1);
 
-this adds back the I_DIRTY_TIME check explicitly removed in commit:
+Is there any possibility that the sleep length would be modified sometime
+in the future? I ask, because the nfs_writepages() gets the same modification
+with a hardcoded "1" here and my worry is that if we ever need to change this
+length in the future, we might accidentally update one function and miss the
+other. Maybe this whole if-statement would be better as an inline function that
+takes the error and struct nfs_pageio_descriptor? 
 
-3aac630b5ce1 ("gfs2: don't worry about I_DIRTY_TIME in gfs2_fsync()")
-
-Could you please clarify what's going on?
-
->                 ret =3D sync_inode_metadata(inode, 1);
->                 if (ret)
->                         return ret;
-> --
-> 2.53.0
->
+Alternatively, is there any way to handle the sleep directly in the flexfiles
+code and not in the generic client since that's the only way to reach this point?
 
 Thanks,
-Andreas
+Anna
 
+>  	if (put_dreq(dreq))
+>  		nfs_direct_write_complete(dreq);
+>  }
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c 
+> b/fs/nfs/flexfilelayout/flexfilelayout.c
+> index 2b0a0af469fb..4eb12bbb7838 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> @@ -982,6 +982,45 @@ static bool ff_layout_pg_retry_wait(struct 
+> nfs_pageio_descriptor *pgio)
+>  	return true;
+>  }
+> 
+> +/*
+> + * Returns true if the inode's layouts forbid I/O through the MDS.
+> + */
+> +static bool ff_layout_inode_no_fallback_to_mds(struct inode *inode, 
+> u32 iomode)
+> +{
+> +	return nfs_no_io_thru_mds(inode);
+> +}
+> +
+> +/*
+> + * Refuse a write that has no layout segment and can't go through the 
+> MDS:
+> + * -EAGAIN so that the caller resends it, or a hard error when the 
+> caller
+> + * should give up.  pg_nolayout tells a caller that resends at once to
+> + * wait first, once it has dropped its locks.
+> + */
+> +static void ff_layout_pg_refuse_write(struct nfs_pageio_descriptor 
+> *pgio,
+> +				      struct nfs_page *req)
+> +{
+> +	struct nfs_server *server = NFS_SERVER(pgio->pg_inode);
+> +
+> +	trace_pnfs_mds_fallback_write_refused(pgio->pg_inode, req_offset(req),
+> +					      req->wb_bytes, IOMODE_RW,
+> +					      NFS_I(pgio->pg_inode)->layout,
+> +					      NULL);
+> +	if (server->flags & (NFS_MOUNT_SOFT | NFS_MOUNT_SOFTERR) &&
+> +	    io_maxretrans && req->wb_nio > io_maxretrans) {
+> +		if (server->flags & NFS_MOUNT_SOFTERR)
+> +			pgio->pg_error = -ETIMEDOUT;
+> +		else
+> +			pgio->pg_error = -EIO;
+> +		return;
+> +	}
+> +	if (fatal_signal_pending(current) || nfs_current_task_exiting()) {
+> +		pgio->pg_error = -ERESTARTSYS;
+> +		return;
+> +	}
+> +	pgio->pg_nolayout = 1;
+> +	pgio->pg_error = -EAGAIN;
+> +}
+> +
+>  static void
+>  ff_layout_pg_get_read(struct nfs_pageio_descriptor *pgio,
+>  		      struct nfs_page *req,
+> @@ -1108,7 +1147,7 @@ ff_layout_pg_init_read(struct 
+> nfs_pageio_descriptor *pgio,
+>  	 * FF_FLAGS_NO_IO_THRU_MDS may itself be gone by now, which is why
+>  	 * this asks the inode and not the hdr.
+>  	 */
+> -	if (!nfs_no_io_thru_mds(pgio->pg_inode))
+> +	if (!ff_layout_inode_no_fallback_to_mds(pgio->pg_inode, IOMODE_READ))
+>  		goto out_mds;
+>  retry_nolseg:
+>  	/* Retry getting layout segment if lower layer returned -EAGAIN */
+> @@ -1156,9 +1195,13 @@ ff_layout_pg_init_write(struct 
+> nfs_pageio_descriptor *pgio,
+>  			return;
+>  		}
+>  	}
+> -	/* If no lseg, fall back to write through mds */
+> -	if (pgio->pg_lseg == NULL)
+> -		goto out_mds;
+> +	if (!pgio->pg_lseg) {
+> +		if (pgio->pg_allow_mds ||
+> +		    !ff_layout_inode_no_fallback_to_mds(pgio->pg_inode, IOMODE_RW))
+> +			goto out_mds;
+> +		ff_layout_pg_refuse_write(pgio, req);
+> +		return;
+> +	}
+> 
+>  	/* Use a direct mapping of ds_idx to pgio mirror_idx */
+>  	if (pgio->pg_mirror_count != FF_LAYOUT_MIRROR_COUNT(pgio->pg_lseg))
+> @@ -1225,21 +1268,16 @@ ff_layout_pg_get_mirror_count_write(struct 
+> nfs_pageio_descriptor *pgio,
+>  	}
+>  	if (pgio->pg_lseg)
+>  		return FF_LAYOUT_MIRROR_COUNT(pgio->pg_lseg);
+> +	if (!pgio->pg_allow_mds &&
+> +	    ff_layout_inode_no_fallback_to_mds(pgio->pg_inode, IOMODE_RW)) {
+> +		ff_layout_pg_refuse_write(pgio, req);
+> +		goto out;
+> +	}
+> 
+>  	trace_pnfs_mds_fallback_pg_get_mirror_count(pgio->pg_inode,
+>  			0, NFS4_MAX_UINT64, IOMODE_RW,
+>  			NFS_I(pgio->pg_inode)->layout,
+>  			pgio->pg_lseg);
+> -	if (!pgio->pg_allow_mds && NFS_I(pgio->pg_inode)->layout &&
+> -	    ff_layout_hdr_no_fallback_to_mds(NFS_I(pgio->pg_inode)->layout)) {
+> -		/*
+> -		 * FF_FLAGS_NO_IO_THRU_MDS: no current lseg but the server's
+> -		 * policy forbids MDS fallback.  Surface -EAGAIN so writeback
+> -		 * retries rather than silently issuing the WRITE via MDS.
+> -		 */
+> -		pgio->pg_error = -EAGAIN;
+> -		goto out;
+> -	}
+>  	/* no lseg means that pnfs is not in use, so no mirroring here */
+>  	nfs_pageio_reset_write_mds(pgio);
+>  out:
+> diff --git a/fs/nfs/nfs4trace.c b/fs/nfs/nfs4trace.c
+> index 3fdc013f56d8..93a84f546de8 100644
+> --- a/fs/nfs/nfs4trace.c
+> +++ b/fs/nfs/nfs4trace.c
+> @@ -25,6 +25,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(pnfs_mds_fallback_read_done);
+>  EXPORT_TRACEPOINT_SYMBOL_GPL(pnfs_mds_fallback_write_done);
+>  EXPORT_TRACEPOINT_SYMBOL_GPL(pnfs_mds_fallback_read_pagelist);
+>  EXPORT_TRACEPOINT_SYMBOL_GPL(pnfs_mds_fallback_write_pagelist);
+> +EXPORT_TRACEPOINT_SYMBOL_GPL(pnfs_mds_fallback_write_refused);
+>  EXPORT_TRACEPOINT_SYMBOL_GPL(pnfs_ds_connect);
+> 
+>  EXPORT_TRACEPOINT_SYMBOL_GPL(ff_layout_read_error);
+> diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+> index b5c89eeef2bc..94ed6b833a28 100644
+> --- a/fs/nfs/nfs4trace.h
+> +++ b/fs/nfs/nfs4trace.h
+> @@ -2115,6 +2115,7 @@ DEFINE_PNFS_LAYOUT_EVENT(pnfs_mds_fallback_read_done);
+>  DEFINE_PNFS_LAYOUT_EVENT(pnfs_mds_fallback_write_done);
+>  DEFINE_PNFS_LAYOUT_EVENT(pnfs_mds_fallback_read_pagelist);
+>  DEFINE_PNFS_LAYOUT_EVENT(pnfs_mds_fallback_write_pagelist);
+> +DEFINE_PNFS_LAYOUT_EVENT(pnfs_mds_fallback_write_refused);
+> 
+>  DECLARE_EVENT_CLASS(nfs4_deviceid_event,
+>  		TP_PROTO(
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index aa6d7b658d79..9a8731de6f5b 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -872,6 +872,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor 
+> *desc,
+>  {
+>  	desc->pg_moreio = 0;
+>  	desc->pg_allow_mds = 0;
+> +	desc->pg_nolayout = 0;
+>  	desc->pg_inode = inode;
+>  	desc->pg_ops = pg_ops;
+>  	desc->pg_completion_ops = compl_ops;
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index ec6b771b8dbe..005d4b795b80 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -693,6 +693,8 @@ int nfs_writepages(struct address_space *mapping, 
+> struct writeback_control *wbc)
+>  		nfs_pageio_complete(&pgio);
+>  		if (err == -EAGAIN && mntflags & NFS_MOUNT_SOFTERR)
+>  			break;
+> +		if (err == -EAGAIN && pgio.pg_nolayout)
+> +			ssleep(1);
+>  	} while (err < 0 && !nfs_error_is_fatal(err));
+>  	nfs_io_completion_put(ioc);
+> 
+> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+> index d64332afc374..f9b22b990de7 100644
+> --- a/include/linux/nfs_page.h
+> +++ b/include/linux/nfs_page.h
+> @@ -125,6 +125,11 @@ struct nfs_pageio_descriptor {
+>  	 * layout: the write goes through the MDS instead of waiting for one.
+>  	 */
+>  	unsigned char		pg_allow_mds : 1;
+> +	/*
+> +	 * Set by a layout driver that refused a write with -EAGAIN for lack
+> +	 * of a layout, so that a caller that resends waits first.
+> +	 */
+> +	unsigned char		pg_nolayout : 1;
+>  };
+> 
+>  /* arbitrarily selected limit to number of mirrors */
+> -- 
+> 2.53.0
