@@ -1,58 +1,60 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.226
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1794999956;
-	b=ESq4rkETqvv7Cx7LScGrBYaLfbENSJLckIc/1cB0s62+px/ncEa0Nm5teXdXnjmZBXH3
-	 SVydnyONL09sN7+jVz4cVHvtA0Rb2K51VGhXc7fKiE4gQ7ukcV0j0Kz4sxQjgYA+9HbXC
-	 epMe7UxxyNVTgxVgBGdZ6nGPlC/fRec61FpUNIUmvei9p7IyVab/SARiXG2BMNGNY/4cC
-	 kkb5EMCM0+BLlg0sfenhMuKymFK7xXctZm6kYl6l8yF93BXU5x/EN0HfjJ0IV8VeRrfeh
-	 LGpNtEHob9Y4UMWVhjbjLaEZOKskld/Gsd98vcMzDobaV0xAY5vau73+Zbyl1vV3j/A==
+	t=1795001505;
+	b=g8a0BaTY+6Qq0YkNrX5JpqRF2Sk9ZSNAkCMidhEzfos6XW/++aNkT7hY+gshCTvlsy4w
+	 oAx6BC3dk2+yAXIY4/qT84dn1sUCG3vNJyBoyqWhM+kWgC9rKR34IHkYJnvqvn3R+GqhE
+	 zf1Kh6q2fLKo+KftE+Q5Jf+9ORLme2/lDq6GvsgKoVBwXCv2LT6eLeNeP1Zq5ArVtgKmx
+	 AXyq/Cohi5rYUo9DoSKtHvYNaZTqF5TlrZPNbFdUTHJ9L9M6bqd7gJRHmil3pA7Ppwi0r
+	 oh8jAez7hBEAPtPcdKrG/4rWjutvMXRjLR/4MqUdElEhi2soiQkMJP6c/GwzGsP6Kjg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1794999956;
-	h=DMARC-Filter:dkim-signature:Received:Received:Received:Message-ID:
-	 Date:MIME-Version:User-Agent:Subject:To:CC:References:In-Reply-To:
-	 From:Content-Type:Content-Transfer-Encoding:X-Originating-IP:
-	 X-ClientProxiedBy;
-	bh=N2WBV91cmkAUdcnNf48jE+IYB0wjHX2MQTzeLVdlj/U=;
-	b=BkUpM4f+9YIlQhRysxwfB03WPFjCh9vbC545JeBLVQML1e2jQsOIqYiMERXd6o2OMMjS
-	 uGqYufSKNLu63BpaLVX4LgH9utSs727+JcFSKcpbyvyK8ZDEfbTm/699t01JLh76EuS7g
-	 imSEeux16xAupDfexcB06V/thZhLaClA6cPWmZRG3ZD/DiGXjueM3vI0yekeQQIwDgC50
-	 ao1zGuuW3ocJt+VtjU8l6JFbRAhFiLouSvPBMm4XkJV4dN6+FFdkJeoBbI94Aoup8zp84
-	 loaL8FvP7PxCOu7+rM00UYPUU5xAi3jaFUmEhNFWABL2tVCdaGZTo7dAkgl3M3mXQoQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795001505;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=ti2hkmNuDOWadhSGxF1m8Eafguzo4rmwnOEmvRTOKQg=;
+	b=XMjADcqG3qBa4L5Fnih0WEO+0q+EeQU014JuCMzSvkYRLHNqO+ezniVBnDqqC9FBJ4mU
+	 SPvCvwfGRMPs5I+8/vT+apKcDRD3JvZQZRQICqaUbuvr05HeOzSMvlnAext0hrluMA1DW
+	 HkKAQhyjB0pY3H9Y+k5THuhcx3nNO6H2fZSn7+EQCpXOu7aWi5juJ09BiWaLHxcFhF/S3
+	 eX5n5J+aGbLr8bJoSL7Mv7/CNuWOIX76P8mGIxGhzq2qkfiuayRKUYP2gFXT12A7emsDN
+	 UQHdm4O5ERuL7dWCs9koJ/+Pm7D+hjpQUPdqTP34pXmffqbkciU1rLTBl7gtPKn53lQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=huawei.com;
-	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=xhi0kL4V;
-	arc=none smtp.remote-ip=113.46.200.226
-Received: from canpmsgout11.his.huawei.com (canpmsgout11.his.huawei.com [113.46.200.226])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ODIO9pZm;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F175B606A320;
-	Wed, 18 Nov 2026 11:05:53 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F175B606A320
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B7F7606A333;
+	Wed, 18 Nov 2026 11:31:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=xhi0kL4V
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=N2WBV91cmkAUdcnNf48jE+IYB0wjHX2MQTzeLVdlj/U=;
-	b=xhi0kL4VDySviSZf0jN2Mj4lry4+vI4t2FYKDuPVA0kAOaiwsX7wbTUQ1lv5DOa4IHyhhpFGh
-	kM804jmgUXvgvp5B18CMSrP3qNRWVjEzdfX6gmJqOj6jFnnqy98OPSgjxZE1c1lWOMZuRLPMFV6
-	siuqwshGoPYJ5gIdiCJf414=
-Received: from mail.maildlp.com (unknown [172.19.163.200])
-	by canpmsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4jTzKW14TGzKm64;
-	Wed, 18 Nov 2026 19:05:35 +0800 (CST)
-Received: from whupemk300014.china.huawei.com (unknown [7.152.185.8])
-	by mail.maildlp.com (Postfix) with ESMTPS id 875A840563;
-	Wed, 18 Nov 2026 19:05:49 +0800 (CST)
-Received: from [10.174.177.221] (10.174.177.221) by
- whupemk300014.china.huawei.com (7.152.185.8) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.2562.45; Wed, 18 Nov 2026 19:05:47 +0800
-Message-ID: <074af9c6-b852-4990-a3e7-ed40a5dc6780@huawei.com>
-Date: Wed, 18 Nov 2026 19:05:46 +0800
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ODIO9pZm
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7E32C1F000C4;
+	Wed, 18 Nov 2026 11:31:38 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795001504;
+	bh=ti2hkmNuDOWadhSGxF1m8Eafguzo4rmwnOEmvRTOKQg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=ODIO9pZmjYH1kZMTAUIhrLtNRhxyJLwHyVTBNB7l7Qu+neQPbJ9dCl0eBk9KYHa3N
+	 /Vieo866GiWsxthi2PUQXCbWvh7BRQTeI/1R4E+Q2venKkuYsOb1ezgQRhhlce+GFF
+	 QWo0r0zYe9OYi9XGyE5y7akfnlOg1+7ZUsUJv5E2WJKnR3gVsqqXd3KuIV3yez32wx
+	 R7c+/ueTUFxehQp+SxdgmsOXILl326ocUsp2E9Z9CbZ1UP0Vddrb6smC4h6oT+hWKJ
+	 zFv2q/4p84woUI1S5mY8V6fv2FtULFhqAgeueAomZXon5W5llDhHWjxKDEwOOFkehb
+	 lrg5Aisxxszqg==
+Date: Wed, 18 Nov 2026 12:31:35 +0100
+From: Carlos Maiolino <cem@kernel.org>
+To: Jan Kara <jack@suse.cz>
+Cc: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
+	Andreas Gruenbacher <agruenba@redhat.com>, gfs2@lists.linux.dev, Mike Marshall <hubcap@omnibond.com>, 
+	Martin Brandenburg <martin@omnibond.com>, devel@lists.orangefs.org, Dave Kleikamp <shaggy@kernel.org>, 
+	jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org, David Howells <dhowells@redhat.com>, 
+	Marc Dionne <marc.dionne@auristor.com>, linux-afs@lists.infradead.org, 
+	Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.linux.dev, linux-block@vger.kernel.org, 
+	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org, 
+	Eric Biggers <ebiggers@kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>, linux-fscrypt@vger.kernel.org
+Subject: Re: [PATCH 02/13] xfs: Drop pointless I_DIRTY_PAGES check in
+ xfs_can_free_cowblocks()
+Message-ID: <av2MieP4-v3axqLA@cronus.toxiclabs.cc>
+References: <20261113083336.15152-1-jack@suse.cz>
+ <20261113084700.739002-15-jack@suse.cz>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -62,48 +64,41 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 3/3] xprtrdma: Wake connect worker on device removal
-To: Tim Menninger <tmenninger@everpuredata.com>
-CC: "Dai.Ngo@oracle.com" <Dai.Ngo@oracle.com>, "anna@kernel.org"
-	<anna@kernel.org>, "cel@kernel.org" <cel@kernel.org>, "jlayton@kernel.org"
-	<jlayton@kernel.org>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>, "linux-rdma@vger.kernel.org"
-	<linux-rdma@vger.kernel.org>, "neil@brown.name" <neil@brown.name>,
-	"okorniev@redhat.com" <okorniev@redhat.com>, "stable@vger.kernel.org"
-	<stable@vger.kernel.org>, "tom@talpey.com" <tom@talpey.com>,
-	"trondmy@kernel.org" <trondmy@kernel.org>, "weiyongjun (A)"
-	<weiyongjun1@huawei.com>, yuehaibing <yuehaibing@huawei.com>, zhangchangzhong
-	<zhangchangzhong@huawei.com>
-References: <20261103032758.1302493-4-lixiasong1@huawei.com>
- <20261117182727.104697-1-tmenninger@everpuredata.com>
-In-Reply-To: 20261117182727.104697-1-tmenninger@everpuredata.com
-From: Li Xiasong <lixiasong1@huawei.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
- whupemk300014.china.huawei.com (7.152.185.8)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261113084700.739002-15-jack@suse.cz>
 
-Hi Tim,
-
-On 11/18/2026 2:27 AM, Tim Menninger wrote:
-> I encountered a refcount_t underflow warning in rpcrdma_ep_put() on
-> 7.4.0-rc3 during a pNFS flexfiles read workload with one MDS and one DS.
-> The trigger was restarting the NFS engine on the DS while reads were
-> in flight. The warning came from xprt_rdma_connect_worker via
-> rpcrdma_xprt_disconnect() -> rpcrdma_ep_put().
+On Fri, Nov 13, 2026 at 09:47:02AM +0100, Jan Kara wrote:
+> PAGECACHE_TAG_DIRTY is the authoritative source of information about any
+> folio being dirty in the mapping. I_DIRTY_PAGES is just an approximation
+> used by writeback code that can get stale under certain situations. So
+> just rely on the authoritative check.
 > 
-> With all three patches from this v2 series applied to 7.4-rc3, the
-> warning no longer occurred under the same test. This test did not
-> involve removing the RDMA device.
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/xfs/xfs_reflink.h | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
 > 
-> Tested-by: Tim Menninger <tmenninger@everpuredata.com>
+> diff --git a/fs/xfs/xfs_reflink.h b/fs/xfs/xfs_reflink.h
+> index 683c1841e640..1310cc9fe829 100644
+> --- a/fs/xfs/xfs_reflink.h
+> +++ b/fs/xfs/xfs_reflink.h
+> @@ -17,8 +17,7 @@ xfs_can_free_cowblocks(struct xfs_inode *ip)
+>  {
+>  	struct inode *inode = VFS_I(ip);
+>  
+> -	if ((inode_state_read_once(inode) & I_DIRTY_PAGES) ||
+> -	    mapping_tagged(inode->i_mapping, PAGECACHE_TAG_DIRTY) ||
+> +	if (mapping_tagged(inode->i_mapping, PAGECACHE_TAG_DIRTY) ||
+>  	    mapping_tagged(inode->i_mapping, PAGECACHE_TAG_WRITEBACK) ||
+>  	    atomic_read(&inode->i_dio_count))
+>  		return false;
+> -- 
+> 2.53.0
 
-Thanks for testing the v2 series and sharing the results.
+For this patch, feel free to add:
 
-The v2 series is still being refined based on Chuck's and Sashiko's
-feedback, including further improvements to the endpoint cleanup path.
-I will include them in the next version.
+Reviewed-by: Carlos Maiolino <cmaiolino@redhat.com>
 
-Thanks,
-Li Xiasong
+> 
+> 
