@@ -1,33 +1,33 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.43.10.250
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795002327;
-	b=eBaYSVR5/lrM69+5nM7Cr231hcaG3+4f9/U7Cq/AhUJ0HUwxa5/hcwB2rlzaUnpux2bb
-	 yJvauCYK52VvFhIheP9Z9QJLMMaHVghii8PBKDd0XAqLPuPFni1TO4XO5G1mZlCfVRhpg
-	 QA1pG1WjmtijwxMgbjJFFoaya+An7xJCZBglvyrz9zs4mylnQAKCX/KzNw199X/pi1CtQ
-	 DaELbUP0p4T2ieiAIrib7zmWXKWHyAfB0K0UaA4K9QXjrbFO/bNI51J//CAaj0rYmjO/f
-	 +y9GF4nSOKqQsu/Y3Qmz0terVYY6E21vhppQeZ/tcjJJ+QoDla8m0L1Qnz1/uWdBSyg==
+	t=1795002329;
+	b=3r58uNgkmemSXbHBs1wulyTlSradKNbNXE2WYZPbk05uwOs0gaZy5iBBMYLKhQ8OgdQw
+	 e5pCIaUgUGLRiwe1ptrosVVL06N92NhYvr3Hx/h1qCXqM5nW9l3V+XMjKueSDATedG3sc
+	 h2NN593di+DO03huNaZF3eFkSy3TahPOkgmXHCIUEdK85rFXqN1yziGhSjaHIyz8hu5gQ
+	 K9eseDuTitJsy0uFbw7Ie2YIa0fDwrVbeLadc3InyTtpVblxHDQ3eHYtt5rV8IicqrcHI
+	 7w128TmdpsfLZwLuY/8Pf6CtWVZI89+LQgg1RuQqlM7n2AbccwStqdAwAoGik4gAidQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795002327;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795002329;
 	h=DMARC-Filter:Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=SQchx3CaXGNfI45uXdKJrWSri9ZeI8DH+qpCjQS5SzY=;
-	b=Ph3oRiiDNRrmGejV6oL9ZSh8r5t4kTTaoxMy1z3RoJx7HvSJEWEhyRTq+j4blAOanTLE
-	 nucj1lzNj0rz45t439e73YvdotB2B9i43HxIjL/EAuRNpu/6KZ38CJ3rIfLaHkjNC/xWu
-	 vr+DA14IA1DiSlTvWiWa3OKbmGGx2nRArqQ3mhjSVP8phrcEKgFeHSYjdb+xdGVGEQyq9
-	 Yzka2PiQ/5HwssBQpQF8tbg02dnlyz+2N7TSjvCaTXAdduZ1wyxHnP0PZvUxvss3KemuR
-	 YFNqpsZPXpivfmknU3iqSBnOtHNtU4/DP5e/HSMgQmg+Mk+NaoAGUqwIdnbH1rAaXoQ==
+	bh=p4uAstBqCOqQ9Ibbrs8uDsdz+izyLnUae77SN1BnzNo=;
+	b=aI6WMB457uYqqqQDxuMZQ04Rm2pbtA4rM67QPG2RrliGEX4OQABzJRSKl6d6H8RVQV2l
+	 621v+GYZ3XqdtYU02SnZjJmOGwRYubp+1L/lelhImiIx+lhjxVuSIZFVJGTFkQ3HUNIhN
+	 trNA9o/XFqDKZDBC8CfYkFFtFgELGtpQsuGSO0FSegS6R0s1iIaE1QSwp107Jeu9whg5k
+	 nIcOJTqQSQOG/KT7vyfSU/CLXcV0BeQ2vMqOWvqGQJXEoRf0piM6oNclm9MFTSDPgFsbq
+	 QTYo468t92kdckfHPfUvp6sbW0gca7YsaWJF2bno6t+u0OVV4kdDJNh+u5fQqCYvYCg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=altlinux.org;
 	spf=fail smtp.mailfrom=altlinux.org;
 	arc=none smtp.remote-ip=193.43.10.250
 Received: from basalt.external.altlinux.org (unknown [193.43.10.250])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 836F5606A31C;
-	Wed, 18 Nov 2026 11:45:26 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 836F5606A31C
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id E502060A262D;
+	Wed, 18 Nov 2026 11:45:28 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E502060A262D
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=altlinux.org
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=altlinux.org
 Received: by basalt.external.altlinux.org (Postfix, from userid 1137)
-	id D3D382DF333; Wed, 18 Nov 2026 14:45:18 +0300 (MSK)
+	id 070E52DF349; Wed, 18 Nov 2026 14:45:19 +0300 (MSK)
 From: Alexey Shabalin <shaba@altlinux.org>
 To: devel-kernel@altlinux.org
 Cc: David Howells <dhowells@redhat.com>,
@@ -43,9 +43,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-nfs@vger.kernel.org,
 	linux-crypto@vger.kernel.org,
 	netdev@vger.kernel.org
-Subject: [PATCH 6.12/sisyphus 02/29] crypto/krb5: Implement Kerberos crypto core
-Date: Wed, 18 Nov 2026 14:44:51 +0300
-Message-ID: <20261118114518.3605222-3-shaba@altlinux.org>
+Subject: [PATCH 6.12/sisyphus 13/29] crypto/krb5: Implement the Camellia enctypes from rfc6803
+Date: Wed, 18 Nov 2026 14:45:02 +0300
+Message-ID: <20261118114518.3605222-14-shaba@altlinux.org>
 X-Mailer: git-send-email 2.50.1
 In-Reply-To: <20261118114518.3605222-1-shaba@altlinux.org>
 References: <20261118114518.3605222-1-shaba@altlinux.org>
@@ -62,8 +62,14 @@ Content-Transfer-Encoding: 8bit
 
 From: David Howells <dhowells@redhat.com>
 
-Provide core structures, an encoding-type registry and basic module and
-config bits for a generic Kerberos crypto library.
+Implement the camellia128-cts-cmac and camellia256-cts-cmac enctypes from
+rfc6803.
+
+Note that the test vectors in rfc6803 for encryption are incomplete,
+lacking the key usage number needed to derive Ke and Ki, and there are
+errata for this:
+
+	https://www.rfc-editor.org/errata_search.php?rfc=6803
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Herbert Xu <herbert@gondor.apana.org.au>
@@ -78,203 +84,86 @@ cc: linux-afs@lists.infradead.org
 cc: linux-nfs@vger.kernel.org
 cc: linux-crypto@vger.kernel.org
 cc: netdev@vger.kernel.org
-(cherry picked from commit 3936f02bf2d3308a7359dd37dd96cd60603d8170)
+(cherry picked from commit 742e38d4d4033e7ff53178acf7edd2b1fe0142ef)
 ---
- crypto/Kconfig         |   1 +
- crypto/Makefile        |   2 +
- crypto/krb5/Kconfig    |  14 ++++++
- crypto/krb5/Makefile   |   9 ++++
- crypto/krb5/internal.h | 112 +++++++++++++++++++++++++++++++++++++++++
- crypto/krb5/krb5_api.c |  42 ++++++++++++++++
- include/crypto/krb5.h  |  54 ++++++++++++++++++++
- 7 files changed, 234 insertions(+)
- create mode 100644 crypto/krb5/Kconfig
- create mode 100644 crypto/krb5/Makefile
- create mode 100644 crypto/krb5/internal.h
- create mode 100644 crypto/krb5/krb5_api.c
+ crypto/krb5/Kconfig            |   2 +
+ crypto/krb5/Makefile           |   1 +
+ crypto/krb5/internal.h         |   6 +
+ crypto/krb5/krb5_api.c         |   2 +
+ crypto/krb5/rfc6803_camellia.c | 237 +++++++++++++++++++++++++++++++++
+ include/crypto/krb5.h          |   4 +
+ 6 files changed, 252 insertions(+)
+ create mode 100644 crypto/krb5/rfc6803_camellia.c
 
-diff --git a/crypto/Kconfig b/crypto/Kconfig
-index a997e97937e0..ee4f6e3f11ad 100644
---- a/crypto/Kconfig
-+++ b/crypto/Kconfig
-@@ -1477,5 +1477,6 @@ endif
- source "drivers/crypto/Kconfig"
- source "crypto/asymmetric_keys/Kconfig"
- source "certs/Kconfig"
-+source "crypto/krb5/Kconfig"
- 
- endif	# if CRYPTO
-diff --git a/crypto/Makefile b/crypto/Makefile
-index 6e9facde76a0..90744fec0b6c 100644
---- a/crypto/Makefile
-+++ b/crypto/Makefile
-@@ -213,3 +213,5 @@ obj-$(CONFIG_CRYPTO_SIMD) += crypto_simd.o
- # Key derivation function
- #
- obj-$(CONFIG_CRYPTO_KDF800108_CTR) += kdf_sp800108.o
-+
-+obj-$(CONFIG_CRYPTO_KRB5) += krb5/
 diff --git a/crypto/krb5/Kconfig b/crypto/krb5/Kconfig
-new file mode 100644
-index 000000000000..079873618abf
---- /dev/null
+index 52f0ed2d7820..5b339690905c 100644
+--- a/crypto/krb5/Kconfig
 +++ b/crypto/krb5/Kconfig
-@@ -0,0 +1,14 @@
-+config CRYPTO_KRB5
-+	tristate "Kerberos 5 crypto"
-+	select CRYPTO_MANAGER
-+	select CRYPTO_KRB5ENC
-+	select CRYPTO_AUTHENC
-+	select CRYPTO_SKCIPHER
-+	select CRYPTO_HASH_INFO
-+	select CRYPTO_SHA1
-+	select CRYPTO_CBC
-+	select CRYPTO_CTS
-+	select CRYPTO_AES
-+	help
-+	  Provide a library for provision of Kerberos-5-based crypto.  This is
-+	  intended for network filesystems to use.
+@@ -6,12 +6,14 @@ config CRYPTO_KRB5
+ 	select CRYPTO_SKCIPHER
+ 	select CRYPTO_HASH_INFO
+ 	select CRYPTO_HMAC
++	select CRYPTO_CMAC
+ 	select CRYPTO_SHA1
+ 	select CRYPTO_SHA256
+ 	select CRYPTO_SHA512
+ 	select CRYPTO_CBC
+ 	select CRYPTO_CTS
+ 	select CRYPTO_AES
++	select CRYPTO_CAMELLIA
+ 	help
+ 	  Provide a library for provision of Kerberos-5-based crypto.  This is
+ 	  intended for network filesystems to use.
 diff --git a/crypto/krb5/Makefile b/crypto/krb5/Makefile
-new file mode 100644
-index 000000000000..c450d0754772
---- /dev/null
+index 7fd215ec3a85..7cbe5e5ded19 100644
+--- a/crypto/krb5/Makefile
 +++ b/crypto/krb5/Makefile
-@@ -0,0 +1,9 @@
-+# SPDX-License-Identifier: GPL-2.0
-+#
-+# Makefile for asymmetric cryptographic keys
-+#
-+
-+krb5-y += \
-+	krb5_api.o
-+
-+obj-$(CONFIG_CRYPTO_KRB5) += krb5.o
+@@ -8,6 +8,7 @@ krb5-y += \
+ 	krb5_api.o \
+ 	rfc3961_simplified.o \
+ 	rfc3962_aes.o \
++	rfc6803_camellia.o \
+ 	rfc8009_aes2.o
+ 
+ obj-$(CONFIG_CRYPTO_KRB5) += krb5.o
 diff --git a/crypto/krb5/internal.h b/crypto/krb5/internal.h
-new file mode 100644
-index 000000000000..3ede858be4f7
---- /dev/null
+index f537f6eb86eb..8679140ef90d 100644
+--- a/crypto/krb5/internal.h
 +++ b/crypto/krb5/internal.h
-@@ -0,0 +1,112 @@
-+/* SPDX-License-Identifier: GPL-2.0-or-later */
-+/* Kerberos5 crypto internals
-+ *
-+ * Copyright (C) 2025 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+
-+#include <crypto/krb5.h>
-+
+@@ -186,6 +186,12 @@ int rfc3961_verify_mic(const struct krb5_enctype *krb5,
+ extern const struct krb5_enctype krb5_aes128_cts_hmac_sha1_96;
+ extern const struct krb5_enctype krb5_aes256_cts_hmac_sha1_96;
+ 
 +/*
-+ * Profile used for key derivation and encryption.
++ * rfc6803_camellia.c
 + */
-+struct krb5_crypto_profile {
-+	 /* Pseudo-random function */
-+	int (*calc_PRF)(const struct krb5_enctype *krb5,
-+			const struct krb5_buffer *protocol_key,
-+			const struct krb5_buffer *octet_string,
-+			struct krb5_buffer *result,
-+			gfp_t gfp);
++extern const struct krb5_enctype krb5_camellia128_cts_cmac;
++extern const struct krb5_enctype krb5_camellia256_cts_cmac;
 +
-+	/* Checksum key derivation */
-+	int (*calc_Kc)(const struct krb5_enctype *krb5,
-+		       const struct krb5_buffer *TK,
-+		       const struct krb5_buffer *usage_constant,
-+		       struct krb5_buffer *Kc,
-+		       gfp_t gfp);
-+
-+	/* Encryption key derivation */
-+	int (*calc_Ke)(const struct krb5_enctype *krb5,
-+		       const struct krb5_buffer *TK,
-+		       const struct krb5_buffer *usage_constant,
-+		       struct krb5_buffer *Ke,
-+		       gfp_t gfp);
-+
-+	 /* Integrity key derivation */
-+	int (*calc_Ki)(const struct krb5_enctype *krb5,
-+		       const struct krb5_buffer *TK,
-+		       const struct krb5_buffer *usage_constant,
-+		       struct krb5_buffer *Ki,
-+		       gfp_t gfp);
-+
-+	/* Derive the keys needed for an encryption AEAD object. */
-+	int (*derive_encrypt_keys)(const struct krb5_enctype *krb5,
-+				   const struct krb5_buffer *TK,
-+				   unsigned int usage,
-+				   struct krb5_buffer *setkey,
-+				   gfp_t gfp);
-+
-+	/* Directly load the keys needed for an encryption AEAD object. */
-+	int (*load_encrypt_keys)(const struct krb5_enctype *krb5,
-+				 const struct krb5_buffer *Ke,
-+				 const struct krb5_buffer *Ki,
-+				 struct krb5_buffer *setkey,
-+				 gfp_t gfp);
-+
-+	/* Derive the key needed for a checksum hash object. */
-+	int (*derive_checksum_key)(const struct krb5_enctype *krb5,
-+				   const struct krb5_buffer *TK,
-+				   unsigned int usage,
-+				   struct krb5_buffer *setkey,
-+				   gfp_t gfp);
-+
-+	/* Directly load the keys needed for a checksum hash object. */
-+	int (*load_checksum_key)(const struct krb5_enctype *krb5,
-+				 const struct krb5_buffer *Kc,
-+				 struct krb5_buffer *setkey,
-+				 gfp_t gfp);
-+
-+	/* Encrypt data in-place, inserting confounder and checksum. */
-+	ssize_t (*encrypt)(const struct krb5_enctype *krb5,
-+			   struct crypto_aead *aead,
-+			   struct scatterlist *sg, unsigned int nr_sg,
-+			   size_t sg_len,
-+			   size_t data_offset, size_t data_len,
-+			   bool preconfounded);
-+
-+	/* Decrypt data in-place, removing confounder and checksum */
-+	int (*decrypt)(const struct krb5_enctype *krb5,
-+		       struct crypto_aead *aead,
-+		       struct scatterlist *sg, unsigned int nr_sg,
-+		       size_t *_offset, size_t *_len);
-+
-+	/* Generate a MIC on part of a packet, inserting the checksum */
-+	ssize_t (*get_mic)(const struct krb5_enctype *krb5,
-+			   struct crypto_shash *shash,
-+			   const struct krb5_buffer *metadata,
-+			   struct scatterlist *sg, unsigned int nr_sg,
-+			   size_t sg_len,
-+			   size_t data_offset, size_t data_len);
-+
-+	/* Verify the MIC on a piece of data, removing the checksum */
-+	int (*verify_mic)(const struct krb5_enctype *krb5,
-+			  struct crypto_shash *shash,
-+			  const struct krb5_buffer *metadata,
-+			  struct scatterlist *sg, unsigned int nr_sg,
-+			  size_t *_offset, size_t *_len);
-+};
-+
-+/*
-+ * Crypto size/alignment rounding convenience macros.
-+ */
-+#define crypto_roundup(X) ((unsigned int)round_up((X), CRYPTO_MINALIGN))
-+
-+#define krb5_aead_size(TFM) \
-+	crypto_roundup(sizeof(struct aead_request) + crypto_aead_reqsize(TFM))
-+#define krb5_aead_ivsize(TFM) \
-+	crypto_roundup(crypto_aead_ivsize(TFM))
-+#define krb5_shash_size(TFM) \
-+	crypto_roundup(sizeof(struct shash_desc) + crypto_shash_descsize(TFM))
-+#define krb5_digest_size(TFM) \
-+	crypto_roundup(crypto_shash_digestsize(TFM))
-+#define round16(x) (((x) + 15) & ~15)
+ /*
+  * rfc8009_aes2.c
+  */
 diff --git a/crypto/krb5/krb5_api.c b/crypto/krb5/krb5_api.c
-new file mode 100644
-index 000000000000..5c1cd5d07fc3
---- /dev/null
+index 5b94cc5db461..02e21c8f4d14 100644
+--- a/crypto/krb5/krb5_api.c
 +++ b/crypto/krb5/krb5_api.c
-@@ -0,0 +1,42 @@
+@@ -21,6 +21,8 @@ static const struct krb5_enctype *const krb5_supported_enctypes[] = {
+ 	&krb5_aes256_cts_hmac_sha1_96,
+ 	&krb5_aes128_cts_hmac_sha256_128,
+ 	&krb5_aes256_cts_hmac_sha384_192,
++	&krb5_camellia128_cts_cmac,
++	&krb5_camellia256_cts_cmac,
+ };
+ 
+ /**
+diff --git a/crypto/krb5/rfc6803_camellia.c b/crypto/krb5/rfc6803_camellia.c
+new file mode 100644
+index 000000000000..77cd4ce023f1
+--- /dev/null
++++ b/crypto/krb5/rfc6803_camellia.c
+@@ -0,0 +1,237 @@
 +// SPDX-License-Identifier: GPL-2.0-or-later
-+/* Kerberos 5 crypto library.
++/* rfc6803 Camellia Encryption for Kerberos 5
 + *
 + * Copyright (C) 2025 Red Hat, Inc. All Rights Reserved.
 + * Written by David Howells (dhowells@redhat.com)
@@ -282,109 +171,256 @@ index 000000000000..5c1cd5d07fc3
 +
 +#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 +
-+#include <linux/module.h>
-+#include <linux/export.h>
-+#include <linux/kernel.h>
++#include <linux/slab.h>
 +#include "internal.h"
 +
-+MODULE_DESCRIPTION("Kerberos 5 crypto");
-+MODULE_AUTHOR("Red Hat, Inc.");
-+MODULE_LICENSE("GPL");
++/*
++ * Calculate the key derivation function KDF-FEEDBACK_CMAC(key, constant)
++ *
++ *	n = ceiling(k / 128)
++ *	K(0) = zeros
++ *	K(i) = CMAC(key, K(i-1) | i | constant | 0x00 | k)
++ *	DR(key, constant) = k-truncate(K(1) | K(2) | ... | K(n))
++ *	KDF-FEEDBACK-CMAC(key, constant) = random-to-key(DR(key, constant))
++ *
++ *	[rfc6803 sec 3]
++ */
++static int rfc6803_calc_KDF_FEEDBACK_CMAC(const struct krb5_enctype *krb5,
++					  const struct krb5_buffer *key,
++					  const struct krb5_buffer *constant,
++					  struct krb5_buffer *result,
++					  gfp_t gfp)
++{
++	struct crypto_shash *shash;
++	struct krb5_buffer K, data;
++	struct shash_desc *desc;
++	__be32 tmp;
++	size_t bsize, offset, seg;
++	void *buffer;
++	u32 i = 0, k = result->len * 8;
++	u8 *p;
++	int ret = -ENOMEM;
 +
-+static const struct krb5_enctype *const krb5_supported_enctypes[] = {
++	shash = crypto_alloc_shash(krb5->cksum_name, 0, 0);
++	if (IS_ERR(shash))
++		return (PTR_ERR(shash) == -ENOENT) ? -ENOPKG : PTR_ERR(shash);
++	ret = crypto_shash_setkey(shash, key->data, key->len);
++	if (ret < 0)
++		goto error_shash;
++
++	ret = -ENOMEM;
++	K.len = crypto_shash_digestsize(shash);
++	data.len = K.len + 4 + constant->len + 1 + 4;
++	bsize = krb5_shash_size(shash) +
++		krb5_digest_size(shash) +
++		crypto_roundup(K.len) +
++		crypto_roundup(data.len);
++	buffer = kzalloc(bsize, GFP_NOFS);
++	if (!buffer)
++		goto error_shash;
++
++	desc = buffer;
++	desc->tfm = shash;
++
++	K.data = buffer +
++		krb5_shash_size(shash) +
++		krb5_digest_size(shash);
++	data.data = buffer +
++		krb5_shash_size(shash) +
++		krb5_digest_size(shash) +
++		crypto_roundup(K.len);
++
++	p = data.data + K.len + 4;
++	memcpy(p, constant->data, constant->len);
++	p += constant->len;
++	*p++ = 0x00;
++	tmp = htonl(k);
++	memcpy(p, &tmp, 4);
++	p += 4;
++
++	ret = -EINVAL;
++	if (WARN_ON(p - (u8 *)data.data != data.len))
++		goto error;
++
++	offset = 0;
++	do {
++		i++;
++		p = data.data;
++		memcpy(p, K.data, K.len);
++		p += K.len;
++		*(__be32 *)p = htonl(i);
++
++		ret = crypto_shash_init(desc);
++		if (ret < 0)
++			goto error;
++		ret = crypto_shash_finup(desc, data.data, data.len, K.data);
++		if (ret < 0)
++			goto error;
++
++		seg = min_t(size_t, result->len - offset, K.len);
++		memcpy(result->data + offset, K.data, seg);
++		offset += seg;
++	} while (offset < result->len);
++
++error:
++	kfree_sensitive(buffer);
++error_shash:
++	crypto_free_shash(shash);
++	return ret;
++}
++
++/*
++ * Calculate the pseudo-random function, PRF().
++ *
++ *	Kp = KDF-FEEDBACK-CMAC(protocol-key, "prf")
++ *	PRF = CMAC(Kp, octet-string)
++ *      [rfc6803 sec 6]
++ */
++static int rfc6803_calc_PRF(const struct krb5_enctype *krb5,
++			    const struct krb5_buffer *protocol_key,
++			    const struct krb5_buffer *octet_string,
++			    struct krb5_buffer *result,
++			    gfp_t gfp)
++{
++	static const struct krb5_buffer prfconstant = { 3, "prf" };
++	struct crypto_shash *shash;
++	struct krb5_buffer Kp;
++	struct shash_desc *desc;
++	size_t bsize;
++	void *buffer;
++	int ret;
++
++	Kp.len = krb5->prf_len;
++
++	shash = crypto_alloc_shash(krb5->cksum_name, 0, 0);
++	if (IS_ERR(shash))
++		return (PTR_ERR(shash) == -ENOENT) ? -ENOPKG : PTR_ERR(shash);
++
++	ret = -EINVAL;
++	if (result->len != crypto_shash_digestsize(shash))
++		goto out_shash;
++
++	ret = -ENOMEM;
++	bsize = krb5_shash_size(shash) +
++		krb5_digest_size(shash) +
++		crypto_roundup(Kp.len);
++	buffer = kzalloc(bsize, GFP_NOFS);
++	if (!buffer)
++		goto out_shash;
++
++	Kp.data = buffer +
++		krb5_shash_size(shash) +
++		krb5_digest_size(shash);
++
++	ret = rfc6803_calc_KDF_FEEDBACK_CMAC(krb5, protocol_key, &prfconstant,
++					     &Kp, gfp);
++	if (ret < 0)
++		goto out;
++
++	ret = crypto_shash_setkey(shash, Kp.data, Kp.len);
++	if (ret < 0)
++		goto out;
++
++	desc = buffer;
++	desc->tfm = shash;
++	ret = crypto_shash_init(desc);
++	if (ret < 0)
++		goto out;
++
++	ret = crypto_shash_finup(desc, octet_string->data, octet_string->len, result->data);
++	if (ret < 0)
++		goto out;
++
++out:
++	kfree_sensitive(buffer);
++out_shash:
++	crypto_free_shash(shash);
++	return ret;
++}
++
++
++static const struct krb5_crypto_profile rfc6803_crypto_profile = {
++	.calc_PRF		= rfc6803_calc_PRF,
++	.calc_Kc		= rfc6803_calc_KDF_FEEDBACK_CMAC,
++	.calc_Ke		= rfc6803_calc_KDF_FEEDBACK_CMAC,
++	.calc_Ki		= rfc6803_calc_KDF_FEEDBACK_CMAC,
++	.derive_encrypt_keys	= authenc_derive_encrypt_keys,
++	.load_encrypt_keys	= authenc_load_encrypt_keys,
++	.derive_checksum_key	= rfc3961_derive_checksum_key,
++	.load_checksum_key	= rfc3961_load_checksum_key,
++	.encrypt		= krb5_aead_encrypt,
++	.decrypt		= krb5_aead_decrypt,
++	.get_mic		= rfc3961_get_mic,
++	.verify_mic		= rfc3961_verify_mic,
 +};
 +
-+/**
-+ * crypto_krb5_find_enctype - Find the handler for a Kerberos5 encryption type
-+ * @enctype: The standard Kerberos encryption type number
-+ *
-+ * Look up a Kerberos encryption type by number.  If successful, returns a
-+ * pointer to the type tables; returns NULL otherwise.
-+ */
-+const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype)
-+{
-+	const struct krb5_enctype *krb5;
-+	size_t i;
++const struct krb5_enctype krb5_camellia128_cts_cmac = {
++	.etype		= KRB5_ENCTYPE_CAMELLIA128_CTS_CMAC,
++	.ctype		= KRB5_CKSUMTYPE_CMAC_CAMELLIA128,
++	.name		= "camellia128-cts-cmac",
++	.encrypt_name	= "krb5enc(cmac(camellia),cts(cbc(camellia)))",
++	.cksum_name	= "cmac(camellia)",
++	.hash_name	= NULL,
++	.derivation_enc	= "cts(cbc(camellia))",
++	.key_bytes	= 16,
++	.key_len	= 16,
++	.Kc_len		= 16,
++	.Ke_len		= 16,
++	.Ki_len		= 16,
++	.block_len	= 16,
++	.conf_len	= 16,
++	.cksum_len	= 16,
++	.hash_len	= 16,
++	.prf_len	= 16,
++	.keyed_cksum	= true,
++	.random_to_key	= NULL, /* Identity */
++	.profile	= &rfc6803_crypto_profile,
++};
 +
-+	for (i = 0; i < ARRAY_SIZE(krb5_supported_enctypes); i++) {
-+		krb5 = krb5_supported_enctypes[i];
-+		if (krb5->etype == enctype)
-+			return krb5;
-+	}
-+
-+	return NULL;
-+}
-+EXPORT_SYMBOL(crypto_krb5_find_enctype);
++const struct krb5_enctype krb5_camellia256_cts_cmac = {
++	.etype		= KRB5_ENCTYPE_CAMELLIA256_CTS_CMAC,
++	.ctype		= KRB5_CKSUMTYPE_CMAC_CAMELLIA256,
++	.name		= "camellia256-cts-cmac",
++	.encrypt_name	= "krb5enc(cmac(camellia),cts(cbc(camellia)))",
++	.cksum_name	= "cmac(camellia)",
++	.hash_name	= NULL,
++	.derivation_enc	= "cts(cbc(camellia))",
++	.key_bytes	= 32,
++	.key_len	= 32,
++	.Kc_len		= 32,
++	.Ke_len		= 32,
++	.Ki_len		= 32,
++	.block_len	= 16,
++	.conf_len	= 16,
++	.cksum_len	= 16,
++	.hash_len	= 16,
++	.prf_len	= 16,
++	.keyed_cksum	= true,
++	.random_to_key	= NULL, /* Identity */
++	.profile	= &rfc6803_crypto_profile,
++};
 diff --git a/include/crypto/krb5.h b/include/crypto/krb5.h
-index 44a6342471d7..8fa6715ab35b 100644
+index b8fda81379ab..62d998e62f47 100644
 --- a/include/crypto/krb5.h
 +++ b/include/crypto/krb5.h
-@@ -8,6 +8,12 @@
- #ifndef _CRYPTO_KRB5_H
- #define _CRYPTO_KRB5_H
+@@ -35,6 +35,8 @@ struct scatterlist;
+ #define KRB5_ENCTYPE_AES256_CTS_HMAC_SHA384_192	0x0014
+ #define KRB5_ENCTYPE_ARCFOUR_HMAC		0x0017
+ #define KRB5_ENCTYPE_ARCFOUR_HMAC_EXP		0x0018
++#define KRB5_ENCTYPE_CAMELLIA128_CTS_CMAC	0x0019
++#define KRB5_ENCTYPE_CAMELLIA256_CTS_CMAC	0x001a
+ #define KRB5_ENCTYPE_UNKNOWN			0x01ff
  
-+#include <linux/crypto.h>
-+#include <crypto/aead.h>
-+
-+struct crypto_shash;
-+struct scatterlist;
-+
- /*
-  * Per Kerberos v5 protocol spec crypto types from the wire.  These get mapped
-  * to linux kernel crypto routines.
-@@ -48,4 +54,52 @@
- #define KEY_USAGE_SEED_ENCRYPTION       (0xAA)
- #define KEY_USAGE_SEED_INTEGRITY        (0x55)
- 
-+/*
-+ * Mode of operation.
-+ */
-+enum krb5_crypto_mode {
-+	KRB5_CHECKSUM_MODE,	/* Checksum only */
-+	KRB5_ENCRYPT_MODE,	/* Fully encrypted, possibly with integrity checksum */
-+};
-+
-+struct krb5_buffer {
-+	unsigned int	len;
-+	void		*data;
-+};
-+
-+/*
-+ * Kerberos encoding type definition.
-+ */
-+struct krb5_enctype {
-+	int		etype;		/* Encryption (key) type */
-+	int		ctype;		/* Checksum type */
-+	const char	*name;		/* "Friendly" name */
-+	const char	*encrypt_name;	/* Crypto encrypt+checksum name */
-+	const char	*cksum_name;	/* Crypto checksum name */
-+	const char	*hash_name;	/* Crypto hash name */
-+	const char	*derivation_enc; /* Cipher used in key derivation */
-+	u16		block_len;	/* Length of encryption block */
-+	u16		conf_len;	/* Length of confounder (normally == block_len) */
-+	u16		cksum_len;	/* Length of checksum */
-+	u16		key_bytes;	/* Length of raw key, in bytes */
-+	u16		key_len;	/* Length of final key, in bytes */
-+	u16		hash_len;	/* Length of hash in bytes */
-+	u16		prf_len;	/* Length of PRF() result in bytes */
-+	u16		Kc_len;		/* Length of Kc in bytes */
-+	u16		Ke_len;		/* Length of Ke in bytes */
-+	u16		Ki_len;		/* Length of Ki in bytes */
-+	bool		keyed_cksum;	/* T if a keyed cksum */
-+
-+	const struct krb5_crypto_profile *profile;
-+
-+	int (*random_to_key)(const struct krb5_enctype *krb5,
-+			     const struct krb5_buffer *in,
-+			     struct krb5_buffer *out);	/* complete key generation */
-+};
-+
-+/*
-+ * krb5_api.c
-+ */
-+const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype);
-+
- #endif /* _CRYPTO_KRB5_H */
+ #define KRB5_CKSUMTYPE_CRC32			0x0001
+@@ -47,6 +49,8 @@ struct scatterlist;
+ #define KRB5_CKSUMTYPE_HMAC_SHA1_DES3		0x000c
+ #define KRB5_CKSUMTYPE_HMAC_SHA1_96_AES128	0x000f
+ #define KRB5_CKSUMTYPE_HMAC_SHA1_96_AES256	0x0010
++#define KRB5_CKSUMTYPE_CMAC_CAMELLIA128		0x0011
++#define KRB5_CKSUMTYPE_CMAC_CAMELLIA256		0x0012
+ #define KRB5_CKSUMTYPE_HMAC_SHA256_128_AES128	0x0013
+ #define KRB5_CKSUMTYPE_HMAC_SHA384_192_AES256	0x0014
+ #define KRB5_CKSUMTYPE_HMAC_MD5_ARCFOUR		-138 /* Microsoft md5 hmac cksumtype */
 -- 
 2.50.1
 
