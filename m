@@ -1,73 +1,84 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795022497;
-	b=YIGcT0HVMG0hcAOBZMjbdgd8x0sAqCOEMsFzu0AjYpwnu6IV1oJpOB6/hEnnLm2ibvnq
-	 trD5GYncCj09yjinzAUMc8/s0UxfHznZiMvw6dS65G5rnZbmhgakAvZov5YtvGi0RD7jF
-	 QlTYyyPWoT2w2S+DiM/t4mFUwMUmadt0suLEjk0g6ac5DI2y0zdsDWBT0ZXmzfOPOvLo1
-	 zUS2FdgQsh4Vy+WXH0p7/kyivtbDEY/D+GFS0K4pEly1dkFrSX4VyXOoZh1znad2U4o1S
-	 nHIns0MGfPMBi58c1VC+TsIUuvjMOPeQYFNM0q2rdDHH+CZnu/2oAHK1hCClTJ0VLjA==
+	t=1795022559;
+	b=xTGArVEHpKqE3sR36GFt9CQalGu0sDEzf4TBAhnq3L13eykV58Ohw9/Xj/Of00qAKade
+	 8SoC6dHy9oniDwqW96sA/wV1PIDldingAoW4AGH/xS1FqW/Ip3Ht1Kygoqxe0ozVUd2Ax
+	 Cp9+oNGNEev0CDABQ8IKodET17pABGGWUcBXjqoYtfzxhlfasxQKHjwX2v4kKeZ5WDrHy
+	 WOy/vYe0kHLFxTKlg3qA13C6+uMzAl8D9aNMeIXVf5FEawzalSwHnm7snqk+zcQuFOFNY
+	 K9ldZvoQ2EXwsJpEl1r90YYdBNBtm9U7eCgacri9eRXeODIsM59Of01XGfAy+XdXK1A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795022497;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=VLI20SqQTUV+izL6bGiN91Pkgn48s3smOlPhk2XgdVY=;
-	b=jIS12D9vu/gMYE4nkkwpBmc5fbDZ9Jkq25S7r5wvGFhA3vT1WlgXd5txskvuh/J0ySfo
-	 q98HkdrgmUbhspCF72skslxlmCZ6IYWF70sBcRvNz77XVhgGPtV2UuvMfc7jSpvKAg7ay
-	 Vbl+LkbDYPW3x2nCBqr9RLJ8O0Tb1XLK/1uJOiA2f/+hAXTFX5zM+LZRZU55kCahzmgGH
-	 bv/LV2qm9bAt7TvWPZcOokQBQOyWLyV2Dp9kciFrElIw1aafEsE8JevOhAv+hshvOmNRq
-	 y90pbld4Ap8WlheSSeP7a4qNogbfv3L3cmj1RJ23/SZpNNSDzNCd/dg3GYZlIaokqyw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795022559;
+	h=Received:DKIM-Signature:Received:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:
+	 Content-Transfer-Encoding:In-Reply-To:User-Agent;
+	bh=VotAYrBtciufD00EQtINMlP1oNamOH3kYvCTKgTHmis=;
+	b=1DO/hIui2ujgyOAtRd5RJiu/Slm2qX0E64a5DQ79lHAr92WzKxEmKFAW4As4GJqQVJK/
+	 iUzSMaefHzx6pkbwXT1M6F0dLENq5wiY1gcmCYQgmswQZt7u4pEXhZcTUAj9a7ldXZAt5
+	 +VkRGbrwVLeNQFkytNvMbykl9DIfdEpqq18jKyCvLbRV1iTGs8+/T63nEeVV7dWXvTHab
+	 UssMloahLsGr7pv3ndrotUIitEbN1EMV/qkIWmb45gtJPGn3BA6cIrSjJaRKyqNVzcCSa
+	 elMTCcHe5hv1W2/dA2oOdBMGRSVhlNs/nHI/TKublmYOC20d8+0PaKWrwPG8rD2yLVw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EKSCcSKJ;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BUA2NnkU;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3623606A320
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 17:21:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CB0AB606A331;
+	Wed, 18 Nov 2026 17:22:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EKSCcSKJ
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F19C1F000C7;
-	Wed, 18 Nov 2026 17:21:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=BUA2NnkU
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 30A2E1F000C6;
+	Wed, 18 Nov 2026 17:22:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795022497;
-	bh=VLI20SqQTUV+izL6bGiN91Pkgn48s3smOlPhk2XgdVY=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=EKSCcSKJw+i3veS6BZaZlbKZXP8cfAQvyZcTH/nspB7BUIuml5uPCEYDh5dmtwssV
-	 k3SFQiGpUyowB7pxfQbDrA31khEoeHkKWsa5PgPdG/jhFTgAxnMtu7ULzqg+rjnaMj
-	 gF0uk2V+0rhF70CjizvyVgXW1mut7zxgn6vnZLRhAy8iHos8UOGZAUfUwXa2cASZV3
-	 rvPA4K0UuDiTkS1Ie1to1cAdEXwNOSzcJvVrglrMAS0p1LzFn5Shc/lbW4wRfqb/FR
-	 cGIn5bdU4aP4KXFBu0qMtyEaPdyQkAj5PnC/F1rXqft3Zetwxf5Qlt2yRBwIrR2Lex
-	 w79ViKYHNlQwA==
-Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
-	by mailfauth.phl.internal (Postfix) with ESMTP id BCB48F40067;
-	Wed, 18 Nov 2026 12:21:36 -0500 (EST)
-Received: from phl-imap-04 ([10.202.2.82])
-  by phl-compute-02.internal (MEProxy); Wed, 18 Nov 2026 12:21:36 -0500
-X-ME-Sender: <xms:oN79ajaxcT9gL8dHMZ7XKuduoKxTnDPc1VrJK6EnxqGk3isY7n-hfg>
-    <xme:oN79atPL9TWxgtqtIEDAssidCDYubRDUxOagDLRrKtRVuag9FFMkut7sQwD4xbte8
-    Vn0gwHFbsxTaKRbtffS4YxBsuOa57SMD5lEtMsewps0z1YsMVU_O87A>
-X-ME-Proxy-Cause: dmFkZTF4QZQ6CJCsz8TFY2okhta0umwviVF56T4+tgBrrdn+GTmNMl6dA1ROfTkbwYrOem
-    UW8iEBWr2T0zXHaeRypSgE6+lK5+G3rPNAvQt7y+yU8X+6CHGUMV7BT4rldWo8GtRAPKWH
-    rZ5DBPW70xu5TVqNkAFEtXRu5dHdCx2BB9EP40RlAKv10Ro25e5PU18QmcTuccOR3CKD9r
-    RjH+R2AiRA5f+R8z3EZ2J955yBI/DTlLZemDL/73vhPxgL21q/BijvmVKiYSvuMkogxHGo
-    CmBmonRy4Q2p3EQqUKC4QwkxTyb/vuQ3d7ctcXt+46MDBYI0l9TUL2IOWyZUGx08i0qbB3
-    hczlE7rSDGQJvsgGKL9W1FICP3bgi/3wzeKMcFYVX5rux8zwGoeg2nQqg/m9PJbFRyI1fk
-    344W67bHmc58JhXbNJI7tQrLkCEb5cIcJcdnfCqdeQr1QKz/K79I9TzVhVi5FZt9LJXv0o
-    XEgxux5bOxVSSrLbBFz/lJ+yKStr2hdL9Ghyyk6tzbR6hXyZScWC8loM9cd2zWZt0iyynZ
-    8svUcBMEAyTqdaaeITQG6Mvkgf134mkT/5X2sCqxSqBrtR8bvDOtCTPd3mmMwLQE2v/1Kh
-    cGAqB/MCH1gwP5ninqUv2r+4aXRGnh9xfMzliuh3UbZvxrnujvPyoSZYZJOA
-X-ME-Proxy: <xmx:oN79aoGYT7KWAwkc3Q1_BRxtcx473oidrmt5Y8kVZeWKbzoUGDlgJA>
-    <xmx:oN79anVM1rw8K7TAcT1iqYk1vNGnDu6lWn3rFHBHkXFwygenxULrog>
-    <xmx:oN79as8UjHVmJb0MX451DbyrDE3e8gz4E1wm6WthXuAc9WvXN7dpUA>
-    <xmx:oN79as7mnFoXsRpAEQLlNNoODmO6o1QNU83lOOIG4n2G3tWjnkG9Ag>
-    <xmx:oN79atkbjn_c7lOlb4NuSdTkHxB_U8pNsGefinDInrgmBjsx-qmjyclu>
-Feedback-ID: i20964851:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 9A879B6006E; Wed, 18 Nov 2026 12:21:36 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1795022559;
+	bh=VotAYrBtciufD00EQtINMlP1oNamOH3kYvCTKgTHmis=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=BUA2NnkUtEhAhDoFcOydn+vYU6Gy11rI6zu0ZctN8zT5MsWTYcceGQH2zQKxT467B
+	 MqO9i4BJkGrg7RMW7whc4n2wzW5KfvNJUrkFRM2ryxFatYQiVQW2rwr2YNs9ije56d
+	 GdyFNtlZGcLUVxyyZ2/ejye7oP6DshENT/1GdUEt3v57nIoXBt2lLhfO6sxhhph/0n
+	 4MkX2qwnMYHvLwdIZIBM/3Hh3Wyll2hpYgtCzIJsXs39Iz2Lq++vw3pvLzdPSS+/Mq
+	 pXlnxQ2G2+LFYaMUOi2UA5hJAAOiID700DXLNd522hrfS2vcC5IqtJ3z9aQgdF+m8i
+	 SUK7KFtHmsZ7A==
+Received: by pali.im (Postfix)
+	id 3AC89846; Wed, 18 Nov 2026 18:22:36 +0100 (CET)
+Date: Wed, 18 Nov 2026 18:22:36 +0100
+From: Pali =?utf-8?B?Um9ow6Fy?= <pali@kernel.org>
+To: koraynilay <koray.fra@gmail.com>
+Cc: David Sterba <dsterba@suse.com>, Namjae Jeon <linkinjeon@kernel.org>,
+	Sungjong Seo <sj1557.seo@samsung.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Paulo Alcantara <pc@manguebit.org>, Chris Mason <mason@kernel.org>,
+	Yuezhang Mo <yuezhang.mo@sony.com>, Jan Kara <jack@suse.cz>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+	Shyam Prasad N <sprasad@microsoft.com>,
+	Bharath SM <bharathsm@microsoft.com>,
+	Sergey Senozhatsky <senozhatsky@chromium.org>,
+	ChenXiaoSong <chenxiaosong@chenxiaosong.com>,
+	"Darrick J . Wong" <djwong@kernel.org>,
+	Sean Smith <defendthedisabled@gmail.com>,
+	Andrey Albershteyn <aalbersh@kernel.org>,
+	Pedro Falcato <pfalcato@suse.de>,
+	Amir Goldstein <amir73il@gmail.com>, linux-btrfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	exfat@lists.linux.dev, ntfs3@lists.linux.dev,
+	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-api@vger.kernel.org
+Subject: Re: [RFC PATCH v4 00/10] add provenance time (ptime)
+Message-ID: <20261118172236.t65ytycs7ruxjrhg@pali>
+References: <20261115180343.576773-1-koray.fra@gmail.com>
+ <20261118142613.be3r3s6kobkkxnz4@pali>
+ <DMYFBDIV4Y08.35ZKR5G86U1H7@gmail.com>
+ <20261118151605.lqtn5fz423kuswk5@pali>
+ <DMYHPLWKPSH3.MUM1IIZZIWNR@gmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,157 +88,146 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-X-ThreadId: AvFucsYTRhyJ
-Date: Wed, 18 Nov 2026 12:20:03 -0500
-From: "Anna Schumaker" <anna@kernel.org>
-To: "Christian Brauner" <brauner@kernel.org>, linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Jan Kara" <jack@suse.cz>, "Chuck Lever" <cel@kernel.org>,
- "Jeff Layton" <jlayton@kernel.org>, "Amir Goldstein" <amir73il@gmail.com>,
- stable@vger.kernel.org
-Message-Id: <82b7c5ed-5736-48f7-8f65-e7984ea140bb@app.fastmail.com>
-In-Reply-To: <20261118-work-nfs-multiroot-v1-1-66e4458b7d32@kernel.org>
-References: <20261118-work-nfs-multiroot-v1-0-66e4458b7d32@kernel.org>
- <20261118-work-nfs-multiroot-v1-1-66e4458b7d32@kernel.org>
-Subject: Re: [PATCH 1/2] fs: reintroduce SB_I_MULTIROOT
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <DMYHPLWKPSH3.MUM1IIZZIWNR@gmail.com>
+User-Agent: NeoMutt/20180716
 
-Hi Christian,
-
-On Wed, Nov 18, 2026, at 8:16 AM, Christian Brauner wrote:
-> On NFSv2 and NFSv3 ".." can walk out of a mount and out of a chroot as
-> well (again).
->
-> path_connected() makes ".." fail with ENOENT when the parent isn't
-> reachable from the root of the mount anymore. It was added in
-> commit 397d425dc26d ("vfs: Test for and handle paths that are
-> unreachable from their mnt_root") for directories that get renamed out
-> from under a bind mount. To avoid calling is_subdir() for every ".." it
-> takes a shortcut. If the root of the mount is the root of the superblock
-> every dentry is assumed to be reachable and the check is skipped.
->
-> That doesn't hold for nfs. By default the client shares a single
-> superblock between mounts of the same server filesystem, i.e. mounts
-> that report the same filesystem identifier and use the same mount
-> options. Those mounts can be of disjoint subtrees, e.g. two
-> subdirectories of one export. NFSv2 and NFSv3 provide no way to find
-> the common root of these trees so s_root is simply the root of whatever
-> subtree got mounted first. For that mount mnt_root == s_root and
-> path_connected() never calls is_subdir().
->
-> This was fixed in commit 95dd77580ccd ("fs: Teach path_connected to
-> handle nfs filesystems with multiple roots."). That added SB_I_MULTIROOT
-> which nfs raised on every superblock it might share, and
-> path_connected() stopped taking the shortcut for such superblocks.
->
-> When nfs was converted to the new mount api in commit f2aedb713c28
-> ("NFS: Add fs_context support.") nfs_fs_mount_common() was rewritten
-> into nfs_get_tree_common() and the two lines raising SB_I_MULTIROOT got
-> lost on the way. The changelog doesn't mention it. Nothing else raised
-> the flag so from v5.6 onwards path_connected() took the shortcut for nfs
-> again.
->
-> Then commit 402dd2cf46b1 ("fs: remove the unused SB_I_MULTIROOT flag")
-> noticed that the flag was dead, named the fs_context conversion as the
-> commit that removed its last user, and removed the flag together with
-> the check in path_connected().
->
-> But the flag was only unused because the conversion had dropped it by
-> accident. Et voila, we're back in 2018. Mount two disjoint
-> subdirectories of the same export with vers=3 and without nosharecache:
->
->     mount -t nfs -o vers=3 srv:/export/a /mnt/a
->     mount -t nfs -o vers=3 srv:/export/b/sub /mnt/b
->
-> Both mounts share a superblock and s_root is the root of /mnt/a. A
-> process sits in /mnt/a/D1/D. Someone with write access to both trees
-> renames D into b/sub, either on the server, through another client or
-> through a mount of a common parent on the same client. For a rename on
-> the server it's enough that anyone looks up /mnt/b/D afterwards.
-> nfs_lookup() finds the cached directory inode and d_splice_alias()
-> moves the existing dentry under the root of /mnt/b.
->
-> Now ".." from the old working directory lands in /mnt/b which isn't
-> reachable from /mnt/a at all. That works from inside a chroot to /mnt/a
-> as well. And if the root of the export is mounted too and someone walks
-> down to b/sub through it then the root of /mnt/b gets spliced in below
-> it and ".." climbs all the way up to the root of the exported
-> filesystem.
->
-> This reproduces on v7.4-rc3 with a single ext4 filesystem exported by
-> knfsd and both subdirectories mounted over loopback. With this patch
-> applied ".." fails with ENOENT instead.
->
-> Only mounts whose root is s_root are affected, i.e. the subtree that got
-> mounted first and bind mounts of its root. Mounts with nosharecache get
-> their own superblock.
->
-> Reintroduce SB_I_MULTIROOT and raise it again in nfs_get_tree_common()
-> where nfs_fs_mount_common() used to raise it. Like before nfs raises it
-> on every superblock it may share, independent of the protocol version.
-> That means ".." on such superblocks always goes through is_subdir()
-> again.
->
-> Fixes: f2aedb713c28 ("NFS: Add fs_context support.")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
-> ---
->  fs/namei.c                     | 4 ++--
->  fs/nfs/super.c                 | 2 ++
->  include/linux/fs/super_types.h | 1 +
->  3 files changed, 5 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 925aeb63bfa1d..a08c93369f4f1 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -822,8 +822,8 @@ static bool path_connected(struct vfsmount *mnt, 
-> struct dentry *dentry)
->  {
->  	struct super_block *sb = mnt->mnt_sb;
+On Wednesday 18 November 2026 17:50:39 koraynilay wrote:
+> On Wed Nov 18, 2026 at 4:16 PM CET, Pali Rohár wrote:
+> > On Wednesday 18 November 2026 15:58:02 koraynilay wrote:
+> >> On Wed Nov 18, 2026 at 3:26 PM CET, Pali Rohár wrote:
+> >> > Hello,
+> >> >
+> >> > I have just one issue with the userspace API. It does not allow me to
+> >> > figure out what is the source of statx btime field. If it is fs ptime or
+> >> > fs btime because this RFC implementation is mixing both fs ptime and
+> >> > fs btime into the statx btime field.
+> >> >
+> >> > I have feeling that this is quite a mess in API and I would like to see
+> >> > a clear distinguish between btime and ptime in the API, like there is a
+> >> > difference in the fs storage.
+> >> >
+> >> > If the btime is used for forensic analysis then somehow I would expect
+> >> > that the statx would not report / not fill changeable ptime value into
+> >> > the statx btime.
+> >> 
+> >> Hi, for native linux filesystems it will report ptime as PTIME and btime
+> >> as BTIME (also semnatically).
+> >
+> > That is fine.
+> >
+> >> for the windows-like ones that only have
+> >> ptime (semantically) I think it's reasonable to not expect btime to be
+> >> immutable, since they are meant to be used with other OSs who lack btime
+> >> semantics.
+> >
+> > The problem is here that the RFC statx API does not provide this
+> > information that the fs lacks btime semantics and instead it fills
+> > non-immutable ptime value there.
+> >
+> > I'm pointing only about this inconsistency.
+> >
+> >> > It would be really helpful if the statx API on inode can differ between:
+> >> >
+> >> > 1. btime is present and its value is ..., ptime is not supported
+> >> > 2. btime is not supported, ptime is set to value ...
+> >> > 3. btime is present and its value is ..., ptime is set to value ...
+> >> > 4. both btime and ptime are not supported
+> >> >
+> >> > This should cover all cases of different filesystems and also allows
+> >> > userspace to do proper backup of both ptime and btime fields (if it want
+> >> > to do forensic analysis or anything else).
+> >> 
+> >> These should already all be covered by STATX_BTIME/PTIME and their
+> >> fields in struct statx, the only problems are windows-like filesystems,
+> >> which IMO shuold be handled as mentioned above.
+> >
+> > Exactly, I pointed out about these problems. I somehow expect that the
+> > new API would be generic and uniform across filesystem. IMHO it does not
+> > matter if the filesystem is windows-like or not (there are also FreeBSD
+> > fs and also others which allows to modify that time). So better
+> > description is fs belongs to category 2. from my above description.
 > 
-> -	/* Bind mounts can have disconnected paths */
-> -	if (mnt->mnt_root == sb->s_root)
-> +	/* Bind mounts and multi-root filesystems can have disconnected paths */
-> +	if (!(sb->s_iflags & SB_I_MULTIROOT) && (mnt->mnt_root == sb->s_root))
->  		return true;
+> Ah yes, I used windows-like to mean "only have ptime semantics", so same
+> as your category 2.
 > 
->  	return is_subdir(dentry, mnt->mnt_root);
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 23292680adbd5..99e883e7a4890 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1315,6 +1315,8 @@ int nfs_get_tree_common(struct fs_context *fc)
->  		error = nfs_get_cache_cookie(s, ctx);
->  		if (error < 0)
->  			goto error_splat_super;
-> +		if (!(server->flags & NFS_MOUNT_UNSHARED))
-> +			s->s_iflags |= SB_I_MULTIROOT;
-
-I assume this is going through the VFS tree?
-
-Acked-by: Anna Schumaker <anna.schumaker@hammerspace.com>
-
->  	}
+> >> Of course, as in the other discussion, I'm open to changing ptime
+> >> NTFS/exFAT/... support to remove btime altogether and only use ptime for
+> >> their own crtime if that's what wanted (I'm fairly impartial on this
+> >> specific issue).
+> >
+> > I'm giving some ideas how to possible handle this situation:
+> >
+> > 1. do not fill btime it at all when it is not available (remove btime
+> >    altogether - the case like you wrote above)
 > 
->  	error = nfs_get_root(s, fc);
-> diff --git a/include/linux/fs/super_types.h 
-> b/include/linux/fs/super_types.h
-> index 6ce105fe8359c..b09e8b2087252 100644
-> --- a/include/linux/fs/super_types.h
-> +++ b/include/linux/fs/super_types.h
-> @@ -359,5 +359,6 @@ struct super_block {
->  #define SB_I_NOIDMAP	0x00002000	/* No idmapped mounts on this 
-> superblock */
->  #define SB_I_ALLOW_HSM	0x00004000	/* Allow HSM events on this 
-> superblock */
->  #define SB_I_NO_DATA_INTEGRITY	0x00008000 /* fs cannot guarantee data 
-> persistence on sync */
-> +#define SB_I_MULTIROOT	0x00010000	/* Multiple roots to the dentry tree 
-> */
+> This would be the most semantically correct option, but would break at
+> least 1 script/program/use case.
 > 
->  #endif /* _LINUX_FS_SUPER_TYPES_H */
->
-> -- 
-> 2.53.0
+> > 2. when userspace ask both ptime and btime, then do not fill btime
+> >    (remove btime altogether - but only for that new case)
+> 
+> This probably is the best compromise.
+> 
+> > 3. fill btime with ptime value, but add a new output flag indicating that
+> >    the btime is not present at all and instead kernel filled ptime value
+> >    into the statx btime field
+> 
+> I don't really like this, it adds complexity and uses memory/1 flag big
+> for a single specific field, IMO it's not worth it.
+> 
+> > 4. let statx btime as currently is, and add two new statx fields:
+> >    immutable_btime and ptime. immutable_btime would be filled only if the
+> >    fs supports real btime (so not for ntfs/extfat crtime) and ptime would
+> >    be what is currently in RFC
+> 
+> I think this is also too complex.
+> 
+> > Ideas 2. 3. and 4. should be fully backward compatible as it would
+> > affect statx output only when called with new flags.
+> 
+> Then 2. is probably the best way to go forward (maybe I'll include it in
+> some way in v5),
+
+My preference is 1. or 2. Just wanted to give more alternative
+solutions.
+
+> but I think we should let each filesystem maintainer
+> decide if they think their users want to have statx report their own
+> crtime as btime, ptime or both (native linux ones would of course
+> report btime as btime and ptime as ptime).
+
+statx syscall API is or rather should not be filesystem specific.
+If every filesystem decides to fill members differently then how could
+somebody write reasonable userspasce application? It would contain lot
+of spaghetti code like this:
+
+  statx(...buf...);
+  if (fs == fs_type1) {
+    process_buf_for_type1(buf);
+  } else if (fs == fs_type2) {
+    process_buf_for_type2(buf);
+  } else if ...
+
+And such thing is not API anymore.
+
+If every filesystem decides on its own how it fills, then it would not
+be able to write "rsync"-like backup or forensic tool to copy data to
+some other storage (does not have to be fs) or even to different
+filesystem on linux.
+
+Things for which filesystems could decide how to handle are private fs
+ioctl calls which are specific for individual filesystems.
+
+> Thanks,
+> koraynilay
+> 
+> >> Thanks,
+> >> koraynilay
+> >> 
+> >> >
+> >> > Pali
+> 
+> 
