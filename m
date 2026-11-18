@@ -1,54 +1,106 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.43.10.250
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795002329;
-	b=3r58uNgkmemSXbHBs1wulyTlSradKNbNXE2WYZPbk05uwOs0gaZy5iBBMYLKhQ8OgdQw
-	 e5pCIaUgUGLRiwe1ptrosVVL06N92NhYvr3Hx/h1qCXqM5nW9l3V+XMjKueSDATedG3sc
-	 h2NN593di+DO03huNaZF3eFkSy3TahPOkgmXHCIUEdK85rFXqN1yziGhSjaHIyz8hu5gQ
-	 K9eseDuTitJsy0uFbw7Ie2YIa0fDwrVbeLadc3InyTtpVblxHDQ3eHYtt5rV8IicqrcHI
-	 7w128TmdpsfLZwLuY/8Pf6CtWVZI89+LQgg1RuQqlM7n2AbccwStqdAwAoGik4gAidQ==
+	t=1795004848;
+	b=MW0iEEvv9l4HHFwWy5GhbV3lWuaRugO0/AcOwjBRdLCnAfYm+5ObWgU8pjTjkzWbIr+Y
+	 vOxMiERbMF1RjZ+5b+yqTB3GWhjqftDYr+ntX98yoCibwTNicQvOR/VdmMCTsmM0gBuuV
+	 4ZDrDKyQy78K5V/5YwCI85O/zMMtlSkIKO+zpTuu8j9fQMeXp/bG3wqeUzJITUcJVUhhR
+	 u80MXqWDNQ3wga0hgTAraqaLdOVPa26w0o/OR7YEiBOnXcYtv2GxjtyeTtlMp34tf1iaQ
+	 9ICDd5006Z1n4YCbEVSeoyjIsMZehe+3wMRmFSlXlM88iggL54jPQTjlz2iYnZHgdDw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795002329;
-	h=DMARC-Filter:Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=p4uAstBqCOqQ9Ibbrs8uDsdz+izyLnUae77SN1BnzNo=;
-	b=aI6WMB457uYqqqQDxuMZQ04Rm2pbtA4rM67QPG2RrliGEX4OQABzJRSKl6d6H8RVQV2l
-	 621v+GYZ3XqdtYU02SnZjJmOGwRYubp+1L/lelhImiIx+lhjxVuSIZFVJGTFkQ3HUNIhN
-	 trNA9o/XFqDKZDBC8CfYkFFtFgELGtpQsuGSO0FSegS6R0s1iIaE1QSwp107Jeu9whg5k
-	 nIcOJTqQSQOG/KT7vyfSU/CLXcV0BeQ2vMqOWvqGQJXEoRf0piM6oNclm9MFTSDPgFsbq
-	 QTYo468t92kdckfHPfUvp6sbW0gca7YsaWJF2bno6t+u0OVV4kdDJNh+u5fQqCYvYCg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795004848;
+	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
+	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:Cc:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=SNFdEk0oGrfzkVbE7zgd9xrGSpnW5FMbgtjWxBI9Iq0=;
+	b=oeIfAusg6LBEmnfjHKfZmMsVbF1FsyeL77pTsUJwkyvBAFoKyif14N6AD8nKFO2c02r5
+	 KfD/lNhEbqlPre5V/Uj17puRRPRGdnrXyVhY+WP2JstnWZg9Sl9NF31K4K+lCbz0EgL3X
+	 diGGB8gOthcpjlJWPYX5K+giOB6OkggHocUAD894bWWJkFW74Mwkdvre1D5iqCJ5+8oQT
+	 3k0mNiG2Xd12ImT38x/XsCIBRXtlbcuI3srlTkUpyetoPrhTsfihhrF8lPEJrEvcYiz1I
+	 45dLNkd/lLbhOOUiRX7Z1/z/ZiQhmx0Muv4JMlV9bQ1qtuPmG6b4RERS2dkyHjvLbjg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=none header.from=altlinux.org;
-	spf=fail smtp.mailfrom=altlinux.org;
-	arc=none smtp.remote-ip=193.43.10.250
-Received: from basalt.external.altlinux.org (unknown [193.43.10.250])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id E502060A262D;
-	Wed, 18 Nov 2026 11:45:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E502060A262D
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=altlinux.org
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=altlinux.org
-Received: by basalt.external.altlinux.org (Postfix, from userid 1137)
-	id 070E52DF349; Wed, 18 Nov 2026 14:45:19 +0300 (MSK)
-From: Alexey Shabalin <shaba@altlinux.org>
-To: devel-kernel@altlinux.org
-Cc: David Howells <dhowells@redhat.com>,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	"David S. Miller" <davem@davemloft.net>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>,
-	linux-afs@lists.infradead.org,
-	linux-nfs@vger.kernel.org,
-	linux-crypto@vger.kernel.org,
-	netdev@vger.kernel.org
-Subject: [PATCH 6.12/sisyphus 13/29] crypto/krb5: Implement the Camellia enctypes from rfc6803
-Date: Wed, 18 Nov 2026 14:45:02 +0300
-Message-ID: <20261118114518.3605222-14-shaba@altlinux.org>
-X-Mailer: git-send-email 2.50.1
-In-Reply-To: <20261118114518.3605222-1-shaba@altlinux.org>
-References: <20261118114518.3605222-1-shaba@altlinux.org>
+	dmarc=pass header.from=redhat.com;
+	spf=pass smtp.mailfrom=redhat.com;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=Kn3Ihn45;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=WrHKCgZi;
+	arc=none smtp.remote-ip=170.10.129.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58BC8606A320
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 12:27:27 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 58BC8606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=Kn3Ihn45;
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=WrHKCgZi
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1795004846;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=SNFdEk0oGrfzkVbE7zgd9xrGSpnW5FMbgtjWxBI9Iq0=;
+	b=Kn3Ihn45ja2al4aP6KOzOU0IUYZ4b1rKPSUVJWqF98N9RKnnx5ORAyNNDetapsjhaFxnBB
+	Ddb1rjxB1cyXteE8Ipecn0VN6JvXZ6qtHqMLYfezdOUI5uI8H9HE4djnIIjCnLvHXbjlGG
+	13q4LUiRVSIEID0uaaChoqZwO9pZP80=
+Received: from mail-qk1-f198.google.com (mail-qk1-f198.google.com
+ [209.85.222.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-317-kjIvM33kMJyZyzF2CLoHWw-1; Wed, 18 Nov 2026 07:27:25 -0500
+X-MC-Unique: kjIvM33kMJyZyzF2CLoHWw-1
+X-Mimecast-MFC-AGG-ID: kjIvM33kMJyZyzF2CLoHWw_1795004845
+Received: by mail-qk1-f198.google.com with SMTP id af79cd13be357-944138ed63fso71646585a.3
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 04:27:25 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1795004845; x=1795609645; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=SNFdEk0oGrfzkVbE7zgd9xrGSpnW5FMbgtjWxBI9Iq0=;
+        b=WrHKCgZiQxCvYv3hqu0pjCbSFD/P97JinNdo0QmZxNX1vk+apSftp+L8PMohm0xMw9
+         xYMiw1Z2+CfFtR79XXt9dLWnj0DQHGM8AG3QaAqzSPc/QGecE0KoPO3nCNOnk5FKwrMF
+         kbNpUFr3lS/09hoX9aNhsLwSARf+FQqLIGPMVYDbAP9daBgPCy986mwTnaUpd2hZuZEF
+         GKXIkGcDOpiqRVJ0uwQhq2rt3R7DYZOvGpOGadBt8SAS4tQni+AbRQYRskIxvHEU/c1k
+         /JgLzfCE7yWdSgnbdLHZAje3xJeH9MuMcQvX49sYjq/XieqhW30zo/lAYNyuTeMcPPPd
+         GG+A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795004845; x=1795609645;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=SNFdEk0oGrfzkVbE7zgd9xrGSpnW5FMbgtjWxBI9Iq0=;
+        b=hKYWIfxiw9qepxe04nfp0bxqUsjtqt/dpS4tYGpun0x6OQAYbZVD0ggLaf2quiJr6j
+         frCPpmaPZeej+hOSfOtelhMV5yEf+VcWo15DVGZY+szNJJIfG7Ctvl5IL7rsae54Y+9s
+         n0LJVcjCbofkV3U+5FsjO/CiNal/h5ubrTPACiepUSnWIQgayPAIHpWQESroMAGSTWoc
+         cAYNK9FVwMPlC3uSEm8oOlRlOgSm16EI6yYaWzkDOZxosGN8YPriXgA+Xw8Uz+j7oxNb
+         rLhubfwX7WcY/GV+KuK8Fy2bodzSd8+zUH7kCQR0IaYl6i1/TXHYBBzEECNn/4/a/KRR
+         Ewzg==
+X-Gm-Message-State: APuU4Z+AiRIRpvhW1Aj3nc8RZ4GPVKTRhszCA+cRpKShY3GJiiZKOsWm
+	lBnfgwkHGciQCe39OeMKX4OdH20wUFBYdQiTQkisogMwByDImUCCwHYfwH3ik2yKnx5dVPVFAxU
+	oR4JnJBWruTQ3q5QHG+IdJv/CB0tV4grL9IPG3fT/NhabFzB7Tm3ZLVptlXQ5wA==
+X-Gm-Gg: AYBFou3x3/Bh1M/endR+iQNdJbIECaZj/YPMkWieo+xdn/1joGTLK3VafOjM4e2H/yM
+	VsWbDPe/mF+dxVVUslBIi0imYXlDvqL00SwFFYTMraIxMsacO+AMz0BZ0c+gSqE2TBAEu15nIXP
+	eDfuC85Erx+hOYwB1X3/eb07EB+t8ntJgxv78oIj/BBf3aTZmi6AKETdsk9lhjGJR2PJTMLZZFb
+	QX99PK1rCsxPzdHlTI+NcstLYctGTFp+jLa7iHS5Aa4c+FuHpkZAVXV0CDBRXUpoz5JMUpCOqcP
+	/eZYHb7L6M1vOo+qNOVZIg55X7SII7P/Yg84t4gw/ZP4SFuk0L5OjjDROUfdcgXQI+GfjyoL7Ac
+	gCTeL24RA0Uj9ljqoRCKey+gVMl0Vdgtv3wZuevmJq5gFyBse
+X-Received: by 2002:a05:620a:2b82:b0:93e:c12c:9b6d with SMTP id af79cd13be357-9499971536cmr427411885a.72.1795004844216;
+        Wed, 18 Nov 2026 04:27:24 -0800 (PST)
+X-Received: by 2002:a05:620a:2b82:b0:93e:c12c:9b6d with SMTP id af79cd13be357-9499971536cmr427405685a.72.1795004843378;
+        Wed, 18 Nov 2026 04:27:23 -0800 (PST)
+Received: from [172.31.1.12] ([70.105.240.105])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-9499b75dd62sm168387685a.21.2026.11.18.04.27.20
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 18 Nov 2026 04:27:22 -0800 (PST)
+Message-ID: <5189d543-86d3-4d7e-b9a0-64d71542c880@redhat.com>
+Date: Wed, 18 Nov 2026 07:27:11 -0500
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -58,369 +110,359 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] nfsdctl: bound the rpcbind calls to one 1s attempt
+To: Benjamin Coddington <ben.coddington@hammerspace.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+References: <2221871feaf9ae6ec4970238fe11805abd2496c6.1794862543.git.bcodding@hammerspace.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <2221871feaf9ae6ec4970238fe11805abd2496c6.1794862543.git.bcodding@hammerspace.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-From: David Howells <dhowells@redhat.com>
 
-Implement the camellia128-cts-cmac and camellia256-cts-cmac enctypes from
-rfc6803.
 
-Note that the test vectors in rfc6803 for encryption are incomplete,
-lacking the key usage number needed to derive Ke and Ki, and there are
-errata for this:
+On 11/16/26 3:58 PM, Benjamin Coddington wrote:
+> libtirpc's rpcb_set() and rpcb_unset() create a client for every call
+> and wait 60s for each reply. A local rpcbind that accepts the connection
+> and never answers stalls nfsdctl for a minute per call: five UNSETs when
+> the threads stop, and five UNSETs plus one SET per listener netid and
+> program when they start. libtirpc's setter for that timeout is private.
+> 
+> Make the SET and UNSET calls on a client of nfsdctl's own, built with
+> nfs_get_rpcclient(): AF_LOCAL on _PATH_RPCBINDSOCK first, then TCP to
+> 127.0.0.1 port 111, as libtirpc's local_rpcb() orders them. Each pass
+> uses one client, and each call is one attempt of 1s, matching
+> 17ceb2fecc7c ("SUNRPC: bound the local rpcbind client timeout to 1s"):
+> "The local rpcbind is on loopback or on an AF_LOCAL socket, and it
+> answers in microseconds."
+> 
+> A call that gets no answer ends the pass with one warning, as
+> ba8c47f04942 and df1ff8e4e275 do for the kernel's svc_register() and
+> svc_unregister() sweep. A registration pass whose opening UNSET sweep
+> gets no answer makes no SET. A reply of FALSE is logged and the pass
+> continues, as before.
+> 
+> nfs_svc_unregister() is unchanged, and a build without TI-RPC keeps
+> using it.
+> 
+> With the local rpcbind SIGSTOPped, on a kernel that leaves the nfsd
+> registration to nfsdctl, "nfsdctl threads 0" returned after 3.4s, where
+> it took 302.7s before. lockd's own registration in the kernel accounts
+> for 2s of that. "nfsdctl autostart" now ends its registration pass after
+> 1s. The THREADS_SET that follows still fails with EIO, because lockd
+> cannot register.
+> 
+> Signed-off-by: Benjamin Coddington<bcodding@hammerspace.com>
+Committed... (will be included in the upcoming release)
 
-	https://www.rfc-editor.org/errata_search.php?rfc=6803
-
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Herbert Xu <herbert@gondor.apana.org.au>
-cc: "David S. Miller" <davem@davemloft.net>
-cc: Chuck Lever <chuck.lever@oracle.com>
-cc: Marc Dionne <marc.dionne@auristor.com>
-cc: Eric Dumazet <edumazet@google.com>
-cc: Jakub Kicinski <kuba@kernel.org>
-cc: Paolo Abeni <pabeni@redhat.com>
-cc: Simon Horman <horms@kernel.org>
-cc: linux-afs@lists.infradead.org
-cc: linux-nfs@vger.kernel.org
-cc: linux-crypto@vger.kernel.org
-cc: netdev@vger.kernel.org
-(cherry picked from commit 742e38d4d4033e7ff53178acf7edd2b1fe0142ef)
----
- crypto/krb5/Kconfig            |   2 +
- crypto/krb5/Makefile           |   1 +
- crypto/krb5/internal.h         |   6 +
- crypto/krb5/krb5_api.c         |   2 +
- crypto/krb5/rfc6803_camellia.c | 237 +++++++++++++++++++++++++++++++++
- include/crypto/krb5.h          |   4 +
- 6 files changed, 252 insertions(+)
- create mode 100644 crypto/krb5/rfc6803_camellia.c
-
-diff --git a/crypto/krb5/Kconfig b/crypto/krb5/Kconfig
-index 52f0ed2d7820..5b339690905c 100644
---- a/crypto/krb5/Kconfig
-+++ b/crypto/krb5/Kconfig
-@@ -6,12 +6,14 @@ config CRYPTO_KRB5
- 	select CRYPTO_SKCIPHER
- 	select CRYPTO_HASH_INFO
- 	select CRYPTO_HMAC
-+	select CRYPTO_CMAC
- 	select CRYPTO_SHA1
- 	select CRYPTO_SHA256
- 	select CRYPTO_SHA512
- 	select CRYPTO_CBC
- 	select CRYPTO_CTS
- 	select CRYPTO_AES
-+	select CRYPTO_CAMELLIA
- 	help
- 	  Provide a library for provision of Kerberos-5-based crypto.  This is
- 	  intended for network filesystems to use.
-diff --git a/crypto/krb5/Makefile b/crypto/krb5/Makefile
-index 7fd215ec3a85..7cbe5e5ded19 100644
---- a/crypto/krb5/Makefile
-+++ b/crypto/krb5/Makefile
-@@ -8,6 +8,7 @@ krb5-y += \
- 	krb5_api.o \
- 	rfc3961_simplified.o \
- 	rfc3962_aes.o \
-+	rfc6803_camellia.o \
- 	rfc8009_aes2.o
- 
- obj-$(CONFIG_CRYPTO_KRB5) += krb5.o
-diff --git a/crypto/krb5/internal.h b/crypto/krb5/internal.h
-index f537f6eb86eb..8679140ef90d 100644
---- a/crypto/krb5/internal.h
-+++ b/crypto/krb5/internal.h
-@@ -186,6 +186,12 @@ int rfc3961_verify_mic(const struct krb5_enctype *krb5,
- extern const struct krb5_enctype krb5_aes128_cts_hmac_sha1_96;
- extern const struct krb5_enctype krb5_aes256_cts_hmac_sha1_96;
- 
-+/*
-+ * rfc6803_camellia.c
-+ */
-+extern const struct krb5_enctype krb5_camellia128_cts_cmac;
-+extern const struct krb5_enctype krb5_camellia256_cts_cmac;
-+
- /*
-  * rfc8009_aes2.c
-  */
-diff --git a/crypto/krb5/krb5_api.c b/crypto/krb5/krb5_api.c
-index 5b94cc5db461..02e21c8f4d14 100644
---- a/crypto/krb5/krb5_api.c
-+++ b/crypto/krb5/krb5_api.c
-@@ -21,6 +21,8 @@ static const struct krb5_enctype *const krb5_supported_enctypes[] = {
- 	&krb5_aes256_cts_hmac_sha1_96,
- 	&krb5_aes128_cts_hmac_sha256_128,
- 	&krb5_aes256_cts_hmac_sha384_192,
-+	&krb5_camellia128_cts_cmac,
-+	&krb5_camellia256_cts_cmac,
- };
- 
- /**
-diff --git a/crypto/krb5/rfc6803_camellia.c b/crypto/krb5/rfc6803_camellia.c
-new file mode 100644
-index 000000000000..77cd4ce023f1
---- /dev/null
-+++ b/crypto/krb5/rfc6803_camellia.c
-@@ -0,0 +1,237 @@
-+// SPDX-License-Identifier: GPL-2.0-or-later
-+/* rfc6803 Camellia Encryption for Kerberos 5
-+ *
-+ * Copyright (C) 2025 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-+
-+#include <linux/slab.h>
-+#include "internal.h"
-+
-+/*
-+ * Calculate the key derivation function KDF-FEEDBACK_CMAC(key, constant)
-+ *
-+ *	n = ceiling(k / 128)
-+ *	K(0) = zeros
-+ *	K(i) = CMAC(key, K(i-1) | i | constant | 0x00 | k)
-+ *	DR(key, constant) = k-truncate(K(1) | K(2) | ... | K(n))
-+ *	KDF-FEEDBACK-CMAC(key, constant) = random-to-key(DR(key, constant))
-+ *
-+ *	[rfc6803 sec 3]
-+ */
-+static int rfc6803_calc_KDF_FEEDBACK_CMAC(const struct krb5_enctype *krb5,
-+					  const struct krb5_buffer *key,
-+					  const struct krb5_buffer *constant,
-+					  struct krb5_buffer *result,
-+					  gfp_t gfp)
-+{
-+	struct crypto_shash *shash;
-+	struct krb5_buffer K, data;
-+	struct shash_desc *desc;
-+	__be32 tmp;
-+	size_t bsize, offset, seg;
-+	void *buffer;
-+	u32 i = 0, k = result->len * 8;
-+	u8 *p;
-+	int ret = -ENOMEM;
-+
-+	shash = crypto_alloc_shash(krb5->cksum_name, 0, 0);
-+	if (IS_ERR(shash))
-+		return (PTR_ERR(shash) == -ENOENT) ? -ENOPKG : PTR_ERR(shash);
-+	ret = crypto_shash_setkey(shash, key->data, key->len);
-+	if (ret < 0)
-+		goto error_shash;
-+
-+	ret = -ENOMEM;
-+	K.len = crypto_shash_digestsize(shash);
-+	data.len = K.len + 4 + constant->len + 1 + 4;
-+	bsize = krb5_shash_size(shash) +
-+		krb5_digest_size(shash) +
-+		crypto_roundup(K.len) +
-+		crypto_roundup(data.len);
-+	buffer = kzalloc(bsize, GFP_NOFS);
-+	if (!buffer)
-+		goto error_shash;
-+
-+	desc = buffer;
-+	desc->tfm = shash;
-+
-+	K.data = buffer +
-+		krb5_shash_size(shash) +
-+		krb5_digest_size(shash);
-+	data.data = buffer +
-+		krb5_shash_size(shash) +
-+		krb5_digest_size(shash) +
-+		crypto_roundup(K.len);
-+
-+	p = data.data + K.len + 4;
-+	memcpy(p, constant->data, constant->len);
-+	p += constant->len;
-+	*p++ = 0x00;
-+	tmp = htonl(k);
-+	memcpy(p, &tmp, 4);
-+	p += 4;
-+
-+	ret = -EINVAL;
-+	if (WARN_ON(p - (u8 *)data.data != data.len))
-+		goto error;
-+
-+	offset = 0;
-+	do {
-+		i++;
-+		p = data.data;
-+		memcpy(p, K.data, K.len);
-+		p += K.len;
-+		*(__be32 *)p = htonl(i);
-+
-+		ret = crypto_shash_init(desc);
-+		if (ret < 0)
-+			goto error;
-+		ret = crypto_shash_finup(desc, data.data, data.len, K.data);
-+		if (ret < 0)
-+			goto error;
-+
-+		seg = min_t(size_t, result->len - offset, K.len);
-+		memcpy(result->data + offset, K.data, seg);
-+		offset += seg;
-+	} while (offset < result->len);
-+
-+error:
-+	kfree_sensitive(buffer);
-+error_shash:
-+	crypto_free_shash(shash);
-+	return ret;
-+}
-+
-+/*
-+ * Calculate the pseudo-random function, PRF().
-+ *
-+ *	Kp = KDF-FEEDBACK-CMAC(protocol-key, "prf")
-+ *	PRF = CMAC(Kp, octet-string)
-+ *      [rfc6803 sec 6]
-+ */
-+static int rfc6803_calc_PRF(const struct krb5_enctype *krb5,
-+			    const struct krb5_buffer *protocol_key,
-+			    const struct krb5_buffer *octet_string,
-+			    struct krb5_buffer *result,
-+			    gfp_t gfp)
-+{
-+	static const struct krb5_buffer prfconstant = { 3, "prf" };
-+	struct crypto_shash *shash;
-+	struct krb5_buffer Kp;
-+	struct shash_desc *desc;
-+	size_t bsize;
-+	void *buffer;
-+	int ret;
-+
-+	Kp.len = krb5->prf_len;
-+
-+	shash = crypto_alloc_shash(krb5->cksum_name, 0, 0);
-+	if (IS_ERR(shash))
-+		return (PTR_ERR(shash) == -ENOENT) ? -ENOPKG : PTR_ERR(shash);
-+
-+	ret = -EINVAL;
-+	if (result->len != crypto_shash_digestsize(shash))
-+		goto out_shash;
-+
-+	ret = -ENOMEM;
-+	bsize = krb5_shash_size(shash) +
-+		krb5_digest_size(shash) +
-+		crypto_roundup(Kp.len);
-+	buffer = kzalloc(bsize, GFP_NOFS);
-+	if (!buffer)
-+		goto out_shash;
-+
-+	Kp.data = buffer +
-+		krb5_shash_size(shash) +
-+		krb5_digest_size(shash);
-+
-+	ret = rfc6803_calc_KDF_FEEDBACK_CMAC(krb5, protocol_key, &prfconstant,
-+					     &Kp, gfp);
-+	if (ret < 0)
-+		goto out;
-+
-+	ret = crypto_shash_setkey(shash, Kp.data, Kp.len);
-+	if (ret < 0)
-+		goto out;
-+
-+	desc = buffer;
-+	desc->tfm = shash;
-+	ret = crypto_shash_init(desc);
-+	if (ret < 0)
-+		goto out;
-+
-+	ret = crypto_shash_finup(desc, octet_string->data, octet_string->len, result->data);
-+	if (ret < 0)
-+		goto out;
-+
-+out:
-+	kfree_sensitive(buffer);
-+out_shash:
-+	crypto_free_shash(shash);
-+	return ret;
-+}
-+
-+
-+static const struct krb5_crypto_profile rfc6803_crypto_profile = {
-+	.calc_PRF		= rfc6803_calc_PRF,
-+	.calc_Kc		= rfc6803_calc_KDF_FEEDBACK_CMAC,
-+	.calc_Ke		= rfc6803_calc_KDF_FEEDBACK_CMAC,
-+	.calc_Ki		= rfc6803_calc_KDF_FEEDBACK_CMAC,
-+	.derive_encrypt_keys	= authenc_derive_encrypt_keys,
-+	.load_encrypt_keys	= authenc_load_encrypt_keys,
-+	.derive_checksum_key	= rfc3961_derive_checksum_key,
-+	.load_checksum_key	= rfc3961_load_checksum_key,
-+	.encrypt		= krb5_aead_encrypt,
-+	.decrypt		= krb5_aead_decrypt,
-+	.get_mic		= rfc3961_get_mic,
-+	.verify_mic		= rfc3961_verify_mic,
-+};
-+
-+const struct krb5_enctype krb5_camellia128_cts_cmac = {
-+	.etype		= KRB5_ENCTYPE_CAMELLIA128_CTS_CMAC,
-+	.ctype		= KRB5_CKSUMTYPE_CMAC_CAMELLIA128,
-+	.name		= "camellia128-cts-cmac",
-+	.encrypt_name	= "krb5enc(cmac(camellia),cts(cbc(camellia)))",
-+	.cksum_name	= "cmac(camellia)",
-+	.hash_name	= NULL,
-+	.derivation_enc	= "cts(cbc(camellia))",
-+	.key_bytes	= 16,
-+	.key_len	= 16,
-+	.Kc_len		= 16,
-+	.Ke_len		= 16,
-+	.Ki_len		= 16,
-+	.block_len	= 16,
-+	.conf_len	= 16,
-+	.cksum_len	= 16,
-+	.hash_len	= 16,
-+	.prf_len	= 16,
-+	.keyed_cksum	= true,
-+	.random_to_key	= NULL, /* Identity */
-+	.profile	= &rfc6803_crypto_profile,
-+};
-+
-+const struct krb5_enctype krb5_camellia256_cts_cmac = {
-+	.etype		= KRB5_ENCTYPE_CAMELLIA256_CTS_CMAC,
-+	.ctype		= KRB5_CKSUMTYPE_CMAC_CAMELLIA256,
-+	.name		= "camellia256-cts-cmac",
-+	.encrypt_name	= "krb5enc(cmac(camellia),cts(cbc(camellia)))",
-+	.cksum_name	= "cmac(camellia)",
-+	.hash_name	= NULL,
-+	.derivation_enc	= "cts(cbc(camellia))",
-+	.key_bytes	= 32,
-+	.key_len	= 32,
-+	.Kc_len		= 32,
-+	.Ke_len		= 32,
-+	.Ki_len		= 32,
-+	.block_len	= 16,
-+	.conf_len	= 16,
-+	.cksum_len	= 16,
-+	.hash_len	= 16,
-+	.prf_len	= 16,
-+	.keyed_cksum	= true,
-+	.random_to_key	= NULL, /* Identity */
-+	.profile	= &rfc6803_crypto_profile,
-+};
-diff --git a/include/crypto/krb5.h b/include/crypto/krb5.h
-index b8fda81379ab..62d998e62f47 100644
---- a/include/crypto/krb5.h
-+++ b/include/crypto/krb5.h
-@@ -35,6 +35,8 @@ struct scatterlist;
- #define KRB5_ENCTYPE_AES256_CTS_HMAC_SHA384_192	0x0014
- #define KRB5_ENCTYPE_ARCFOUR_HMAC		0x0017
- #define KRB5_ENCTYPE_ARCFOUR_HMAC_EXP		0x0018
-+#define KRB5_ENCTYPE_CAMELLIA128_CTS_CMAC	0x0019
-+#define KRB5_ENCTYPE_CAMELLIA256_CTS_CMAC	0x001a
- #define KRB5_ENCTYPE_UNKNOWN			0x01ff
- 
- #define KRB5_CKSUMTYPE_CRC32			0x0001
-@@ -47,6 +49,8 @@ struct scatterlist;
- #define KRB5_CKSUMTYPE_HMAC_SHA1_DES3		0x000c
- #define KRB5_CKSUMTYPE_HMAC_SHA1_96_AES128	0x000f
- #define KRB5_CKSUMTYPE_HMAC_SHA1_96_AES256	0x0010
-+#define KRB5_CKSUMTYPE_CMAC_CAMELLIA128		0x0011
-+#define KRB5_CKSUMTYPE_CMAC_CAMELLIA256		0x0012
- #define KRB5_CKSUMTYPE_HMAC_SHA256_128_AES128	0x0013
- #define KRB5_CKSUMTYPE_HMAC_SHA384_192_AES256	0x0014
- #define KRB5_CKSUMTYPE_HMAC_MD5_ARCFOUR		-138 /* Microsoft md5 hmac cksumtype */
--- 
-2.50.1
+steved.> ---
+>   utils/nfsdctl/rpcbind.c | 199 +++++++++++++++++++++++++++++++++++-----
+>   1 file changed, 178 insertions(+), 21 deletions(-)
+> 
+> diff --git a/utils/nfsdctl/rpcbind.c b/utils/nfsdctl/rpcbind.c
+> index 23034097b485..a705c54d8f40 100644
+> --- a/utils/nfsdctl/rpcbind.c
+> +++ b/utils/nfsdctl/rpcbind.c
+> @@ -15,17 +15,23 @@
+>   
+>   #include <errno.h>
+>   #include <netinet/in.h>
+> +#include <stdio.h>
+> +#include <stdlib.h>
+>   #include <string.h>
+>   #include <sys/socket.h>
+> +#include <sys/un.h>
+> +#include <unistd.h>
+>   
+>   #include <rpc/rpc.h>
+>   
+>   #ifdef HAVE_LIBTIRPC
+>   #include <rpc/rpcb_clnt.h>
+> +#include <rpc/rpcb_prot.h>
+>   #include <netconfig.h>
+>   #endif	/* HAVE_LIBTIRPC */
+>   
+>   #include "nfslib.h"
+> +#include "nfsrpc.h"
+>   #include "rpcmisc.h"
+>   #include "sockaddr.h"
+>   #include "xlog.h"
+> @@ -43,7 +49,7 @@
+>   
+>   /*
+>    * Programs to clear at shutdown. There is no reply to read at that point,
+> - * so clear a superset. rpcb_unset() of an absent entry does nothing.
+> + * so clear a superset. An UNSET of an absent entry does nothing.
+>    */
+>   static const struct {
+>   	rpcprog_t	program;
+> @@ -56,24 +62,135 @@ static const struct {
+>   	{ NFS_ACL_PROGRAM,	3 },
+>   };
+>   
+> +#ifdef HAVE_LIBTIRPC
+> +
+> +/*
+> + * libtirpc's rpcb_set() and rpcb_unset() wait 60s for each call, and its
+> + * setter for that timeout is not exported. The local rpcbind answers in
+> + * microseconds, so make the calls on a client of our own with one attempt
+> + * of 1s, as the kernel's own rpcbind client does.
+> + */
+> +static const struct timeval nfsd_rpcb_timeout = { 1, 0 };
+> +
+> +enum nfsd_rpcb_status {
+> +	NFSD_RPCB_OK,
+> +	NFSD_RPCB_DECLINED,
+> +	NFSD_RPCB_NO_ANSWER,
+> +};
+> +
+> +/* AF_LOCAL first, then loopback TCP, as libtirpc's local_rpcb() does. */
+> +static CLIENT *nfsd_rpcb_client(void)
+> +{
+> +	const struct sockaddr_un sun = {
+> +		.sun_family	= AF_LOCAL,
+> +		.sun_path	= _PATH_RPCBINDSOCK,
+> +	};
+> +	const struct sockaddr_in sin = {
+> +		.sin_family	= AF_INET,
+> +		.sin_port	= htons(111),
+> +		.sin_addr.s_addr = htonl(INADDR_LOOPBACK),
+> +	};
+> +	struct timeval timeout = nfsd_rpcb_timeout;
+> +	CLIENT *clnt;
+> +
+> +	clnt = nfs_get_rpcclient((const struct sockaddr *)&sun, SUN_LEN(&sun),
+> +				 0, RPCBPROG, RPCBVERS, &timeout);
+> +	if (clnt) {
+> +		xlog(D_GENERAL, "rpcbind: using %s", _PATH_RPCBINDSOCK);
+> +		return clnt;
+> +	}
+> +
+> +	timeout = nfsd_rpcb_timeout;
+> +	clnt = nfs_get_rpcclient((const struct sockaddr *)&sin, sizeof(sin),
+> +				 IPPROTO_TCP, RPCBPROG, RPCBVERS, &timeout);
+> +	if (clnt)
+> +		xlog(D_GENERAL, "rpcbind: using 127.0.0.1 port 111 over TCP");
+> +	return clnt;
+> +}
+> +
+> +/*
+> + * A transport error means rpcbind accepted the connection and did not
+> + * answer. Every later call on this pass would wait the same, so the caller
+> + * stops.
+> + */
+> +static enum nfsd_rpcb_status nfsd_rpcb_call(CLIENT *clnt, rpcproc_t proc,
+> +					    struct rpcb *parms)
+> +{
+> +	enum clnt_stat stat;
+> +	bool_t rslt = FALSE;
+> +
+> +	stat = CLNT_CALL(clnt, proc, (xdrproc_t)xdr_rpcb, (char *)parms,
+> +			 (xdrproc_t)xdr_bool, (char *)&rslt, nfsd_rpcb_timeout);
+> +	switch (stat) {
+> +	case RPC_SUCCESS:
+> +		return rslt ? NFSD_RPCB_OK : NFSD_RPCB_DECLINED;
+> +	case RPC_TIMEDOUT:
+> +	case RPC_CANTRECV:
+> +	case RPC_CANTSEND:
+> +		xlog(L_WARNING,
+> +		     "rpcbind did not answer %s of program %u version %u: %s. Skipping the remaining rpcbind calls.",
+> +		     proc == RPCBPROC_SET ? "SET" : "UNSET",
+> +		     parms->r_prog, parms->r_vers, clnt_sperrno(stat));
+> +		return NFSD_RPCB_NO_ANSWER;
+> +	default:
+> +		xlog(D_GENERAL, "rpcbind call failed: %s", clnt_sperrno(stat));
+> +		return NFSD_RPCB_DECLINED;
+> +	}
+> +}
+> +
+> +/*
+> + * An empty netid and address unset every netid of [program, version], as
+> + * rpcb_unset() with no netconfig does.
+> + */
+> +static enum nfsd_rpcb_status nfsd_rpcb_unset_sweep(CLIENT *clnt)
+> +{
+> +	char empty[] = "";
+> +	char owner[16];
+> +	struct rpcb parms = {
+> +		.r_netid	= empty,
+> +		.r_addr		= empty,
+> +		.r_owner	= owner,
+> +	};
+> +	enum nfsd_rpcb_status status;
+> +	unsigned int i;
+> +
+> +	snprintf(owner, sizeof(owner), "%d", (int)geteuid());
+> +
+> +	for (i = 0; i < ARRAY_SIZE(nfsd_rpcb_all); i++) {
+> +		parms.r_prog = nfsd_rpcb_all[i].program;
+> +		parms.r_vers = nfsd_rpcb_all[i].version;
+> +
+> +		status = nfsd_rpcb_call(clnt, RPCBPROC_UNSET, &parms);
+> +		if (status == NFSD_RPCB_NO_ANSWER)
+> +			return status;
+> +		if (status == NFSD_RPCB_DECLINED)
+> +			xlog(D_GENERAL,
+> +			     "Failed to unregister program %u, version %u",
+> +			     parms.r_prog, parms.r_vers);
+> +	}
+> +	return NFSD_RPCB_OK;
+> +}
+> +
+>   /**
+>    * nfsd_rpcb_unset_all - remove every nfsd entry from the local rpcbind
+>    *
+> - * rpcb_unset() matches [program, version, netid] and takes no address, so
+> - * one call clears every netid. This mirrors the svc_unregister() sweep that
+> - * svc_rpcb_setup() used to run, which an sv_no_rpcbind serv no longer does.
+> + * This mirrors the svc_unregister() sweep that svc_rpcb_setup() used to
+> + * run, which an sv_no_rpcbind serv no longer does.
+>    */
+>   void nfsd_rpcb_unset_all(void)
+>   {
+> -	unsigned int i;
+> +	CLIENT *clnt;
+>   
+> -	for (i = 0; i < ARRAY_SIZE(nfsd_rpcb_all); i++)
+> -		nfs_svc_unregister(nfsd_rpcb_all[i].program,
+> -				   nfsd_rpcb_all[i].version);
+> +	clnt = nfsd_rpcb_client();
+> +	if (!clnt) {
+> +		xlog(D_GENERAL, "cannot reach rpcbind: %s",
+> +		     clnt_sperrno(rpc_createerr.cf_stat));
+> +		return;
+> +	}
+> +	nfsd_rpcb_unset_sweep(clnt);
+> +	CLNT_DESTROY(clnt);
+>   }
+>   
+> -#ifdef HAVE_LIBTIRPC
+> -
+>   /*
+>    * Map a transport name and address family to an rpcbind netid.
+>    *
+> @@ -125,32 +242,47 @@ static bool nfsd_rpcb_wildcard(const struct sockaddr_storage *ss,
+>   	return false;
+>   }
+>   
+> -static bool nfsd_rpcb_set_one(rpcprog_t program, rpcvers_t version,
+> -			      const char *netid,
+> -			      const struct sockaddr_storage *ss)
+> +static enum nfsd_rpcb_status nfsd_rpcb_set_one(CLIENT *clnt,
+> +					       rpcprog_t program,
+> +					       rpcvers_t version,
+> +					       const char *netid,
+> +					       const struct sockaddr_storage *ss)
+>   {
+> +	enum nfsd_rpcb_status status;
+>   	struct sockaddr_storage wild;
+>   	struct netconfig *nconf;
+> +	struct rpcb parms;
+>   	struct netbuf nb;
+> +	char owner[16];
+>   	socklen_t len;
+> -	bool ok;
+>   
+>   	if (!nfsd_rpcb_wildcard(ss, &wild, &len))
+> -		return false;
+> +		return NFSD_RPCB_DECLINED;
+>   
+>   	nconf = getnetconfigent(netid);
+>   	if (!nconf) {
+>   		xlog(L_WARNING, "no netconfig entry for %s", netid);
+> -		return false;
+> +		return NFSD_RPCB_DECLINED;
+>   	}
+>   
+>   	nb.buf = &wild;
+>   	nb.len = len;
+>   	nb.maxlen = len;
+>   
+> -	ok = (rpcb_set(program, version, nconf, &nb) == TRUE);
+> +	parms.r_addr = taddr2uaddr(nconf, &nb);
+>   	freenetconfigent(nconf);
+> -	return ok;
+> +	if (!parms.r_addr)
+> +		return NFSD_RPCB_DECLINED;
+> +
+> +	snprintf(owner, sizeof(owner), "%d", (int)geteuid());
+> +	parms.r_prog = program;
+> +	parms.r_vers = version;
+> +	parms.r_netid = (char *)netid;
+> +	parms.r_owner = owner;
+> +
+> +	status = nfsd_rpcb_call(clnt, RPCBPROC_SET, &parms);
+> +	free(parms.r_addr);
+> +	return status;
+>   }
+>   
+>   /**
+> @@ -167,14 +299,25 @@ static bool nfsd_rpcb_set_one(rpcprog_t program, rpcvers_t version,
+>   void nfsd_rpcb_register(const struct server_socket *listeners, int nlisteners,
+>   			const struct nfsd_rpcb_prog *progs, int nprogs)
+>   {
+> +	enum nfsd_rpcb_status status;
+>   	unsigned int failed = 0;
+> +	CLIENT *clnt;
+>   	int i, j, k;
+>   
+> +	clnt = nfsd_rpcb_client();
+> +	if (!clnt) {
+> +		xlog(L_WARNING,
+> +		     "cannot reach rpcbind: %s. Clients that look up the server in rpcbind cannot find it.",
+> +		     clnt_sperrno(rpc_createerr.cf_stat));
+> +		return;
+> +	}
+> +
+>   	/*
+>   	 * Clear first. rpcbind cannot express "drop one of two TCP ports",
+>   	 * and the kernel no longer sweeps stale entries at serv creation.
+>   	 */
+> -	nfsd_rpcb_unset_all();
+> +	if (nfsd_rpcb_unset_sweep(clnt) == NFSD_RPCB_NO_ANSWER)
+> +		goto out;
+>   
+>   	for (i = 0; i < nlisteners; i++) {
+>   		const struct server_socket *l = &listeners[i];
+> @@ -215,9 +358,12 @@ void nfsd_rpcb_register(const struct server_socket *listeners, int nlisteners,
+>   			    !strncmp(netid, "udp", 3))
+>   				continue;
+>   
+> -			if (nfsd_rpcb_set_one(p->program, p->version, netid,
+> -					      &l->ss))
+> +			status = nfsd_rpcb_set_one(clnt, p->program,
+> +						   p->version, netid, &l->ss);
+> +			if (status == NFSD_RPCB_OK)
+>   				continue;
+> +			if (status == NFSD_RPCB_NO_ANSWER)
+> +				goto out;
+>   
+>   			xlog(L_WARNING,
+>   			     "cannot register program %u version %u on %s port %u",
+> @@ -230,10 +376,21 @@ void nfsd_rpcb_register(const struct server_socket *listeners, int nlisteners,
+>   	if (failed)
+>   		xlog(L_WARNING,
+>   		     "some rpcbind registrations failed. Clients that look up the server in rpcbind cannot find it.");
+> +out:
+> +	CLNT_DESTROY(clnt);
+>   }
+>   
+>   #else	/* !HAVE_LIBTIRPC */
+>   
+> +void nfsd_rpcb_unset_all(void)
+> +{
+> +	unsigned int i;
+> +
+> +	for (i = 0; i < ARRAY_SIZE(nfsd_rpcb_all); i++)
+> +		nfs_svc_unregister(nfsd_rpcb_all[i].program,
+> +				   nfsd_rpcb_all[i].version);
+> +}
+> +
+>   /*
+>    * rpcb_set() and the netconfig database are TI-RPC only, so a build
+>    * without it cannot own the registration. userspace_rpcbind_supported()
+> -- 2.53.0
+> 
 
