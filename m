@@ -1,76 +1,48 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795006303;
-	b=366KesfTeiBNmJ8f/fi4zMKozmPe9iCbVrMouE8hFnVmKpx0Ehc3CnOGD619NSymFK+3
-	 +uJJR4j6LISxscZLjbgIXBq0Xwod5M6zg043Xb7cBwFP+x+yBKPzvxDOeQECNGz3BaDVp
-	 psLpBINzX+vY1K0wKv8sAk8EL1RvzvEgooIoHXfK4m7uFnbiUw9flC5TFJJJkA3ToSG3B
-	 ZDieURpB1dymFeofoc0WYblsO3v+Lez5S7uFgSoS8z0+fSnPFN2le2Gx21w6jEeoLXSkh
-	 fhi4xcXNlpJXwXnI8KKLPHu2QLHU1fTKfGHpbiiV74CQb7+i4bmd1vf5POeZNRE1C4w==
+	t=1795007805;
+	b=tDLr6lvcaRxkwrRFr4vQenHWkKuD6IyckuvgQVqVm89CgkobTFvRNSC7eHBMufG0ri+6
+	 Bp8Ilg+El5s/P9Jk+ax1CB+71VD6J2OeMpr5arulO5rxH1nOUA3exOU5+Aaqsy2XUHCZo
+	 Gef01ntnQl/U/Xj4fVLgEnZnS7d18UtqXFOBoQrKkxx3nNAaTffxcuyGw4/FX/Q/J8BkJ
+	 VF81KSEGd/HyiRjMNn00PLqil6ia/7kmURM36/62WVfEnXF8L661nsRX093EhyOPBoJkI
+	 yEDtSaj88L1cYylSn03kHvmCB/I+By0EYlGGYVyFYEmL51g/QD3+fKfAyz5pevFv5vw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795006303;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
-	 Message-ID:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding:X-Scanned-By;
-	bh=xyG+3cs2k8qaJ1Bb3azeGYzhM3IZKQHmT6XGWbN0+a4=;
-	b=L54VTWAjq2Qj6wvkLD67EEXzrexJ7wqfEgcGHLUGNKakkn6jYiW4jSqRvafcyvjHBYE7
-	 +POsBhWOIO2Ja4k5ZupLScVFiyJYPewTJc9jaOxN+koKTXTFMtdRKr4OKVCl9HwoaDoiw
-	 K0Rrg9b/hkBWv02XeUG5dfAc7jPAOKQNy2uf02ndszfXh1o7uY2B/djdUJJlViHJMsb2v
-	 EP/3znZ4h/qIinlQTMoG/7yV1I2NvLs0dx3kNg7sM+ng1QKAgnLs/ZSDUnblpNAKk7iYC
-	 o1ZHQFUrPl8HhuPAVNafWMDO+Y/qSc9AgprWfruolULgCrQhV+r09bkdlbFs48vuRbQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795007805;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=xFUxVJ82of+81BcfAiGTxodU+qDDLwr8zTrCgbO4Xf8=;
+	b=WiRSZnWyeRN1eCfVER01pNtWkcy/3KwToCw8diI3CEjm0sz8jK87fQcGW2Bb8DIftBu5
+	 f7ZCpbNHHx1cDxN7/CRBLDvvcDhJnLhu3Eg1u4dHKPh/QxXV4CvFPCnbDgd6VVw1+s6es
+	 i3DnNmc/lD/h6sEAgL9Q20upvxhuIFkufwFORvU0gS9pufMYp9Nn9n78NogfP2VNLrUiT
+	 d2bcs2S0ajv5b+1ZYyaqPOaYstWNBIMMo3AVpzs9ViRn/Huaxycl+fraydjRK6hqHNB2M
+	 etoDycL8nxk/Aa+vXRSP0Ho659Inh6mL0sq5SMOiV+3GcMybNg+f/zVh3lUFZWo7ptg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=HGV79hWG;
-	arc=none smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NOImXiOd;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7ACE606A330
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 12:51:42 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A7ACE606A330
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3293B606A31C;
+	Wed, 18 Nov 2026 13:16:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=HGV79hWG
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1795006301;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=xyG+3cs2k8qaJ1Bb3azeGYzhM3IZKQHmT6XGWbN0+a4=;
-	b=HGV79hWGOh3QgSgFmhi94L+jJ4pQelsEvkrGagMjYk/ulB9Q7PBeEXmrqCPHTx/usBKIpZ
-	95+/vsuLiHavDg5+yR0myN0ggdBlTvZFEGiR573tGxPe0ZHUAVf1DwF0SOsjxOSrs2OSq2
-	OrNPr833Z9/uDKogFsdUm2OfvZQ5fto=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-60-w55f3H0SOC6OtuNXeNydbA-1; Wed,
- 18 Nov 2026 12:51:39 +0000
-X-MC-Unique: w55f3H0SOC6OtuNXeNydbA-1
-X-Mimecast-MFC-AGG-ID: w55f3H0SOC6OtuNXeNydbA_1795006298
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 0C545195606E;
-	Wed, 18 Nov 2026 12:51:38 +0000 (UTC)
-Received: from fs-i40c-01.fast.eng.rdu2.dc.redhat.com (fs-i40c-01.fast.eng.rdu2.dc.redhat.com [10.6.54.119])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 5C9F91801978;
-	Wed, 18 Nov 2026 12:51:37 +0000 (UTC)
-From: Abhinandan Ekande <aekande@redhat.com>
-To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: dhowells@redhat.com,
-	linux-nfs@vger.kernel.org,
-	aekande@redhat.com
-Subject: [PATCH v3 2/3] NFS: honour the netfs subrequest range when issuing reads
-Date: Wed, 18 Nov 2026 07:51:34 -0500
-Message-ID: <20261118125135.1991518-3-aekande@redhat.com>
-In-Reply-To: <20261118125135.1991518-1-aekande@redhat.com>
-References: <20261118125135.1991518-1-aekande@redhat.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NOImXiOd
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9D9241F000C4;
+	Wed, 18 Nov 2026 13:16:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795007804;
+	bh=xFUxVJ82of+81BcfAiGTxodU+qDDLwr8zTrCgbO4Xf8=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=NOImXiOdmK3buFe/HDJTkxuqy8I/J9y0B8deC8iJnaAY4kBJ2UP3LKnWFsiW+k142
+	 LvZWZZurckhrni1yamxVDfWkG1z+3q24u4GgvG14shWHLoPfRzMM6rbuL4LoDMOfPl
+	 rU0geJ1TsW/8ZOieiUtrUvxpC7/xbl17VGdGVrSS2BZtNFg/pWMIHtqK2R5lUAtnkP
+	 7ITVX3V7EQghyXnv3+If1Rf7GcIZ1EZHAppiz03PJLjJ5pPx0rQgDJ+hTVwwSygEOn
+	 L6uMK3om2sXiOQbokqXRcO3+hcqC7AXHtM48iTDt7y2Jy5VoWSmbCBrivti6IIB4lI
+	 3kSaG7UCTVcvg==
+From: Christian Brauner <brauner@kernel.org>
+Date: Wed, 18 Nov 2026 14:16:17 +0100
+Subject: [PATCH 1/2] fs: reintroduce SB_I_MULTIROOT
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -80,224 +52,148 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261118-work-nfs-multiroot-v1-1-66e4458b7d32@kernel.org>
+References: <20261118-work-nfs-multiroot-v1-0-66e4458b7d32@kernel.org>
+In-Reply-To: <20261118-work-nfs-multiroot-v1-0-66e4458b7d32@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Jan Kara <jack@suse.cz>, Chuck Lever <cel@kernel.org>, 
+ Jeff Layton <jlayton@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
+ "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
+X-Mailer: b4 0.17-dev-04696
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5696; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=evCel8Lfavk/ILfSiBOb7n+hcYCaBBgPt1nMiB4dWKE=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9XWp8cpbSKQfxkyeXBflL/7v/8NWCZOX1k3PZD8QnX
+ JRgc1z0uaOUhUGMi0FWTJHFod0kXG45T8Vmo0wNmDmsTCBDGLg4BWAikXcZGaZqaHw+/u30WvYc
+ xh+ejJVvtOPff3SxKNq+K+fk0x1hzVWMDO0VpdasD44rrhD7fFJRJnvLVr5N6n+ldx+4fve+xO5
+ tviwA
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-netfs splits the folio into folio_size/rsize subrequests. Each subrequest
-calls nfs_netfs_issue_read() separately. nfs_netfs_issue_read() discards
-subreq->start and subreq->len, converts them into a page index range, and
-hands each folio in that range to nfs_read_add_folio(), which submits the
-whole folio.
+On NFSv2 and NFSv3 ".." can walk out of a mount and out of a chroot as
+well (again).
 
-A folio larger than rsize is therefore read once per subrequest. On a
-mount with rsize=4096, a 128K (order-5) folio is covered by 32
-subrequests; each submits the whole folio, which nfs_pageio_add_request()
-splits into 32 RPCs at pg_bsize. That is 1024 concurrent READs for one
-folio, with every 4K page targeted by 32 of them, all pointing their
-receive buffer at the same page.
+path_connected() makes ".." fail with ENOENT when the parent isn't
+reachable from the root of the mount anymore. It was added in
+commit 397d425dc26d ("vfs: Test for and handle paths that are
+unreachable from their mnt_root") for directories that get renamed out
+from under a bind mount. To avoid calling is_subdir() for every ".." it
+takes a shortcut. If the root of the mount is the root of the superblock
+every dentry is assumed to be reachable and the check is skipped.
 
-Under sec=sys every reply carries the same plaintext in the page, so
-the duplicate writes are byte-identical and only the wasted bandwidth
-remains.
-With sec=krb5p the payload is separately encrypted per reply, so the
-bytes on the wire differ even though the data is the same, and
-gss_unwrap_resp_priv() decrypts in place in rq_rcv_buf. One reply's
-ciphertext lands on top of another's before it is unwrapped, and the
-integrity check fails with GSS_S_FAILURE. The subrequest completes with
--EIO and netfs leaves the folio non-uptodate.
+That doesn't hold for nfs. By default the client shares a single
+superblock between mounts of the same server filesystem, i.e. mounts
+that report the same filesystem identifier and use the same mount
+options. Those mounts can be of disjoint subtrees, e.g. two
+subdirectories of one export. NFSv2 and NFSv3 provide no way to find
+the common root of these trees so s_root is simply the root of whatever
+subtree got mounted first. For that mount mnt_root == s_root and
+path_connected() never calls is_subdir().
 
-The defect dates to the netfs conversion but stayed latent at the
-common case of rsize of 4096 or greater and with order-0 folios,
-folio_size/rsize is 1 and each subrequest's whole folio read happens
-to cover exactly the range asked for. The 'commit 49b29a573da8 ("nfs:
-add support for large folios")' made folios up to order-5, which exposes
-the same loop at any rsize smaller than folio.
+This was fixed in commit 95dd77580ccd ("fs: Teach path_connected to
+handle nfs filesystems with multiple roots."). That added SB_I_MULTIROOT
+which nfs raised on every superblock it might share, and
+path_connected() stopped taking the shortcut for such superblocks.
 
-Fix nfs_netfs_issue_read() to intersect each folio with the subrequest's
-byte range and submit only that. nfs_read_add_folio() is split into a
-range taking helper, nfs_read_add_folio_range(). nfs_read_add_folio()
-keeps its existing behaviour, so the two legacy callers,
-nfs_do_read_folio() and nfs_readahead(), are unaffected.
+When nfs was converted to the new mount api in commit f2aedb713c28
+("NFS: Add fs_context support.") nfs_fs_mount_common() was rewritten
+into nfs_get_tree_common() and the two lines raising SB_I_MULTIROOT got
+lost on the way. The changelog doesn't mention it. Nothing else raised
+the flag so from v5.6 onwards path_connected() took the shortcut for nfs
+again.
 
-Once a request can cover only part of a folio,
-nfs_page_group_set_uptodate() must stop marking the whole folio uptodate.
-nfs_page_group_sync_on_bit() synchronises across one nfs_page group, not
-across the folio's other subrequests, so a group that completes cleanly
-would mark a folio that is only partly filled. Skip the marking when
-netfs owns the folio.
+Then commit 402dd2cf46b1 ("fs: remove the unused SB_I_MULTIROOT flag")
+noticed that the flag was dead, named the fs_context conversion as the
+commit that removed its last user, and removed the flag together with
+the check in path_connected().
 
-With the patch, 30 MiB read over sec=krb5p,fsc,rsize=4096 issues exactly
-7680 READs, one per page, compared to earlier every page was fetched up
-to 32 times. Folio sizes and the netfs subrequest shape are unchanged.
+But the flag was only unused because the conversion had dropped it by
+accident. Et voila, we're back in 2018. Mount two disjoint
+subdirectories of the same export with vers=3 and without nosharecache:
 
-Fixes: 000dbe0bec05 ("NFS: Convert buffered read paths to use netfs when fscache is enabled")
+    mount -t nfs -o vers=3 srv:/export/a /mnt/a
+    mount -t nfs -o vers=3 srv:/export/b/sub /mnt/b
+
+Both mounts share a superblock and s_root is the root of /mnt/a. A
+process sits in /mnt/a/D1/D. Someone with write access to both trees
+renames D into b/sub, either on the server, through another client or
+through a mount of a common parent on the same client. For a rename on
+the server it's enough that anyone looks up /mnt/b/D afterwards.
+nfs_lookup() finds the cached directory inode and d_splice_alias()
+moves the existing dentry under the root of /mnt/b.
+
+Now ".." from the old working directory lands in /mnt/b which isn't
+reachable from /mnt/a at all. That works from inside a chroot to /mnt/a
+as well. And if the root of the export is mounted too and someone walks
+down to b/sub through it then the root of /mnt/b gets spliced in below
+it and ".." climbs all the way up to the root of the exported
+filesystem.
+
+This reproduces on v7.4-rc3 with a single ext4 filesystem exported by
+knfsd and both subdirectories mounted over loopback. With this patch
+applied ".." fails with ENOENT instead.
+
+Only mounts whose root is s_root are affected, i.e. the subtree that got
+mounted first and bind mounts of its root. Mounts with nosharecache get
+their own superblock.
+
+Reintroduce SB_I_MULTIROOT and raise it again in nfs_get_tree_common()
+where nfs_fs_mount_common() used to raise it. Like before nfs raises it
+on every superblock it may share, independent of the protocol version.
+That means ".." on such superblocks always goes through is_subdir()
+again.
+
+Fixes: f2aedb713c28 ("NFS: Add fs_context support.")
 Cc: stable@vger.kernel.org
-Assisted-by: LLM
-Signed-off-by: Abhinandan Ekande <aekande@redhat.com>
+Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
- fs/nfs/fscache.c  | 21 ++++++++++++++----
- fs/nfs/internal.h |  4 ++++
- fs/nfs/read.c     | 56 ++++++++++++++++++++++++++++++-----------------
- 3 files changed, 57 insertions(+), 24 deletions(-)
+ fs/namei.c                     | 4 ++--
+ fs/nfs/super.c                 | 2 ++
+ include/linux/fs/super_types.h | 1 +
+ 3 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index 9b7fdad4a920..eb5e54406e58 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -303,12 +303,14 @@ static void nfs_netfs_issue_read(struct netfs_io_subrequest *sreq)
- 	struct inode *inode = sreq->rreq->inode;
- 	struct nfs_open_context *ctx = sreq->rreq->netfs_priv;
- 	struct page *page;
-+	unsigned long long pos = sreq->start + sreq->transferred;
-+	unsigned long long end = sreq->start + sreq->len;
- 	unsigned long idx;
- 	pgoff_t start, last;
- 	int err;
- 
--	start = (sreq->start + sreq->transferred) >> PAGE_SHIFT;
--	last = ((sreq->start + sreq->len - sreq->transferred - 1) >> PAGE_SHIFT);
-+	start = pos >> PAGE_SHIFT;
-+	last = ((end - 1) >> PAGE_SHIFT);
- 
- 	nfs_pageio_init_read(&pgio, inode, false,
- 			     &nfs_async_read_completion_ops);
-@@ -322,8 +324,19 @@ static void nfs_netfs_issue_read(struct netfs_io_subrequest *sreq)
- 	pgio.pg_netfs = netfs; /* used in completion */
- 
- 	xa_for_each_range(&sreq->rreq->mapping->i_pages, idx, page, start, last) {
--		/* nfs_read_add_folio() may schedule() due to pNFS layout and other RPCs  */
--		err = nfs_read_add_folio(&pgio, ctx, page_folio(page));
-+		struct folio *folio = page_folio(page);
-+		unsigned long long fpos = folio_pos(folio);
-+		size_t fsize = folio_size(folio);
-+		size_t offset, len;
-+
-+		/* Read only the part of the folio the subrequest asked for. */
-+		offset = pos > fpos ? pos - fpos : 0;
-+		len = min(end, fpos + fsize) - (fpos + offset);
-+		if (!len)
-+			continue;
-+
-+		/* nfs_read_add_folio_range() may schedule() due to pNFS layout and other RPCs  */
-+		err = nfs_read_add_folio_range(&pgio, ctx, folio, offset, len);
- 		if (err < 0) {
- 			netfs->error = err;
- 			goto out;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 5af6a032f145..a4fed789e113 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -611,6 +611,10 @@ extern bool nfs_read_alloc_scratch(struct nfs_pgio_header *hdr, size_t size);
- extern int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 			       struct nfs_open_context *ctx,
- 			       struct folio *folio);
-+extern int nfs_read_add_folio_range(struct nfs_pageio_descriptor *pgio,
-+				    struct nfs_open_context *ctx,
-+				    struct folio *folio,
-+				    size_t offset, size_t len);
- extern void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index e7497b029d6c..8d73fbd59d7f 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -132,8 +132,16 @@ static void nfs_readpage_release(struct nfs_page *req, int error)
- 
- static void nfs_page_group_set_uptodate(struct nfs_page *req)
+diff --git a/fs/namei.c b/fs/namei.c
+index 925aeb63bfa1d..a08c93369f4f1 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -822,8 +822,8 @@ static bool path_connected(struct vfsmount *mnt, struct dentry *dentry)
  {
-+	struct folio *folio = nfs_page_to_folio(req);
- 	bool uptodate = false;
+ 	struct super_block *sb = mnt->mnt_sb;
  
-+	/*
-+	 * When netfs owns the folio it decides when the folio becomes
-+	 * uptodate; a request may cover only part of the folio.
-+	 */
-+	if (!nfs_netfs_folio_unlock(folio))
-+		return;
-+
- 	nfs_page_group_lock(req);
- 	if (!test_bit(PG_READ_FAILED, &req->wb_head->wb_flags) &&
- 	    nfs_page_group_sync_on_bit_locked(req, PG_UPTODATE))
-@@ -141,7 +149,7 @@ static void nfs_page_group_set_uptodate(struct nfs_page *req)
- 	nfs_page_group_unlock(req);
+-	/* Bind mounts can have disconnected paths */
+-	if (mnt->mnt_root == sb->s_root)
++	/* Bind mounts and multi-root filesystems can have disconnected paths */
++	if (!(sb->s_iflags & SB_I_MULTIROOT) && (mnt->mnt_root == sb->s_root))
+ 		return true;
  
- 	if (uptodate)
--		folio_mark_uptodate(nfs_page_to_folio(req));
-+		folio_mark_uptodate(folio);
- }
+ 	return is_subdir(dentry, mnt->mnt_root);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 23292680adbd5..99e883e7a4890 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1315,6 +1315,8 @@ int nfs_get_tree_common(struct fs_context *fc)
+ 		error = nfs_get_cache_cookie(s, ctx);
+ 		if (error < 0)
+ 			goto error_splat_super;
++		if (!(server->flags & NFS_MOUNT_UNSHARED))
++			s->s_iflags |= SB_I_MULTIROOT;
+ 	}
  
- static void nfs_page_group_mark_read_failed(struct nfs_page *req)
-@@ -306,6 +314,31 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
+ 	error = nfs_get_root(s, fc);
+diff --git a/include/linux/fs/super_types.h b/include/linux/fs/super_types.h
+index 6ce105fe8359c..b09e8b2087252 100644
+--- a/include/linux/fs/super_types.h
++++ b/include/linux/fs/super_types.h
+@@ -359,5 +359,6 @@ struct super_block {
+ #define SB_I_NOIDMAP	0x00002000	/* No idmapped mounts on this superblock */
+ #define SB_I_ALLOW_HSM	0x00004000	/* Allow HSM events on this superblock */
+ #define SB_I_NO_DATA_INTEGRITY	0x00008000 /* fs cannot guarantee data persistence on sync */
++#define SB_I_MULTIROOT	0x00010000	/* Multiple roots to the dentry tree */
  
-+int nfs_read_add_folio_range(struct nfs_pageio_descriptor *pgio,
-+			     struct nfs_open_context *ctx,
-+			     struct folio *folio,
-+			     size_t offset, size_t len)
-+{
-+	struct nfs_page *new;
-+	int error;
-+
-+	new = nfs_page_create_from_folio(ctx, folio, false, offset, len);
-+	if (IS_ERR(new)) {
-+		error = PTR_ERR(new);
-+		if (nfs_netfs_folio_unlock(folio))
-+			folio_unlock(folio);
-+		return error;
-+	}
-+
-+	if (!nfs_pageio_add_request(pgio, new)) {
-+		nfs_list_remove_request(new);
-+		error = pgio->pg_error;
-+		nfs_readpage_release(new, error);
-+		return error;
-+	}
-+	return 0;
-+}
-+
- int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 		       struct nfs_open_context *ctx,
- 		       struct folio *folio)
-@@ -314,9 +347,7 @@ int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	size_t fsize = folio_size(folio);
- 	unsigned int rsize = server->rsize;
--	struct nfs_page *new;
- 	unsigned int len, aligned_len;
--	int error;
- 
- 	len = nfs_folio_length(folio);
- 	if (len == 0)
-@@ -324,25 +355,10 @@ int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 
- 	aligned_len = min_t(unsigned int, ALIGN(len, rsize), fsize);
- 
--	new = nfs_page_create_from_folio(ctx, folio, false, 0, aligned_len);
--	if (IS_ERR(new)) {
--		error = PTR_ERR(new);
--		if (nfs_netfs_folio_unlock(folio))
--			folio_unlock(folio);
--		goto out;
--	}
--
- 	if (len < fsize)
- 		folio_zero_segment(folio, len, fsize);
--	if (!nfs_pageio_add_request(pgio, new)) {
--		nfs_list_remove_request(new);
--		error = pgio->pg_error;
--		nfs_readpage_release(new, error);
--		goto out;
--	}
--	return 0;
--out:
--	return error;
-+
-+	return nfs_read_add_folio_range(pgio, ctx, folio, 0, aligned_len);
- }
- 
- /*
+ #endif /* _LINUX_FS_SUPER_TYPES_H */
+
 -- 
-2.55.0
+2.53.0
 
