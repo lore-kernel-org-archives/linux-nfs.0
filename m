@@ -1,33 +1,33 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.43.10.250
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795002328;
-	b=sbybTf6RmTJPTyOyPHdmb0Pp34i5G+wVGrGSdKTNoqtZiJoytMolZHcpqpuc8OoWxl0m
-	 yoo8yidgM/HqfD8oNGp2BO9jl6eHOa99STjGvPepL95Udlfl2DsLyzdopSMGI4Hj+EOFk
-	 AhA17noLUXWryPKGj+f4beyWlRIkyBXDdJOInx30WhbtM7D+pgjvqCH14AilTcbMi3YRY
-	 4u3LYcUmrK0/UPrtShgM38QiTaofDHSVIL/N9rsfu+XgqgB6z38JL7u6jrQSrCo6n1kWZ
-	 T8Uz9t7hXEMJOYB0Ae8QwiGNH9/MwT34IAP75o/d573Oxe2zxcZGklP2+6hQfX/+6gw==
+	t=1795002329;
+	b=kV1+jxpALKFxphSCpHuDP4UFMrzKEHZDfJf7fVJ23pCZhSqRNVFkdTKdqmxGbX6XNOET
+	 2wM5Sxu8EGZUZtTuO/kiq0u2v8Rd7D+atIxHHL/LvGKGgPIYUoM2VvBmRb0m4WrRDZ39d
+	 aYz/seva2gKF69CEyb2WTSJjhUpRCRxwVhtZcPXuRY1RHx8mPE2x6TRDt/l9z77gVXSum
+	 DXjyfLAW84Y6zNU8JbVVRLcVJRAa6xCD/d5HbcP7KHmh7hppvhkDzrxlnw3/Ur3FksCPu
+	 KtXPY6faSbqaAN+4S9yQZVF8jPbStpujhu0NO7Je+KDlMFivriPqksK7xhRfAF117UQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795002328;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795002329;
 	h=DMARC-Filter:Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=TNr17IsDH3CMJAsBddlI8ulC9BfuyexkixP3yKX5G7k=;
-	b=RmWl3FpW+1kNAE1jxET9Q8xJXThaZRtxcWGkoHze9bdo+DZR7rqPHxSqb8WeftrS+WrE
-	 zjl7weVO/UT+X0e0+TzA06IFW5eI9ojlfpxh6uJ97w00of4/RV5b2o2nBAr4C3dofZSVv
-	 XHTpXKjljyCt44OGOejxUYac5EBf2JuID1zNrAZTN2pXKV6TdZKA6QMppD/tpa0ptm9Jp
-	 BezR/ez6f6HR+87Gj4X+OYaImRAc/yQ/uaAvrJcrZjHwMScwN+r2iI0xfQqsb1l+DYfv0
-	 NyZEpJ6A55UKLns7+wlQ/XprB/Jo1onF+FUW0QemBijfTa3ZRO9s1+kI5GtJ87sJUCQ==
+	bh=S28adRf1oFbzkE6QXQDQ41sT8RTsMRp/NYXyPKCgYOc=;
+	b=OzD+zjY6QJzLqzN7gqLmLjQW+CKoNIXxMGrXiHogH/qR5vfswNmUsuE/EuyBjWasfoqa
+	 dT/tsO3mp8vS/1TTuznCUiegQYg/2Z9p0fS/asPCn1kMvKk4cZyx8aT+PU/LrM+jnOlr1
+	 F1Mw5NgyzH7FpNJhxubA4GUzb7q+YUcRD38nAk/x2o9+iYXRDraxeIcGPAs9rZ8WuDr88
+	 z51T/WgLiPedMmWawuENXkJAGINr7e/kuO2Gm0go/JAR2TpywANlzakBQ/ts6SURN53Fr
+	 ynH24wHf9a/njmVhiGl3uTS8pAYreUiJ8Pqlvx2fn2fnIwLnZz6IXlWOzRMtY1XXp5g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=altlinux.org;
 	spf=fail smtp.mailfrom=altlinux.org;
 	arc=none smtp.remote-ip=193.43.10.250
 Received: from basalt.external.altlinux.org (unknown [193.43.10.250])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 83985606A32C;
-	Wed, 18 Nov 2026 11:45:26 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83985606A32C
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id AC26C60A2620;
+	Wed, 18 Nov 2026 11:45:28 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AC26C60A2620
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=altlinux.org
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=altlinux.org
 Received: by basalt.external.altlinux.org (Postfix, from userid 1137)
-	id D76372DF335; Wed, 18 Nov 2026 14:45:18 +0300 (MSK)
+	id E96A12DF33F; Wed, 18 Nov 2026 14:45:18 +0300 (MSK)
 From: Alexey Shabalin <shaba@altlinux.org>
 To: devel-kernel@altlinux.org
 Cc: David Howells <dhowells@redhat.com>,
@@ -43,9 +43,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-nfs@vger.kernel.org,
 	linux-crypto@vger.kernel.org,
 	netdev@vger.kernel.org
-Subject: [PATCH 6.12/sisyphus 03/29] crypto/krb5: Add an API to query the layout of the crypto section
-Date: Wed, 18 Nov 2026 14:44:52 +0300
-Message-ID: <20261118114518.3605222-4-shaba@altlinux.org>
+Subject: [PATCH 6.12/sisyphus 08/29] crypto/krb5: Provide RFC3961 setkey packaging functions
+Date: Wed, 18 Nov 2026 14:44:57 +0300
+Message-ID: <20261118114518.3605222-9-shaba@altlinux.org>
 X-Mailer: git-send-email 2.50.1
 In-Reply-To: <20261118114518.3605222-1-shaba@altlinux.org>
 References: <20261118114518.3605222-1-shaba@altlinux.org>
@@ -62,16 +62,10 @@ Content-Transfer-Encoding: 8bit
 
 From: David Howells <dhowells@redhat.com>
 
-Provide some functions to allow the called to find out about the layout of
-the crypto section:
-
- (1) Calculate, for a given size of data, how big a buffer will be
-     required to hold it and where the data will be within it.
-
- (2) Calculate, for an amount of buffer, what's the maximum size of data
-     that will fit therein, and where it will start.
-
- (3) Determine where the data will be in a received message.
+Provide functions to derive keys according to RFC3961 (or load the derived
+keys for the selftester where only derived keys are available) and to
+package them up appropriately for passing to a krb5enc AEAD setkey or a
+hash setkey function.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Herbert Xu <herbert@gondor.apana.org.au>
@@ -86,147 +80,179 @@ cc: linux-afs@lists.infradead.org
 cc: linux-nfs@vger.kernel.org
 cc: linux-crypto@vger.kernel.org
 cc: netdev@vger.kernel.org
-(cherry picked from commit 025ac491f4eeb48c03353719f0de20a6db36b826)
+(cherry picked from commit 8bcdbfa89f4fc1ab7b06e784cb9c3346a943955e)
 ---
- crypto/krb5/krb5_api.c | 108 +++++++++++++++++++++++++++++++++++++++++
- include/crypto/krb5.h  |   9 ++++
- 2 files changed, 117 insertions(+)
+ crypto/krb5/internal.h           |  20 +++++
+ crypto/krb5/rfc3961_simplified.c | 122 ++++++++++++++++++++++++++++++-
+ 2 files changed, 138 insertions(+), 4 deletions(-)
 
-diff --git a/crypto/krb5/krb5_api.c b/crypto/krb5/krb5_api.c
-index 5c1cd5d07fc3..f6d1bc813daa 100644
---- a/crypto/krb5/krb5_api.c
-+++ b/crypto/krb5/krb5_api.c
-@@ -40,3 +40,111 @@ const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype)
- 	return NULL;
+diff --git a/crypto/krb5/internal.h b/crypto/krb5/internal.h
+index 7d60977dc0c5..ae00588619a8 100644
+--- a/crypto/krb5/internal.h
++++ b/crypto/krb5/internal.h
+@@ -136,3 +136,23 @@ int krb5_derive_Ki(const struct krb5_enctype *krb5, const struct krb5_buffer *TK
+  * rfc3961_simplified.c
+  */
+ extern const struct krb5_crypto_profile rfc3961_simplified_profile;
++
++int authenc_derive_encrypt_keys(const struct krb5_enctype *krb5,
++				const struct krb5_buffer *TK,
++				unsigned int usage,
++				struct krb5_buffer *setkey,
++				gfp_t gfp);
++int authenc_load_encrypt_keys(const struct krb5_enctype *krb5,
++			      const struct krb5_buffer *Ke,
++			      const struct krb5_buffer *Ki,
++			      struct krb5_buffer *setkey,
++			      gfp_t gfp);
++int rfc3961_derive_checksum_key(const struct krb5_enctype *krb5,
++				const struct krb5_buffer *TK,
++				unsigned int usage,
++				struct krb5_buffer *setkey,
++				gfp_t gfp);
++int rfc3961_load_checksum_key(const struct krb5_enctype *krb5,
++			      const struct krb5_buffer *Kc,
++			      struct krb5_buffer *setkey,
++			      gfp_t gfp);
+diff --git a/crypto/krb5/rfc3961_simplified.c b/crypto/krb5/rfc3961_simplified.c
+index 75eafba059c7..335c5bb6904f 100644
+--- a/crypto/krb5/rfc3961_simplified.c
++++ b/crypto/krb5/rfc3961_simplified.c
+@@ -68,6 +68,8 @@
+ 
+ #include <linux/slab.h>
+ #include <linux/lcm.h>
++#include <linux/rtnetlink.h>
++#include <crypto/authenc.h>
+ #include <crypto/skcipher.h>
+ #include <crypto/hash.h>
+ #include "internal.h"
+@@ -399,9 +401,121 @@ static int rfc3961_calc_PRF(const struct krb5_enctype *krb5,
+ 	return ret;
  }
- EXPORT_SYMBOL(crypto_krb5_find_enctype);
-+
-+/**
-+ * crypto_krb5_how_much_buffer - Work out how much buffer is required for an amount of data
-+ * @krb5: The encoding to use.
-+ * @mode: The mode in which to operated (checksum/encrypt)
-+ * @data_size: How much data we want to allow for
-+ * @_offset: Where to place the offset into the buffer
-+ *
-+ * Calculate how much buffer space is required to wrap a given amount of data.
-+ * This allows for a confounder, padding and checksum as appropriate.  The
-+ * amount of buffer required is returned and the offset into the buffer at
-+ * which the data will start is placed in *_offset.
+ 
++/*
++ * Derive the Ke and Ki keys and package them into a key parameter that can be
++ * given to the setkey of a authenc AEAD crypto object.
 + */
-+size_t crypto_krb5_how_much_buffer(const struct krb5_enctype *krb5,
-+				   enum krb5_crypto_mode mode,
-+				   size_t data_size, size_t *_offset)
++int authenc_derive_encrypt_keys(const struct krb5_enctype *krb5,
++				const struct krb5_buffer *TK,
++				unsigned int usage,
++				struct krb5_buffer *setkey,
++				gfp_t gfp)
 +{
-+	switch (mode) {
-+	case KRB5_CHECKSUM_MODE:
-+		*_offset = krb5->cksum_len;
-+		return krb5->cksum_len + data_size;
++	struct crypto_authenc_key_param *param;
++	struct krb5_buffer Ke, Ki;
++	struct rtattr *rta;
++	int ret;
 +
-+	case KRB5_ENCRYPT_MODE:
-+		*_offset = krb5->conf_len;
-+		return krb5->conf_len + data_size + krb5->cksum_len;
++	Ke.len  = krb5->Ke_len;
++	Ki.len  = krb5->Ki_len;
++	setkey->len = RTA_LENGTH(sizeof(*param)) + Ke.len + Ki.len;
++	setkey->data = kzalloc(setkey->len, GFP_KERNEL);
++	if (!setkey->data)
++		return -ENOMEM;
 +
-+	default:
-+		WARN_ON(1);
-+		*_offset = 0;
-+		return 0;
++	rta = setkey->data;
++	rta->rta_type = CRYPTO_AUTHENC_KEYA_PARAM;
++	rta->rta_len = RTA_LENGTH(sizeof(*param));
++	param = RTA_DATA(rta);
++	param->enckeylen = htonl(Ke.len);
++
++	Ki.data = (void *)(param + 1);
++	Ke.data = Ki.data + Ki.len;
++
++	ret = krb5_derive_Ke(krb5, TK, usage, &Ke, gfp);
++	if (ret < 0) {
++		pr_err("get_Ke failed %d\n", ret);
++		return ret;
 +	}
++	ret = krb5_derive_Ki(krb5, TK, usage, &Ki, gfp);
++	if (ret < 0)
++		pr_err("get_Ki failed %d\n", ret);
++	return ret;
 +}
-+EXPORT_SYMBOL(crypto_krb5_how_much_buffer);
 +
-+/**
-+ * crypto_krb5_how_much_data - Work out how much data can fit in an amount of buffer
-+ * @krb5: The encoding to use.
-+ * @mode: The mode in which to operated (checksum/encrypt)
-+ * @_buffer_size: How much buffer we want to allow for (may be reduced)
-+ * @_offset: Where to place the offset into the buffer
-+ *
-+ * Calculate how much data can be fitted into given amount of buffer.  This
-+ * allows for a confounder, padding and checksum as appropriate.  The amount of
-+ * data that will fit is returned, the amount of buffer required is shrunk to
-+ * allow for alignment and the offset into the buffer at which the data will
-+ * start is placed in *_offset.
++/*
++ * Package predefined Ke and Ki keys and into a key parameter that can be given
++ * to the setkey of an authenc AEAD crypto object.
 + */
-+size_t crypto_krb5_how_much_data(const struct krb5_enctype *krb5,
-+				 enum krb5_crypto_mode mode,
-+				 size_t *_buffer_size, size_t *_offset)
++int authenc_load_encrypt_keys(const struct krb5_enctype *krb5,
++			      const struct krb5_buffer *Ke,
++			      const struct krb5_buffer *Ki,
++			      struct krb5_buffer *setkey,
++			      gfp_t gfp)
 +{
-+	size_t buffer_size = *_buffer_size, data_size;
++	struct crypto_authenc_key_param *param;
++	struct rtattr *rta;
 +
-+	switch (mode) {
-+	case KRB5_CHECKSUM_MODE:
-+		if (WARN_ON(buffer_size < krb5->cksum_len + 1))
-+			goto bad;
-+		*_offset = krb5->cksum_len;
-+		return buffer_size - krb5->cksum_len;
++	setkey->len = RTA_LENGTH(sizeof(*param)) + Ke->len + Ki->len;
++	setkey->data = kzalloc(setkey->len, GFP_KERNEL);
++	if (!setkey->data)
++		return -ENOMEM;
 +
-+	case KRB5_ENCRYPT_MODE:
-+		if (WARN_ON(buffer_size < krb5->conf_len + 1 + krb5->cksum_len))
-+			goto bad;
-+		data_size = buffer_size - krb5->cksum_len;
-+		*_offset = krb5->conf_len;
-+		return data_size - krb5->conf_len;
-+
-+	default:
-+		WARN_ON(1);
-+		goto bad;
-+	}
-+
-+bad:
-+	*_offset = 0;
++	rta = setkey->data;
++	rta->rta_type = CRYPTO_AUTHENC_KEYA_PARAM;
++	rta->rta_len = RTA_LENGTH(sizeof(*param));
++	param = RTA_DATA(rta);
++	param->enckeylen = htonl(Ke->len);
++	memcpy((void *)(param + 1), Ki->data, Ki->len);
++	memcpy((void *)(param + 1) + Ki->len, Ke->data, Ke->len);
 +	return 0;
 +}
-+EXPORT_SYMBOL(crypto_krb5_how_much_data);
 +
-+/**
-+ * crypto_krb5_where_is_the_data - Find the data in a decrypted message
-+ * @krb5: The encoding to use.
-+ * @mode: Mode of operation
-+ * @_offset: Offset of the secure blob in the buffer; updated to data offset.
-+ * @_len: The length of the secure blob; updated to data length.
-+ *
-+ * Find the offset and size of the data in a secure message so that this
-+ * information can be used in the metadata buffer which will get added to the
-+ * digest by crypto_krb5_verify_mic().
++/*
++ * Derive the Kc key for checksum-only mode and package it into a key parameter
++ * that can be given to the setkey of a hash crypto object.
 + */
-+void crypto_krb5_where_is_the_data(const struct krb5_enctype *krb5,
-+				   enum krb5_crypto_mode mode,
-+				   size_t *_offset, size_t *_len)
++int rfc3961_derive_checksum_key(const struct krb5_enctype *krb5,
++				const struct krb5_buffer *TK,
++				unsigned int usage,
++				struct krb5_buffer *setkey,
++				gfp_t gfp)
 +{
-+	switch (mode) {
-+	case KRB5_CHECKSUM_MODE:
-+		*_offset += krb5->cksum_len;
-+		*_len -= krb5->cksum_len;
-+		return;
-+	case KRB5_ENCRYPT_MODE:
-+		*_offset += krb5->conf_len;
-+		*_len -= krb5->conf_len + krb5->cksum_len;
-+		return;
-+	default:
-+		WARN_ON_ONCE(1);
-+		return;
-+	}
++	int ret;
++
++	setkey->len = krb5->Kc_len;
++	setkey->data = kzalloc(setkey->len, GFP_KERNEL);
++	if (!setkey->data)
++		return -ENOMEM;
++
++	ret = krb5_derive_Kc(krb5, TK, usage, setkey, gfp);
++	if (ret < 0)
++		pr_err("get_Kc failed %d\n", ret);
++	return ret;
 +}
-+EXPORT_SYMBOL(crypto_krb5_where_is_the_data);
-diff --git a/include/crypto/krb5.h b/include/crypto/krb5.h
-index 8fa6715ab35b..b414141b8b42 100644
---- a/include/crypto/krb5.h
-+++ b/include/crypto/krb5.h
-@@ -101,5 +101,14 @@ struct krb5_enctype {
-  * krb5_api.c
-  */
- const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype);
-+size_t crypto_krb5_how_much_buffer(const struct krb5_enctype *krb5,
-+				   enum krb5_crypto_mode mode,
-+				   size_t data_size, size_t *_offset);
-+size_t crypto_krb5_how_much_data(const struct krb5_enctype *krb5,
-+				 enum krb5_crypto_mode mode,
-+				 size_t *_buffer_size, size_t *_offset);
-+void crypto_krb5_where_is_the_data(const struct krb5_enctype *krb5,
-+				   enum krb5_crypto_mode mode,
-+				   size_t *_offset, size_t *_len);
- 
- #endif /* _CRYPTO_KRB5_H */
++
++/*
++ * Package a predefined Kc key for checksum-only mode into a key parameter that
++ * can be given to the setkey of a hash crypto object.
++ */
++int rfc3961_load_checksum_key(const struct krb5_enctype *krb5,
++			      const struct krb5_buffer *Kc,
++			      struct krb5_buffer *setkey,
++			      gfp_t gfp)
++{
++	setkey->len = krb5->Kc_len;
++	setkey->data = kmemdup(Kc->data, Kc->len, GFP_KERNEL);
++	if (!setkey->data)
++		return -ENOMEM;
++	return 0;
++}
+ const struct krb5_crypto_profile rfc3961_simplified_profile = {
+-	.calc_PRF	= rfc3961_calc_PRF,
+-	.calc_Kc	= rfc3961_calc_DK,
+-	.calc_Ke	= rfc3961_calc_DK,
+-	.calc_Ki	= rfc3961_calc_DK,
++	.calc_PRF		= rfc3961_calc_PRF,
++	.calc_Kc		= rfc3961_calc_DK,
++	.calc_Ke		= rfc3961_calc_DK,
++	.calc_Ki		= rfc3961_calc_DK,
++	.derive_encrypt_keys	= authenc_derive_encrypt_keys,
++	.load_encrypt_keys	= authenc_load_encrypt_keys,
++	.derive_checksum_key	= rfc3961_derive_checksum_key,
++	.load_checksum_key	= rfc3961_load_checksum_key,
+ };
 -- 
 2.50.1
 
