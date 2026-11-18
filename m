@@ -1,61 +1,72 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795005362;
-	b=MArhJEPGoyl1yEnb3veQ5PkEK4KOdZWz4Un5MQpAxQDwz244UdFjyZMWmdTtXHhlS4X+
-	 DFa9gOouM5XWoC/8/rNzUkSKUXpbZHcxEW/3idHV6Ct0FQIsqqEn37X0hBy4yOii9Rrg2
-	 8PmZW7fZsM70ltCUXUSzwFTQkS5QaDzhjHqKUD9UPK9DiwOZzSlADkaUbaKXImzIVhn3Q
-	 Em3FJJJEhWZ0rMrl7vKiwlVM5GEpy1NBICHkCkDQXghVODctVE/f0aMRyqvQ34jJ4Tm48
-	 oYFTZ7nNB0/a4U4SMCelynk+1XInLm5XPKVYSyQayO6/8swseGKg1f4wHufVsODLkNg==
+	t=1795006300;
+	b=Johrb/jdQ90NBptu4CWNgBiWkxRRoIoTMc9kZxaiiu/54ZovEAdZotwL50J73iCNYDcx
+	 /RMgMU9OLRocai6uPQhaFJ4iBN1kN9lx6WaM2fEN+YwJGoseqZdxMC9vCySn/0ONYcEKh
+	 HbNwxxJbGd10lFR0fp7IaCqYI8sVT4FCEXkQJfW+OhKQh4nbvSophEmPEWiENt63W/HeH
+	 vl8OvvcGdJlOKyzOfn3IOWQCctfFm/XhhkqVkaICG5/cWqJiWVf640IrjoyzeeYOAlIM/
+	 2AOD8HY3L6sJsdiKPrKbr1+FNgQysXTyrEz4pU2iXwt2qSuTm5kUqwcPHOgLseQZk6w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795005362;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=CVVMPE+j7KjW39jvyf6/oFfejt3hTMTeayg9+QfA8JM=;
-	b=jmmW7vD2SjD7LlgDBpvfw0Fk3VUPpIDpHD9EHfEMKSEY/OzfDHLKxaAq4J8piL5+W95O
-	 8ehzi9cZWCkOeiEBZ0J1bzDjMFXGfJLmbX4ChJAEFJGNSkO8+LZ02iRPbHVPQxnoQnRfE
-	 qpNBAMRc2y5ZD/R8P830Pr9ObFvCUk0HAndY1gRgZoIs7YnaSAEX9Ny+KHHYBpuEPGwZj
-	 LM+f3Ps1qHyik2VKuVa0yjUdSIa2+TkoRcFWXNu1KkVjKG1PQzeAE4QgEm+BE/SE0xN1L
-	 4XWUSYf+ChKjcmO8X4NssgP9597GZQZr/zwdHm59UXS/6GHCsJfxxoEy6OT+/uUBFqQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795006300;
+	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
+	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
+	 Message-ID:MIME-Version:Content-Transfer-Encoding:X-Scanned-By;
+	bh=K8h00Jc2UP56tLj/bXfDtNuTO40xnOpS0AymS9u2Ay0=;
+	b=0D1IIIbLr3NbwWMQSR5iWRST/27WlsjVPY7rPWuvlIHWi5NrMcQpV0OZlOCGtIbj60AS
+	 5aq574VTBL8nBfj4qgEHB8jAe25j5O+ehF1fAtRFmOM4yV0CkwJKr/+RGVw/oRGN1aqbM
+	 UV1BlxBp1gaiw2ZOkYKoIOHwl72qTX6gL/jNapJLvuEv4V194jk0S9YyDJtxmqobVuZae
+	 nx9CAsjiPXWHznqgipXOQOywLkQ6AMwP7zfLgCJHMLjHsTZlg5IgIB+g689oEHwR27SxI
+	 zVNETGVRmuhHr61dz2H65CzmXJXLGUxF6yE5tAjRuoUMVClhutMpBd/bETRFa4viqpQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cmhFiyIL;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=redhat.com;
+	spf=pass smtp.mailfrom=redhat.com;
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=X6I3HzJ9;
+	arc=none smtp.remote-ip=170.10.129.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6ECC8606A31C;
-	Wed, 18 Nov 2026 12:36:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E42BB606A31C
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 12:51:39 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E42BB606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=cmhFiyIL
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9AE051F000C4;
-	Wed, 18 Nov 2026 12:35:57 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795005362;
-	bh=CVVMPE+j7KjW39jvyf6/oFfejt3hTMTeayg9+QfA8JM=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=cmhFiyILoty0S/ImExh0a7qYIzr9QxLGbi3BPcVks5rTwq7n4h5eX1E+wtvxecs6I
-	 MICCZIaiZxXPWwL+28p6tfmmoutV1DIq5J14Vkrf1CM5EZ2wqvwX3vLoZKgjMx5D75
-	 KMkyjRhDRpoP/TDY0jxEdlESD4QZAi8dMz/qCheRb7NWLzGd9w71fQfwy519efZtSN
-	 mF4xpdK3Zso7ZVFiTFq3gufRyriGirqmZwg+cd/5bzbaCqo52hnGwXaMIdxdJMQq4M
-	 +nBFYYeTqQSFzMzDB+cmQ77NGLzRNP8L9Bn1nPmZIhdN1rsfL6Fl/FjYvdqjJ2q/QZ
-	 OctztNUtUxvNw==
-Date: Wed, 18 Nov 2026 13:35:54 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Paulo Alcantara <pc@manguebit.org>, 
-	David Howells <dhowells@redhat.com>
-Cc: Christian Brauner <christian@brauner.io>, 
-	Matthew Wilcox <willy@infradead.org>, Namjae Jeon <linkinjeon@kernel.org>, 
-	Marc Dionne <marc.dionne@auristor.com>, Stefan Metzmacher <metze@samba.org>, 
-	Eric Van Hensbergen <ericvh@kernel.org>, Dominique Martinet <asmadeus@codewreck.org>, 
-	Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev, linux-afs@lists.infradead.org, 
-	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, 
-	v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v12 5/5] cachefiles: Preset the state xattr when creating
- a new file
-Message-ID: <20261118-hebamme-virtuell-boten-055bf85097a3@brauner>
-References: <20260910220242.2165023-1-dhowells@redhat.com>
- <20260910220242.2165023-6-dhowells@redhat.com>
- <920f0b50480231f1af8a9c8e7f118f5c@manguebit.org>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=X6I3HzJ9
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1795006298;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=K8h00Jc2UP56tLj/bXfDtNuTO40xnOpS0AymS9u2Ay0=;
+	b=X6I3HzJ9cHcU3ER9a2NmgNhQCouWtqtb7Oi1eTnC2Wr7Oz6Os0QES+YdrXGRNpLBzdo8Ld
+	/797xBrBpoljkfLNKB3AFSa+dGjZ/ZQIq0yUpAOhBFLYJ7IAIhcQzf9pMatBI+dw2iolNd
+	pg7TTaFWkruB89T8/0ezhttDNezkFaM=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-577-0eGjKmBCPK6YXqYnlk3m8Q-1; Wed,
+ 18 Nov 2026 07:51:37 -0500
+X-MC-Unique: 0eGjKmBCPK6YXqYnlk3m8Q-1
+X-Mimecast-MFC-AGG-ID: 0eGjKmBCPK6YXqYnlk3m8Q_1795006296
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 59DDE180057F;
+	Wed, 18 Nov 2026 12:51:36 +0000 (UTC)
+Received: from fs-i40c-01.fast.eng.rdu2.dc.redhat.com (fs-i40c-01.fast.eng.rdu2.dc.redhat.com [10.6.54.119])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id A7C75180197D;
+	Wed, 18 Nov 2026 12:51:35 +0000 (UTC)
+From: Abhinandan Ekande <aekande@redhat.com>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: dhowells@redhat.com,
+	linux-nfs@vger.kernel.org,
+	aekande@redhat.com
+Subject: [PATCH v3 0/3] NFS: Fix netfs read subrequest range, retry accounting and fallback handling
+Date: Wed, 18 Nov 2026 07:51:32 -0500
+Message-ID: <20261118125135.1991518-1-aekande@redhat.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -65,52 +76,74 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <920f0b50480231f1af8a9c8e7f118f5c@manguebit.org>
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-On Fri, Sep 11, 2026 at 05:21:38PM -0300, Paulo Alcantara wrote:
-> David Howells <dhowells@redhat.com> writes:
-> > +	buf = kzalloc(sizeof(struct cachefiles_xattr) + min(len, sizeof(__be64)), GFP_KERNEL);
->
-> You should use max() here.
+This version fixes an issue that Sashiko's review pointed out.
 
-Meh, this is in mainline since v7.4-rc1:
+While addressing an issue where netfs repeatedly reads whole folios when
+rsize is smaller than the folio size, two additional pre-existing bugs
+were identified in the NFS netfs read path: subrequest retry byte
+accounting and legacy read fallback handling.
 
-KASAN catches it reading a file through an -o fsc mount with an ext4
-cache gives:
+This series fixes all three issues:
+- Patch 1 fixes an accounting bug in nfs_netfs_put(): it assigns the
+  current ->issue_read() call's byte count to sreq->transferred instead of
+  adding to it, discarding progress from an earlier attempt such as a
+  partial cache read, so the subrequest under-reports what it holds.
+  Accumulate instead, with the existing min_t() clamp now bounding the
+  cumulative total.
+- Patch 2 ensures nfs_netfs_issue_read() requests only the subrequest's
+  byte range rather than repeatedly submitting the whole folio.
+- Patch 3 restricts the legacy nfs_do_read_folio() fallback in
+  nfs_read_folio() to -ENOBUFS (when fscache is absent), avoiding a
+  fallback read on an already unlocked folio when netfs_read_folio()
+  fails with other errors.
 
-  BUG: KASAN: slab-out-of-bounds in ext4_xattr_set_entry+0xf3d/0x1bd0
-  Read of size 58 by task kworker/u32:1/63
-  Workqueue: fscache fscache_cookie_worker
-  Call Trace:
-   __asan_memcpy+0x23/0x60
-   ext4_xattr_set_entry+0xf3d/0x1bd0
-   ext4_xattr_block_set+0x647/0x3080
-   ext4_xattr_set_handle+0xd19/0x1420
-   ext4_xattr_set+0x12a/0x380
-   __vfs_setxattr+0x10a/0x160
-   __vfs_setxattr_noperm+0xef/0x5d0
-   vfs_setxattr+0x148/0x3d0
-   cachefiles_preset_object_xattr+0x191/0x5e0
-   cachefiles_create_tmpfile+0x2c1/0x7f0
-   cachefiles_create_file+0x6a/0x2f0
-   cachefiles_look_up_object+0x715/0x8a0
+Notes on v2 review comments from Sashiko[2]:
+1. Fallback path in nfs_read_folio() when netfs_read_folio() fails:
+   This pre-existing issue is addressed by patch 3, which restricts the
+   nfs_do_read_folio() fallback to -ENOBUFS.
+2. Unaligned range / past-EOF zero-fill in patch 2:
+   - pNFS block/SCSI layout: Neither the sub-page offset BUG_ON() nor the
+     EOF tail overwrite is observable today because pNFS block/SCSI
+     layout with fscache enabled cannot complete any buffered reads.
+     That alignment check can be addressed when block/SCSI layout is
+     updated to support netfs/fscache.
+   - Past-EOF zero-fill and concurrent i_size growth: netfs has no
+     ordering between an inline NETFS_FILL_WITH_ZEROES subrequest and an
+     async over-read past rreq->i_size; the pre-patch behavior was
+     partial and rsize dependent. Once the client notices the i_size
+     growth, nfs_update_inode() sets NFS_INO_INVALID_DATA, ensuring the
+     next revalidation invalidates both the folio and fscache. Keeping
+     nfs_netfs_issue_read() strictly within the subrequest's byte range
+     avoids violating netfs's subrequest ownership.
 
-With max() it's gone. David, unless you want to send it yourself I'll
-put this into vfs.fixes:
+Changes in v3:
+- Added patch 3 to restrict the legacy read fallback in nfs_read_folio()
+  to -ENOBUFS, following review feedback from Sashiko[2].
+- Patch 1 and patch 2 are unchanged from v2.
+- Link to v2: https://lore.kernel.org/all/20261030061138.237833-1-aekande@redhat.com/
 
-diff --git a/fs/cachefiles/xattr.c b/fs/cachefiles/xattr.c
---- a/fs/cachefiles/xattr.c
-+++ b/fs/cachefiles/xattr.c
-@@ -44,7 +44,7 @@ int cachefiles_preset_object_xattr(struct cachefiles_object *object, struct file *file)
- 	unsigned int len = object->cookie->aux_len;
- 	int ret;
- 
--	buf = kzalloc(sizeof(struct cachefiles_xattr) + min(len, sizeof(__be64)), GFP_KERNEL);
-+	buf = kzalloc(sizeof(struct cachefiles_xattr) + max(len, sizeof(__be64)), GFP_KERNEL);
- 	if (!buf)
- 		return -ENOMEM;
- 
+Changes in v2:
+- Added patch 1 to fix sreq->transferred accumulation on completion,
+  following review feedback from Sashiko[1].
+- Patch 2 is unchanged from v1.
+
+[1] https://sashiko.dev/#/patchset/20261027053444.32012-1-aekande%40redhat.com
+[2] https://sashiko.dev/#/patchset/20261030061138.237833-1-aekande%40redhat.com
+
+Abhinandan Ekande (3):
+  NFS: Accumulate transferred bytes on netfs read completion
+  NFS: honour the netfs subrequest range when issuing reads
+  NFS: only fall back to the legacy read path when fscache is absent
+
+ fs/nfs/fscache.c  | 21 +++++++++++++----
+ fs/nfs/fscache.h  |  1 +
+ fs/nfs/internal.h |  4 ++++
+ fs/nfs/read.c     | 58 ++++++++++++++++++++++++++++++-----------------
+ 4 files changed, 59 insertions(+), 25 deletions(-)
 
 -- 
+2.55.0
+
