@@ -1,33 +1,33 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.43.10.250
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795002329;
-	b=AuQOs2ZOIPVMb1+eglMu7JactSIAsQTcy7phcb0Lw9bSn7UrVXl9pNjAKylFlFkVN8tP
-	 hGfz9j3p4tYNjTpj0DJ7kQ9XQk7sd9ukemblqpDQUYZqHke/c3kd2rEr4RkjoGbsfx5/O
-	 vOphY4R4u2lXSr0tnXNX3KRWkyWA+NLHLgoT04fStU+d+b6sV4IG0yB4I+nLcmTwr1j5h
-	 VTyl9PIFENVCsVmx9kjy83pBEc1XGDoMYwVotFbMoEbHw+xtORleCFEfDiT3T2VFUjGHp
-	 gS9HKJVY9IhUgGZf+bEcifaIYOOuW37EjpJJYy2MxrTWk3OssyExQfxEMxMuWtLL52Q==
+	b=DhIJdmXPSlx7sE2+FKRQ+ddw0aoQ1w+3KR0ZRQ9mCidOpn4v8uM4NrzjNVRMQDAyvMps
+	 W6r08FTbT4mz50o42A0fis09i4Cm2ufSb+XsiWefl+GXv291TW5mbTGxu7OEncFCRJIfM
+	 kGfnkCPmZvIcLF0LG4eGKnraR1OY+m/77FIe+Z0Rg+GuuAjEVt6WJ4VunXMIH4/XZYO0Q
+	 nZwlW1GrSTR15VOMhUlE3yR1MWIUY4IWm5lBx2HwnOsXlHsCvEe+6FOtUVE0u+7KwNQPt
+	 z1eQlM25WDScae2d8WurU+L4E/CSngCVpANGutSLqQVYI3uMuaEMLRmj2N++seDNqJQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795002329;
 	h=DMARC-Filter:Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=kXE7WBMO18v3qtUwqnLO8i0c1Vje0/FeIr0SAQ2LBwU=;
-	b=G8C56f8NqPlCcTzFLCUrkIpBZVYQjOlWl3TY5d+WnjKKv/IAKMVyzy+dR8mDnsdaEpbn
-	 /EbCph2AGs7T5JBXxjlM1CucxprRcl0iXqLSaK/5rxruXfgrt7wzCXeEdmKVzz1FPLE6w
-	 v/kK2M2RfUz3jSf5BCXZ0D//iTBWJL3hNyjwjD9NJGqlL7q5E68XomAOJ3jrzAu4rTwKa
-	 0MhKOVtaa+E0tXVgQu9F88oVkQlpMe2ZGkAHxtP3CLHrKbD0qySzj0wOCLr6de9nJ4R9P
-	 xkczi2AtYbgpT6KbvVZ+cKCbY8PLZ4zd5+sO1cqACcRZQpJD7qoCUK8DxoWlaq4d3Pg==
+	bh=n/4YuWrfAQqk/xsIOFX5QWbhI71JUm7olf1s2Xf7Gwc=;
+	b=ECSEtO7FMhGBsi9kvsGbkg/Dgm7mYOx+ZNlDHjlZZ163RmDAdS+OROrleA1RhYbR/w5Z
+	 jNeBrKVt/nNMBWLrDpvSJbUD7KnYDs/LZ/hwd1K7csQeTvMsubOuhfb3alMkdjJ+JLFiX
+	 7G1eHIwyaY9ujH+oOKYE9jmQBvEGffgMEjz5JrcJvQ43O6Rc2z/Qu8cPE6WPRxlAolav4
+	 33awUz8Mn08q8zHnh50yTFNOLc2M9MdWo9ryLrqKup5m+rZDKXL9Rkg3gQqfLeFdrIB1t
+	 CRSc+g2ky2zT+1ebOF/eMR+E1TDz/cwKiAGS96HM8OmlfJU9aA5Zxjw48pWGqNzHVow==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=altlinux.org;
 	spf=fail smtp.mailfrom=altlinux.org;
 	arc=none smtp.remote-ip=193.43.10.250
 Received: from basalt.external.altlinux.org (unknown [193.43.10.250])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id BF4CA60A2626;
-	Wed, 18 Nov 2026 11:45:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BF4CA60A2626
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 2C76C60A2637;
+	Wed, 18 Nov 2026 11:45:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2C76C60A2637
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=altlinux.org
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=altlinux.org
 Received: by basalt.external.altlinux.org (Postfix, from userid 1137)
-	id E5D2B2DF33D; Wed, 18 Nov 2026 14:45:18 +0300 (MSK)
+	id 19D9E2DF355; Wed, 18 Nov 2026 14:45:19 +0300 (MSK)
 From: Alexey Shabalin <shaba@altlinux.org>
 To: devel-kernel@altlinux.org
 Cc: David Howells <dhowells@redhat.com>,
@@ -43,9 +43,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-nfs@vger.kernel.org,
 	linux-crypto@vger.kernel.org,
 	netdev@vger.kernel.org
-Subject: [PATCH 6.12/sisyphus 07/29] crypto/krb5: Implement the Kerberos5 rfc3961 key derivation
-Date: Wed, 18 Nov 2026 14:44:56 +0300
-Message-ID: <20261118114518.3605222-8-shaba@altlinux.org>
+Subject: [PATCH 6.12/sisyphus 19/29] crypto/krb5: Add API Documentation
+Date: Wed, 18 Nov 2026 14:45:08 +0300
+Message-ID: <20261118114518.3605222-20-shaba@altlinux.org>
 X-Mailer: git-send-email 2.50.1
 In-Reply-To: <20261118114518.3605222-1-shaba@altlinux.org>
 References: <20261118114518.3605222-1-shaba@altlinux.org>
@@ -62,9 +62,7 @@ Content-Transfer-Encoding: 8bit
 
 From: David Howells <dhowells@redhat.com>
 
-Implement the simplified crypto profile for Kerberos 5 rfc3961 with the
-pseudo-random function, PRF(), from section 5.3 and the key derivation
-function, DK() from section 5.1.
+Add API documentation for the kerberos crypto library.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Herbert Xu <herbert@gondor.apana.org.au>
@@ -79,461 +77,290 @@ cc: linux-afs@lists.infradead.org
 cc: linux-nfs@vger.kernel.org
 cc: linux-crypto@vger.kernel.org
 cc: netdev@vger.kernel.org
-(cherry picked from commit c8d8f6af66c3cd7896460da4a0ddd006f391f6d2)
+(cherry picked from commit 903be6989032267550450bbb9132225e12f61312)
 ---
- crypto/krb5/Makefile             |   3 +-
- crypto/krb5/internal.h           |   6 +
- crypto/krb5/rfc3961_simplified.c | 407 +++++++++++++++++++++++++++++++
- 3 files changed, 415 insertions(+), 1 deletion(-)
- create mode 100644 crypto/krb5/rfc3961_simplified.c
+ Documentation/crypto/index.rst |   1 +
+ Documentation/crypto/krb5.rst  | 262 +++++++++++++++++++++++++++++++++
+ 2 files changed, 263 insertions(+)
+ create mode 100644 Documentation/crypto/krb5.rst
 
-diff --git a/crypto/krb5/Makefile b/crypto/krb5/Makefile
-index 8c2050af8fed..8dad8e3bf086 100644
---- a/crypto/krb5/Makefile
-+++ b/crypto/krb5/Makefile
-@@ -5,6 +5,7 @@
- 
- krb5-y += \
- 	krb5_kdf.o \
--	krb5_api.o
-+	krb5_api.o \
-+	rfc3961_simplified.o
- 
- obj-$(CONFIG_CRYPTO_KRB5) += krb5.o
-diff --git a/crypto/krb5/internal.h b/crypto/krb5/internal.h
-index 50abda5169c7..7d60977dc0c5 100644
---- a/crypto/krb5/internal.h
-+++ b/crypto/krb5/internal.h
-@@ -5,6 +5,7 @@
-  * Written by David Howells (dhowells@redhat.com)
-  */
- 
-+#include <linux/scatterlist.h>
- #include <crypto/krb5.h>
- 
- /*
-@@ -130,3 +131,8 @@ int krb5_derive_Ke(const struct krb5_enctype *krb5, const struct krb5_buffer *TK
- 		   u32 usage, struct krb5_buffer *key, gfp_t gfp);
- int krb5_derive_Ki(const struct krb5_enctype *krb5, const struct krb5_buffer *TK,
- 		   u32 usage, struct krb5_buffer *key, gfp_t gfp);
-+
-+/*
-+ * rfc3961_simplified.c
-+ */
-+extern const struct krb5_crypto_profile rfc3961_simplified_profile;
-diff --git a/crypto/krb5/rfc3961_simplified.c b/crypto/krb5/rfc3961_simplified.c
+diff --git a/Documentation/crypto/index.rst b/Documentation/crypto/index.rst
+index 92eec78b5713..100b47d049c0 100644
+--- a/Documentation/crypto/index.rst
++++ b/Documentation/crypto/index.rst
+@@ -26,3 +26,4 @@ for cryptographic use cases, as well as programming examples.
+    api-samples
+    descore-readme
+    device_drivers/index
++   krb5
+diff --git a/Documentation/crypto/krb5.rst b/Documentation/crypto/krb5.rst
 new file mode 100644
-index 000000000000..75eafba059c7
+index 000000000000..beffa0133446
 --- /dev/null
-+++ b/crypto/krb5/rfc3961_simplified.c
-@@ -0,0 +1,407 @@
-+// SPDX-License-Identifier: BSD-3-Clause
-+/* rfc3961 Kerberos 5 simplified crypto profile.
-+ *
-+ * Parts borrowed from net/sunrpc/auth_gss/.
-+ */
-+/*
-+ * COPYRIGHT (c) 2008
-+ * The Regents of the University of Michigan
-+ * ALL RIGHTS RESERVED
-+ *
-+ * Permission is granted to use, copy, create derivative works
-+ * and redistribute this software and such derivative works
-+ * for any purpose, so long as the name of The University of
-+ * Michigan is not used in any advertising or publicity
-+ * pertaining to the use of distribution of this software
-+ * without specific, written prior authorization.  If the
-+ * above copyright notice or any other identification of the
-+ * University of Michigan is included in any copy of any
-+ * portion of this software, then the disclaimer below must
-+ * also be included.
-+ *
-+ * THIS SOFTWARE IS PROVIDED AS IS, WITHOUT REPRESENTATION
-+ * FROM THE UNIVERSITY OF MICHIGAN AS TO ITS FITNESS FOR ANY
-+ * PURPOSE, AND WITHOUT WARRANTY BY THE UNIVERSITY OF
-+ * MICHIGAN OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING
-+ * WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
-+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE
-+ * REGENTS OF THE UNIVERSITY OF MICHIGAN SHALL NOT BE LIABLE
-+ * FOR ANY DAMAGES, INCLUDING SPECIAL, INDIRECT, INCIDENTAL, OR
-+ * CONSEQUENTIAL DAMAGES, WITH RESPECT TO ANY CLAIM ARISING
-+ * OUT OF OR IN CONNECTION WITH THE USE OF THE SOFTWARE, EVEN
-+ * IF IT HAS BEEN OR IS HEREAFTER ADVISED OF THE POSSIBILITY OF
-+ * SUCH DAMAGES.
-+ */
++++ b/Documentation/crypto/krb5.rst
+@@ -0,0 +1,262 @@
++.. SPDX-License-Identifier: GPL-2.0
 +
-+/*
-+ * Copyright (C) 1998 by the FundsXpress, INC.
-+ *
-+ * All rights reserved.
-+ *
-+ * Export of this software from the United States of America may require
-+ * a specific license from the United States Government.  It is the
-+ * responsibility of any person or organization contemplating export to
-+ * obtain such a license before exporting.
-+ *
-+ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
-+ * distribute this software and its documentation for any purpose and
-+ * without fee is hereby granted, provided that the above copyright
-+ * notice appear in all copies and that both that copyright notice and
-+ * this permission notice appear in supporting documentation, and that
-+ * the name of FundsXpress. not be used in advertising or publicity pertaining
-+ * to distribution of the software without specific, written prior
-+ * permission.  FundsXpress makes no representations about the suitability of
-+ * this software for any purpose.  It is provided "as is" without express
-+ * or implied warranty.
-+ *
-+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
-+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
-+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-+ */
++===========================
++Kerberos V Cryptography API
++===========================
 +
-+/*
-+ * Copyright (C) 2025 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
++.. Contents:
 +
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++  - Overview.
++    - Small Buffer.
++  - Encoding Type.
++  - Key Derivation.
++    - PRF+ Calculation.
++    - Kc, Ke And Ki Derivation.
++  - Crypto Functions.
++    - Preparation Functions.
++    - Encryption Mode.
++    - Checksum Mode.
++  - The krb5enc AEAD algorithm
 +
-+#include <linux/slab.h>
-+#include <linux/lcm.h>
-+#include <crypto/skcipher.h>
-+#include <crypto/hash.h>
-+#include "internal.h"
++Overview
++========
 +
-+/* Maximum blocksize for the supported crypto algorithms */
-+#define KRB5_MAX_BLOCKSIZE  (16)
++This API provides Kerberos 5-style cryptography for key derivation, encryption
++and checksumming for use in network filesystems and can be used to implement
++the low-level crypto that's needed for GSSAPI.
 +
-+static int rfc3961_do_encrypt(struct crypto_sync_skcipher *tfm, void *iv,
-+			      const struct krb5_buffer *in, struct krb5_buffer *out)
-+{
-+	struct scatterlist sg[1];
-+	u8 local_iv[KRB5_MAX_BLOCKSIZE] __aligned(KRB5_MAX_BLOCKSIZE) = {0};
-+	SYNC_SKCIPHER_REQUEST_ON_STACK(req, tfm);
-+	int ret;
++The following crypto types are supported::
 +
-+	if (WARN_ON(in->len != out->len))
-+		return -EINVAL;
-+	if (out->len % crypto_sync_skcipher_blocksize(tfm) != 0)
-+		return -EINVAL;
++	KRB5_ENCTYPE_AES128_CTS_HMAC_SHA1_96
++	KRB5_ENCTYPE_AES256_CTS_HMAC_SHA1_96
++	KRB5_ENCTYPE_AES128_CTS_HMAC_SHA256_128
++	KRB5_ENCTYPE_AES256_CTS_HMAC_SHA384_192
++	KRB5_ENCTYPE_CAMELLIA128_CTS_CMAC
++	KRB5_ENCTYPE_CAMELLIA256_CTS_CMAC
 +
-+	if (crypto_sync_skcipher_ivsize(tfm) > KRB5_MAX_BLOCKSIZE)
-+		return -EINVAL;
++	KRB5_CKSUMTYPE_HMAC_SHA1_96_AES128
++	KRB5_CKSUMTYPE_HMAC_SHA1_96_AES256
++	KRB5_CKSUMTYPE_CMAC_CAMELLIA128
++	KRB5_CKSUMTYPE_CMAC_CAMELLIA256
++	KRB5_CKSUMTYPE_HMAC_SHA256_128_AES128
++	KRB5_CKSUMTYPE_HMAC_SHA384_192_AES256
 +
-+	if (iv)
-+		memcpy(local_iv, iv, crypto_sync_skcipher_ivsize(tfm));
++The API can be included by::
 +
-+	memcpy(out->data, in->data, out->len);
-+	sg_init_one(sg, out->data, out->len);
++	#include <crypto/krb5.h>
 +
-+	skcipher_request_set_sync_tfm(req, tfm);
-+	skcipher_request_set_callback(req, 0, NULL, NULL);
-+	skcipher_request_set_crypt(req, sg, sg, out->len, local_iv);
++Small Buffer
++------------
 +
-+	ret = crypto_skcipher_encrypt(req);
-+	skcipher_request_zero(req);
-+	return ret;
-+}
++To pass small pieces of data about, such as keys, a buffer structure is
++defined, giving a pointer to the data and the size of that data::
 +
-+/*
-+ * Calculate an unkeyed basic hash.
-+ */
-+static int rfc3961_calc_H(const struct krb5_enctype *krb5,
-+			  const struct krb5_buffer *data,
-+			  struct krb5_buffer *digest,
-+			  gfp_t gfp)
-+{
-+	struct crypto_shash *tfm;
-+	struct shash_desc *desc;
-+	size_t desc_size;
-+	int ret = -ENOMEM;
++	struct krb5_buffer {
++		unsigned int	len;
++		void		*data;
++	};
 +
-+	tfm = crypto_alloc_shash(krb5->hash_name, 0, 0);
-+	if (IS_ERR(tfm))
-+		return (PTR_ERR(tfm) == -ENOENT) ? -ENOPKG : PTR_ERR(tfm);
++Encoding Type
++=============
 +
-+	desc_size = crypto_shash_descsize(tfm) + sizeof(*desc);
++The encoding type is defined by the following structure::
 +
-+	desc = kzalloc(desc_size, gfp);
-+	if (!desc)
-+		goto error_tfm;
++	struct krb5_enctype {
++		int		etype;
++		int		ctype;
++		const char	*name;
++		u16		key_bytes;
++		u16		key_len;
++		u16		Kc_len;
++		u16		Ke_len;
++		u16		Ki_len;
++		u16		prf_len;
++		u16		block_len;
++		u16		conf_len;
++		u16		cksum_len;
++		...
++	};
 +
-+	digest->len = crypto_shash_digestsize(tfm);
-+	digest->data = kzalloc(digest->len, gfp);
-+	if (!digest->data)
-+		goto error_desc;
++The fields of interest to the user of the API are as follows:
 +
-+	desc->tfm = tfm;
-+	ret = crypto_shash_init(desc);
-+	if (ret < 0)
-+		goto error_digest;
++  * ``etype`` and ``ctype`` indicate the protocol number for this encoding
++    type for encryption and checksumming respectively.  They hold
++    ``KRB5_ENCTYPE_*`` and ``KRB5_CKSUMTYPE_*`` constants.
 +
-+	ret = crypto_shash_finup(desc, data->data, data->len, digest->data);
-+	if (ret < 0)
-+		goto error_digest;
++  * ``name`` is the formal name of the encoding.
 +
-+	goto error_desc;
++  * ``key_len`` and ``key_bytes`` are the input key length and the derived key
++    length.  (I think they only differ for DES, which isn't supported here).
 +
-+error_digest:
-+	kfree_sensitive(digest->data);
-+error_desc:
-+	kfree_sensitive(desc);
-+error_tfm:
-+	crypto_free_shash(tfm);
-+	return ret;
-+}
++  * ``Kc_len``, ``Ke_len`` and ``Ki_len`` are the sizes of the derived Kc, Ke
++    and Ki keys.  Kc is used for in checksum mode; Ke and Ki are used in
++    encryption mode.
 +
-+/*
-+ * This is the n-fold function as described in rfc3961, sec 5.1
-+ * Taken from MIT Kerberos and modified.
-+ */
-+static void rfc3961_nfold(const struct krb5_buffer *source, struct krb5_buffer *result)
-+{
-+	const u8 *in = source->data;
-+	u8 *out = result->data;
-+	unsigned long ulcm;
-+	unsigned int inbits, outbits;
-+	int byte, i, msbit;
++  * ``prf_len`` is the size of the result from the PRF+ function calculation.
 +
-+	/* the code below is more readable if I make these bytes instead of bits */
-+	inbits = source->len;
-+	outbits = result->len;
++  * ``block_len``, ``conf_len`` and ``cksum_len`` are the encryption block
++    length, confounder length and checksum length respectively.  All three are
++    used in encryption mode, but only the checksum length is used in checksum
++    mode.
 +
-+	/* first compute lcm(n,k) */
-+	ulcm = lcm(inbits, outbits);
++The encoding type is looked up by number using the following function::
 +
-+	/* now do the real work */
-+	memset(out, 0, outbits);
-+	byte = 0;
++	const struct krb5_enctype *crypto_krb5_find_enctype(u32 enctype);
 +
-+	/* this will end up cycling through k lcm(k,n)/k times, which
-+	 * is correct.
-+	 */
-+	for (i = ulcm-1; i >= 0; i--) {
-+		/* compute the msbit in k which gets added into this byte */
-+		msbit = (
-+			/* first, start with the msbit in the first,
-+			 * unrotated byte
-+			 */
-+			((inbits << 3) - 1) +
-+			/* then, for each byte, shift to the right
-+			 * for each repetition
-+			 */
-+			(((inbits << 3) + 13) * (i/inbits)) +
-+			/* last, pick out the correct byte within
-+			 * that shifted repetition
-+			 */
-+			((inbits - (i % inbits)) << 3)
-+			 ) % (inbits << 3);
++Key Derivation
++==============
 +
-+		/* pull out the byte value itself */
-+		byte += (((in[((inbits - 1) - (msbit >> 3)) % inbits] << 8) |
-+			  (in[((inbits)     - (msbit >> 3)) % inbits]))
-+			 >> ((msbit & 7) + 1)) & 0xff;
++Once the application has selected an encryption type, the keys that will be
++used to do the actual crypto can be derived from the transport key.
 +
-+		/* do the addition */
-+		byte += out[i % outbits];
-+		out[i % outbits] = byte & 0xff;
++PRF+ Calculation
++----------------
 +
-+		/* keep around the carry bit, if any */
-+		byte >>= 8;
-+	}
++To aid in key derivation, a function to calculate the Kerberos GSSAPI
++mechanism's PRF+ is provided::
 +
-+	/* if there's a carry bit left over, add it back in */
-+	if (byte) {
-+		for (i = outbits - 1; i >= 0; i--) {
-+			/* do the addition */
-+			byte += out[i];
-+			out[i] = byte & 0xff;
++	int crypto_krb5_calc_PRFplus(const struct krb5_enctype *krb5,
++				     const struct krb5_buffer *K,
++				     unsigned int L,
++				     const struct krb5_buffer *S,
++				     struct krb5_buffer *result,
++				     gfp_t gfp);
 +
-+			/* keep around the carry bit, if any */
-+			byte >>= 8;
-+		}
-+	}
-+}
++This can be used to derive the transport key from a source key plus additional
++data to limit its use.
 +
-+/*
-+ * Calculate a derived key, DK(Base Key, Well-Known Constant)
-+ *
-+ * DK(Key, Constant) = random-to-key(DR(Key, Constant))
-+ * DR(Key, Constant) = k-truncate(E(Key, Constant, initial-cipher-state))
-+ * K1 = E(Key, n-fold(Constant), initial-cipher-state)
-+ * K2 = E(Key, K1, initial-cipher-state)
-+ * K3 = E(Key, K2, initial-cipher-state)
-+ * K4 = ...
-+ * DR(Key, Constant) = k-truncate(K1 | K2 | K3 | K4 ...)
-+ * [rfc3961 sec 5.1]
-+ */
-+static int rfc3961_calc_DK(const struct krb5_enctype *krb5,
-+			   const struct krb5_buffer *inkey,
-+			   const struct krb5_buffer *in_constant,
-+			   struct krb5_buffer *result,
-+			   gfp_t gfp)
-+{
-+	unsigned int blocksize, keybytes, keylength, n;
-+	struct krb5_buffer inblock, outblock, rawkey;
-+	struct crypto_sync_skcipher *cipher;
-+	int ret = -EINVAL;
++Crypto Functions
++================
 +
-+	blocksize = krb5->block_len;
-+	keybytes = krb5->key_bytes;
-+	keylength = krb5->key_len;
++Once the keys have been derived, crypto can be performed on the data.  The
++caller must leave gaps in the buffer for the storage of the confounder (if
++needed) and the checksum when preparing a message for transmission.  An enum
++and a pair of functions are provided to aid in this::
 +
-+	if (inkey->len != keylength || result->len != keylength)
-+		return -EINVAL;
-+	if (!krb5->random_to_key && result->len != keybytes)
-+		return -EINVAL;
++	enum krb5_crypto_mode {
++		KRB5_CHECKSUM_MODE,
++		KRB5_ENCRYPT_MODE,
++	};
 +
-+	cipher = crypto_alloc_sync_skcipher(krb5->derivation_enc, 0, 0);
-+	if (IS_ERR(cipher)) {
-+		ret = (PTR_ERR(cipher) == -ENOENT) ? -ENOPKG : PTR_ERR(cipher);
-+		goto err_return;
-+	}
-+	ret = crypto_sync_skcipher_setkey(cipher, inkey->data, inkey->len);
-+	if (ret < 0)
-+		goto err_free_cipher;
++	size_t crypto_krb5_how_much_buffer(const struct krb5_enctype *krb5,
++					   enum krb5_crypto_mode mode,
++					   size_t data_size, size_t *_offset);
 +
-+	ret = -ENOMEM;
-+	inblock.data = kzalloc(blocksize * 2 + keybytes, gfp);
-+	if (!inblock.data)
-+		goto err_free_cipher;
++	size_t crypto_krb5_how_much_data(const struct krb5_enctype *krb5,
++					 enum krb5_crypto_mode mode,
++					 size_t *_buffer_size, size_t *_offset);
 +
-+	inblock.len	= blocksize;
-+	outblock.data	= inblock.data + blocksize;
-+	outblock.len	= blocksize;
-+	rawkey.data	= outblock.data + blocksize;
-+	rawkey.len	= keybytes;
++All these functions take the encoding type and an indication the mode of crypto
++(checksum-only or full encryption).
 +
-+	/* initialize the input block */
++The first function returns how big the buffer will need to be to house a given
++amount of data; the second function returns how much data will fit in a buffer
++of a particular size, and adjusts down the size of the required buffer
++accordingly.  In both cases, the offset of the data within the buffer is also
++returned.
 +
-+	if (in_constant->len == inblock.len)
-+		memcpy(inblock.data, in_constant->data, inblock.len);
-+	else
-+		rfc3961_nfold(in_constant, &inblock);
++When a message has been received, the location and size of the data with the
++message can be determined by calling::
 +
-+	/* loop encrypting the blocks until enough key bytes are generated */
-+	n = 0;
-+	while (n < rawkey.len) {
-+		rfc3961_do_encrypt(cipher, NULL, &inblock, &outblock);
++	void crypto_krb5_where_is_the_data(const struct krb5_enctype *krb5,
++					   enum krb5_crypto_mode mode,
++					   size_t *_offset, size_t *_len);
 +
-+		if (keybytes - n <= outblock.len) {
-+			memcpy(rawkey.data + n, outblock.data, keybytes - n);
-+			break;
-+		}
++The caller provides the offset and length of the message to the function, which
++then alters those values to indicate the region containing the data (plus any
++padding).  It is up to the caller to determine how much padding there is.
 +
-+		memcpy(rawkey.data + n, outblock.data, outblock.len);
-+		memcpy(inblock.data, outblock.data, outblock.len);
-+		n += outblock.len;
-+	}
++Preparation Functions
++---------------------
 +
-+	/* postprocess the key */
-+	if (!krb5->random_to_key) {
-+		/* Identity random-to-key function. */
-+		memcpy(result->data, rawkey.data, rawkey.len);
-+		ret = 0;
-+	} else {
-+		ret = krb5->random_to_key(krb5, &rawkey, result);
-+	}
++Two functions are provided to allocated and prepare a crypto object for use by
++the action functions::
 +
-+	kfree_sensitive(inblock.data);
-+err_free_cipher:
-+	crypto_free_sync_skcipher(cipher);
-+err_return:
-+	return ret;
-+}
++	struct crypto_aead *
++	crypto_krb5_prepare_encryption(const struct krb5_enctype *krb5,
++				       const struct krb5_buffer *TK,
++				       u32 usage, gfp_t gfp);
++	struct crypto_shash *
++	crypto_krb5_prepare_checksum(const struct krb5_enctype *krb5,
++				     const struct krb5_buffer *TK,
++				     u32 usage, gfp_t gfp);
 +
-+/*
-+ * Calculate single encryption, E()
-+ *
-+ *	E(Key, octets)
-+ */
-+static int rfc3961_calc_E(const struct krb5_enctype *krb5,
-+			  const struct krb5_buffer *key,
-+			  const struct krb5_buffer *in_data,
-+			  struct krb5_buffer *result,
-+			  gfp_t gfp)
-+{
-+	struct crypto_sync_skcipher *cipher;
-+	int ret;
++Both of these functions take the encoding type, the transport key and the usage
++value used to derive the appropriate subkey(s).  They create an appropriate
++crypto object, an AEAD template for encryption and a synchronous hash for
++checksumming, set the key(s) on it and configure it.  The caller is expected to
++pass these handles to the action functions below.
 +
-+	cipher = crypto_alloc_sync_skcipher(krb5->derivation_enc, 0, 0);
-+	if (IS_ERR(cipher)) {
-+		ret = (PTR_ERR(cipher) == -ENOENT) ? -ENOPKG : PTR_ERR(cipher);
-+		goto err;
-+	}
++Encryption Mode
++---------------
 +
-+	ret = crypto_sync_skcipher_setkey(cipher, key->data, key->len);
-+	if (ret < 0)
-+		goto err_free;
++A pair of functions are provided to encrypt and decrypt a message::
 +
-+	ret = rfc3961_do_encrypt(cipher, NULL, in_data, result);
++	ssize_t crypto_krb5_encrypt(const struct krb5_enctype *krb5,
++				    struct crypto_aead *aead,
++				    struct scatterlist *sg, unsigned int nr_sg,
++				    size_t sg_len,
++				    size_t data_offset, size_t data_len,
++				    bool preconfounded);
++	int crypto_krb5_decrypt(const struct krb5_enctype *krb5,
++				struct crypto_aead *aead,
++				struct scatterlist *sg, unsigned int nr_sg,
++				size_t *_offset, size_t *_len);
 +
-+err_free:
-+	crypto_free_sync_skcipher(cipher);
-+err:
-+	return ret;
-+}
++In both cases, the input and output buffers are indicated by the same
++scatterlist.
 +
-+/*
-+ * Calculate the pseudo-random function, PRF().
-+ *
-+ *      tmp1 = H(octet-string)
-+ *      tmp2 = truncate tmp1 to multiple of m
-+ *      PRF = E(DK(protocol-key, prfconstant), tmp2, initial-cipher-state)
-+ *
-+ *      The "prfconstant" used in the PRF operation is the three-octet string
-+ *      "prf".
-+ *      [rfc3961 sec 5.3]
-+ */
-+static int rfc3961_calc_PRF(const struct krb5_enctype *krb5,
-+			    const struct krb5_buffer *protocol_key,
-+			    const struct krb5_buffer *octet_string,
-+			    struct krb5_buffer *result,
-+			    gfp_t gfp)
-+{
-+	static const struct krb5_buffer prfconstant = { 3, "prf" };
-+	struct krb5_buffer derived_key;
-+	struct krb5_buffer tmp1, tmp2;
-+	unsigned int m = krb5->block_len;
-+	void *buffer;
-+	int ret;
++For the encryption function, the output buffer may be larger than is needed
++(the amount of output generated is returned) and the location and size of the
++data are indicated (which must match the encoding).  If no confounder is set,
++the function will insert one.
 +
-+	if (result->len != krb5->prf_len)
-+		return -EINVAL;
++For the decryption function, the offset and length of the message in buffer are
++supplied and these are shrunk to fit the data.  The decryption function will
++verify any checksums within the message and give an error if they don't match.
 +
-+	tmp1.len = krb5->hash_len;
-+	derived_key.len = krb5->key_bytes;
-+	buffer = kzalloc(round16(tmp1.len) + round16(derived_key.len), gfp);
-+	if (!buffer)
-+		return -ENOMEM;
++Checksum Mode
++-------------
 +
-+	tmp1.data = buffer;
-+	derived_key.data = buffer + round16(tmp1.len);
++A pair of function are provided to generate the checksum on a message and to
++verify that checksum::
 +
-+	ret = rfc3961_calc_H(krb5, octet_string, &tmp1, gfp);
-+	if (ret < 0)
-+		goto err;
++	ssize_t crypto_krb5_get_mic(const struct krb5_enctype *krb5,
++				    struct crypto_shash *shash,
++				    const struct krb5_buffer *metadata,
++				    struct scatterlist *sg, unsigned int nr_sg,
++				    size_t sg_len,
++				    size_t data_offset, size_t data_len);
++	int crypto_krb5_verify_mic(const struct krb5_enctype *krb5,
++				   struct crypto_shash *shash,
++				   const struct krb5_buffer *metadata,
++				   struct scatterlist *sg, unsigned int nr_sg,
++				   size_t *_offset, size_t *_len);
 +
-+	tmp2.len = tmp1.len & ~(m - 1);
-+	tmp2.data = tmp1.data;
++In both cases, the input and output buffers are indicated by the same
++scatterlist.  Additional metadata can be passed in which will get added to the
++hash before the data.
 +
-+	ret = rfc3961_calc_DK(krb5, protocol_key, &prfconstant, &derived_key, gfp);
-+	if (ret < 0)
-+		goto err;
++For the get_mic function, the output buffer may be larger than is needed (the
++amount of output generated is returned) and the location and size of the data
++are indicated (which must match the encoding).
 +
-+	ret = rfc3961_calc_E(krb5, &derived_key, &tmp2, result, gfp);
++For the verification function, the offset and length of the message in buffer
++are supplied and these are shrunk to fit the data.  An error will be returned
++if the checksums don't match.
 +
-+err:
-+	kfree_sensitive(buffer);
-+	return ret;
-+}
++The krb5enc AEAD algorithm
++==========================
 +
-+const struct krb5_crypto_profile rfc3961_simplified_profile = {
-+	.calc_PRF	= rfc3961_calc_PRF,
-+	.calc_Kc	= rfc3961_calc_DK,
-+	.calc_Ke	= rfc3961_calc_DK,
-+	.calc_Ki	= rfc3961_calc_DK,
-+};
++A template AEAD crypto algorithm, called "krb5enc", is provided that hashes the
++plaintext before encrypting it (the reverse of authenc).  The handle returned
++by ``crypto_krb5_prepare_encryption()`` may be one of these, but there's no
++requirement for the user of this API to interact with it directly.
++
++For reference, its key format begins with a BE32 of the format number.  Only
++format 1 is provided and that continues with a BE32 of the Ke key length
++followed by a BE32 of the Ki key length, followed by the bytes from the Ke key
++and then the Ki key.
++
++Using specifically ordered words means that the static test data doesn't
++require byteswapping.
 -- 
 2.50.1
 
