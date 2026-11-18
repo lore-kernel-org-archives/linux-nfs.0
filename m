@@ -1,101 +1,91 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.54
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795024254;
-	b=yOSufhJsXQ3K32ROwvijVRDXODLYr4ZhIU0cVOtoR62stJOPF9YomFJPx3JUfPO2CxcW
-	 y7SCK77ZsrmsR/ScgKvPNpJTckp1udzp98zn6Ld/PUtNK+FOzMQu32p4FDMLI0cRUaa55
-	 vQroiCwQzBeMC0SmxNs+1PhPH6lfLnspY89MKUqDILeCufyg5L+/uYoUlI1KIeOvGfQdv
-	 yaoorjqz/VkBmzozJqb3UPiCEfNZ9nf7lmrSuZL+M9hX9+QlHYluGVRHVzU7an3/LmmRG
-	 JjTtT7pM0HImrl8E09D8MhegNfHZNey3TVnyh5MYSjT7NSC5Rz/mSdrd6MBknWXyqsA==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795024254;
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.47
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795027018;
+	b=AJ7ine8jBddc44ZeR2CdYpTTBXFi111p9d16arcjYp6WaxD0Xzr8IzE9EFkerkAsRAUW
+	 gkhhxOyrYd8iZCo04TBmVMc/uUa9B6j+J6zHy20Gf47s3NrTMRRO++dinP/4ousW8gS3e
+	 3yrZ8TVEyqK383q5ipZ1w6PiHDvl7yjlxSRGJ/HnDQIMJxrZ+Qxh9zpwZAyFhpGnKzrMO
+	 WosycNWFav9Y/MN2VbsiK/VTSGsm9F28K7bkWsBtlFIoxTBCYCki8W1JiAJeQx1JHbwuH
+	 c95xR1JaxdCzpOfZ3ISs/NEaNn09o2m75SaCFqsw/k6isDKFeQiXijj6FCwdhodRtEg==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795027018;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=BliQBsLi8Tf+bGa80m+pxZeHcLThIeJfSszhbNvQWjc=;
-	b=1XwzDdvr5iD7vfG6e+L0f4oapHAvs6f2yGvi5E+3DXh2DFtzc5sbn7BGTa/JTneTuTAq
-	 bKUbJ48kozLbrqK3vyXTUkOOYaqRATFavddbMA4qPB0r0LMDrDCy2fHytkhbciPjYdtja
-	 PeJTYgNqLxuHoeQAN9DzTZCMyJ5yDvEt/cx4ZlDhJdDczi5HJ3FbUZ9YeM5xu/11ePsNT
-	 uCY/skU17GZqyENtcL64iLroiTqaSvUVDyHH4zERgyMUcU4LR8mYR8yecWKM1pwZYCk7C
-	 TqxWnzAGkUgFXDnvRSO+VDUNFZd8DvqSu32R5QxuKyyXMs7O5PKaxyNuqZBt3Z1SUEw==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=t0urFzns;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.54
-Received: from mail-ed1-f54.google.com (mail-ed1-f54.google.com [209.85.208.54])
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=J/vURV5wWOTznt9bm2urzPjsi0DqR1BeSpyd3mTrssA=;
+	b=R6hNQJ37nFzOBGM6BY4EK171rrECEOOzRkm09Rc3YjESJMlqx3yPfmP2DOfxmRW+4yk+
+	 Lk13bDj0nrJyDziyalJA4Q4fIcfJptbLY8Myq5yHYC+cp2nGrmklNv+MUXr3DgYPcFciG
+	 2W7s6ylbMr1/QTh5vNJdjY9Kl+RAz4ClynaLF4vI6EUjs/baW6eT/hnShVY/jehclqQ7b
+	 ul3HpzdDCCFUNVXUT1SB81AaMHQWFpmlDE7EXc27CM50t25aCaTV7efyf2hN5jaJrPFtS
+	 ZIG91vpoo35ISPSSCf5nA0dFj/VH/63k6nWtue1ILZ8J0PMaNvbC4RMGN8+xrwMxjNA==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Vu84x6R2;
+	arc=none smtp.remote-ip=209.85.161.47
+Received: from mail-oo1-f47.google.com (mail-oo1-f47.google.com [209.85.161.47])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6D9B60A260C
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 17:50:53 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E6D9B60A260C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13979606A325
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 18:36:57 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 13979606A325
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=t0urFzns
-Received: by mail-ed1-f54.google.com with SMTP id 4fb4d7f45d1cf-6b8786bb305so1993417a12.0
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 09:50:53 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795024252; cv=none;
-        d=google.com; s=arc-20260327;
-        b=rrqMZJeUwyYF+d8hT2p44dr/XUS3+LD2ELVhvCZURqfMDjo3tNlcQ8K0M1vmDoisLW
-         LvRVSoAoGAtSARS3z8CiQe7mxMIwAsbZC7Uxdhtm3eccOHSSm84r4vOHGXLbeKsc/eLo
-         n4SilvOV0IIHF2xNASbuzf96fOqM7kLWFMnB/IgwcHT5ICCzgEse+cZLcKi1XS5YLTT2
-         ttT36aesng7D3hg9Nf7Q/TFk6pMZ2d2UuC7tsmNknjEIaXgP1ea9cWZCWLl5Qh7DYk3S
-         hrMmuxyr8rifeCG6eAos4FH3q8mEeu2ZLY9iNGEwGKfaBgpoH0Y7k4vphUQdw3lGxwlR
-         zAVA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=BliQBsLi8Tf+bGa80m+pxZeHcLThIeJfSszhbNvQWjc=;
-        fh=9JAWgqUlc5M8EmmgpdSvGhyUwWA0eLSj/11RQMWqda8=;
-        b=qxH25bY2rNVBlzKhdPcL4hG3n2pUDmgY+t53ErkS8l7F7Z+ML4GXNcvPz6x5ft80RJ
-         zsrwglEpymQTfpavuFTFECHei3Ashdqyu+F/EcQEBywmxzZmIfCLQCvj3j0jLZSQlzbQ
-         QCsSf8CXg6i+S0THuAJo35nrB2OBi5Rg4qN3tGa1QsQga89rw8DlDKhH9fhFwQd/MTf/
-         ET0tvJYhigcRGXUbZdzwD5lvPrs73WqcHDZQdY1cIvF8wCPF/LgUddNBD4zsOJ7CjKzz
-         odZ5OtAefe7Q06LsLwXmDh1Pdx8/79YK4VdtBTZsc98gFmGRelO1RUCT35igbpsbsffS
-         7spw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=Vu84x6R2
+Received: by mail-oo1-f47.google.com with SMTP id 006d021491bc7-6b1afdf5196so532091eaf.2
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 10:36:57 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795024252; x=1795629052; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=BliQBsLi8Tf+bGa80m+pxZeHcLThIeJfSszhbNvQWjc=;
-        b=t0urFznsvrKRqixemRUZFc9mgXym3XN1YMBmj0waBLyV3CsdgnHy8xmpMpLBOjvFSO
-         4OyVbjrHe3QbmjmaFHziwXJZHZ3OpkdyrRZKOYWCdCJexvqSmUuVu4fnaP7X0VKW/H2Q
-         uU2+obaBKEAHGKd8XWt2iDtAO+W46sMhQn7B0F4IN3mylmD+1QrZ9esi0QvoH9kZT9bX
-         EBKM7Z1u6o+AxA5zR70zZUIovWhwqLZJa6oEexWqxHL96XtNRn01UmHNOonMpcB3gc6f
-         RbyVXVt9WSJBogGVLF5lTsidaWxQ5lTI8ZoKmu6C/MRJ9rExNu7Xb6AIdnGzmI6derxu
-         Duww==
+        d=hammerspace.com; s=google; t=1795027017; x=1795631817; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=J/vURV5wWOTznt9bm2urzPjsi0DqR1BeSpyd3mTrssA=;
+        b=Vu84x6R2JpML+VbrmlBvt7Q4I5FgWdiLfdYEVUPw0a/T1sGgs/va8gCWXiVOnoPGmn
+         PUePxfy7+MLrxmjoQ4z69ThkMMRs8sC7KWc4rCWWO5HOPEJN0UkS/qo9NSQdK09uQEXC
+         0BtecWKx+pyb87fTbu3qxrGPluI97KtPsMDNx4TY7Cz8rovqC1wFjJFCh830vvrjrWzc
+         ZJMsXrZK9troqGg+gZkFDDcDW0AjJNpe5NVlV3vQvC3zqcbOorxBFyatTY/7RzrBaGuS
+         dT/x8R7B4ZuH4chZf6FlIR5AYK/KpOiCQCeDAkkrMOPYlRXWJQ6Ha7/N8UcsKiSUU+HK
+         nejw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795024252; x=1795629052;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=BliQBsLi8Tf+bGa80m+pxZeHcLThIeJfSszhbNvQWjc=;
-        b=KKKG/P5Tg9Snpjc/7tjPflAtB7kY0/hFfTTNxsP4qJjZdxqGRbAuuVseZknqCKEn5J
-         UkzFCneNIOB93/2MuHLkFPrYulPIrFCGJbi5Ltlt4sG8YNuaOTzDO7IyTuFGYU114nPH
-         ls+dG8hgtZwnn9ocbomdOdTeoYsOTlnn0v4eX+n962E/RT2E8oCRZBYiHtoQfwmunjAg
-         pujAHeKyX8LznxjY9If4Ue+/FRXMqZI3XuvN24dH9XBiDlGXGDCpCjScgmZv4KLZ9V14
-         nA16msSfea1VIqpHSFdIk4lsoxGLbXA9i4vG8KJwH+dj4fXBxgdFANxm+NKGd26/t/xr
-         gNMA==
-X-Forwarded-Encrypted: i=1; AL+hErGtJZYCdvCAH0kH4z7Vmqw4dv9oMLYS5yy5KI2zupsl2Hgtu8T80EuROnKFbEYwWS+9mpmAkhtWpYo=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/jrH+11OfGh8StDdOI1xVmaE4jd8AHIH5K5Wvx18TFDWjQ1fq4
-	ltH6Jt9zUnQ/XxOQwP5DvC8hK8YKEBxtwGVj7KJYSnE8oaGkRc6Sn1nwU9TFXuW4kZH4Dhfx4Wq
-	qB0EArZ0mKwM63miju799wAwX0iWIQNM=
-X-Gm-Gg: AYBFou1LyljIFN2BgPAByxW8sMHpMT5pIcwyZUI6Gbh9LIe42dlaqG66SBAxUMQSeMn
-	HgDwhW7r17gch/+iC1nVfypwYFk0R/jUlQh79uTypop1w16kHGqVGsGArfHVnFPV0DhFxkPdGby
-	3m8c3fqZ5TS+KubP9rsWTnS8hgHnVpzQywDmC4D9xUXJkZ5xQopIOeoYVc0yBbK90Hl7/9kEqXw
-	M3UYE4oMNiToockIV+7TblmteeB/gtmX2QK/G+OA3dYfOvVToz3g3Lbus1ZoEre+bRgCBCbzWzO
-	VF3Ihsm7ZLJ80EDf2PRzEFjyJM91Ed+n0oO8cJGZJFOAxIsmSjBFgbx7ztMkX6b2y5yjb1TR+1M
-	g0jdaV5+bxTrPDzV7YvjillOf6OzrkNNTuShwUBNNQVlCCAdcN4jrsE8hqPinMVNfhC5LVCKDqk
-	v6q9Wwq+J3oCckR7o=
-X-Received: by 2002:a05:6402:5411:b0:6b7:df0c:18d0 with SMTP id
- 4fb4d7f45d1cf-6b8a2e6d881mr1966295a12.11.1795024252167; Wed, 18 Nov 2026
- 09:50:52 -0800 (PST)
+        d=1e100.net; s=20260707; t=1795027017; x=1795631817;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=J/vURV5wWOTznt9bm2urzPjsi0DqR1BeSpyd3mTrssA=;
+        b=cbsRBijqNy9wcrJxfcjXtmxhbNQCSjJRNOIHLO8IXj5/GqwsOMEkc3kcg6taB1/5L0
+         jqiymaPOH3f68D9PXpyMDAK73uYRnMeCm03ftOCP8zBY18pOPEJXzJRqNlsXbYosaafF
+         zM1/raEf9PjVOGDnF1pcMLiqGUxZYTeqPvbZAJnFcQeaOyb9GKDnCz9OCKMZUM7cpQsO
+         owwIewvK+KqdspQBwgWSbUB9/MzxiziWszkzB/Cg1wuP7aniUX6OYE7YknU5HQGQfnqT
+         TMoBy5PQ4BLYaqYUHcst5htLfzKLBDLA5jp2uulKI5paEiqLj9GTzGDdxYkWoVvLMyg2
+         fYHg==
+X-Gm-Message-State: APuU4Z+GZJlYCHu9eicwu08Ewr+/lD+4yUWpekMxYafjQyi9R0N7qprL
+	HggF11qCPs7yov71/dCqN/7GPP8lKktjpWS7Q2SdOnX6URyYmXxjdx9vFb9we04y0kPizrItGE+
+	YcLcc
+X-Gm-Gg: AYBFou1CNHolUrQ0c0HpO82ywPjkaYKMZz1ceArKmctn+pdOvnjY05imtLZYYXQOz1P
+	fltjh3YDwCeRSwHpHwfA0sNMmlxcaUntI3WUCLdZFyc7x9buUaUAD82QwR/hH/S4zmMnBO/rVuD
+	Xe6einl/eoLRN9zODl5xybGSjrJ0aWtzspUmXpHFBH7cPrHFbLlHxCrqnYS6/3kNCP/UNl5fzW4
+	O5MW9oZ/040+pls0Eo0HdtjW968K3XJMMW07sNiQEse8H/2zpEJs4vApCFnvkkJ8C3IB92857wO
+	PX6IKsoEe8Zu44IF1Ogynzqnx6XRrwSDDq0r55AA7iWak8RD9P8w8u0gwE4fYTBnvcWorUA/Yw/
+	sMculiyggCr+WsZrkDbuc4TxN03ww0+GeJvMW3g/dnIhoYMnye6XF6SNqpbF8SuPfAdKrx9do4C
+	bReDNpRJRO+G1Ujsj7tZEp3edvDWSCjyajW+lXX/8RouHkfcovqwEBrElWzEhRJGrEIzcYjLGLh
+	Ir3GN2+BDjKJo/CIulKb/g8x8niuDpyVZjPmFdmZ8lqg8l7Pxd9YfAKFMHMDfio+LC/Hr3GrdHk
+	fA+3ihG7sjaIGQTewAR6UopvB1kABYrbx/T/ZdfeKxUDAExg7ynyKi71ptJ0NYI/9jN03j8RK4G
+	Oiw==
+X-Received: by 2002:a05:6808:16a4:b0:4d6:90d4:6bd with SMTP id 5614622812f47-57741d1f2e9mr3233653b6e.47.1795027016774;
+        Wed, 18 Nov 2026 10:36:56 -0800 (PST)
+Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-5777a8a6af8sm2341713b6e.9.2026.11.18.10.36.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 18 Nov 2026 10:36:56 -0800 (PST)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Mike Snitzer <snitzer@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/4] pNFS/flexfiles: I/O without a layout under FF_FLAGS_NO_IO_THRU_MDS
+Date: Wed, 18 Nov 2026 13:36:50 -0500
+Message-ID: <cover.1795024981.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -105,126 +95,85 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261115180343.576773-1-koray.fra@gmail.com> <20261118142613.be3r3s6kobkkxnz4@pali>
- <DMYFBDIV4Y08.35ZKR5G86U1H7@gmail.com> <20261118151605.lqtn5fz423kuswk5@pali>
- <DMYHPLWKPSH3.MUM1IIZZIWNR@gmail.com> <CAOQ4uxiwpdC-fKkqS5kiZ515q9MenC0jX4USV1idN7h2njx45Q@mail.gmail.com>
- <7126bdd0ff59e9ea9bc58702af2ecb38096330e8.camel@kernel.org>
-In-Reply-To: <7126bdd0ff59e9ea9bc58702af2ecb38096330e8.camel@kernel.org>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 18 Nov 2026 18:50:40 +0100
-X-Gm-Features: AclHuK8-cETfcc5mQcfuFgReFzNL3uUqtJJFv8XHOum7KdV27M9jJ90gtN64MvU
-Message-ID: <CAOQ4uxidYWNVmoPgxKrxesXTxpMB-JqUZx9p6xXZWD5m+hJ+JA@mail.gmail.com>
-Subject: Re: [RFC PATCH v4 00/10] add provenance time (ptime)
-To: Jeff Layton <jlayton@kernel.org>
-Cc: koraynilay <koray.fra@gmail.com>, =?UTF-8?Q?Pali_Roh=C3=A1r?= <pali@kernel.org>, 
-	David Sterba <dsterba@suse.com>, Namjae Jeon <linkinjeon@kernel.org>, 
-	Sungjong Seo <sj1557.seo@samsung.com>, Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Christian Brauner <brauner@kernel.org>, Trond Myklebust <trondmy@kernel.org>, 
-	Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>, 
-	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, 
-	Paulo Alcantara <pc@manguebit.org>, Chris Mason <mason@kernel.org>, Yuezhang Mo <yuezhang.mo@sony.com>, 
-	Jan Kara <jack@suse.cz>, NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	Ronnie Sahlberg <ronniesahlberg@gmail.com>, Shyam Prasad N <sprasad@microsoft.com>, 
-	Bharath SM <bharathsm@microsoft.com>, Sergey Senozhatsky <senozhatsky@chromium.org>, 
-	ChenXiaoSong <chenxiaosong@chenxiaosong.com>, "Darrick J . Wong" <djwong@kernel.org>, 
-	Sean Smith <defendthedisabled@gmail.com>, Andrey Albershteyn <aalbersh@kernel.org>, 
-	Pedro Falcato <pfalcato@suse.de>, linux-btrfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	exfat@lists.linux.dev, ntfs3@lists.linux.dev, linux-cifs@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, linux-api@vger.kernel.org, 
-	Theodore Tso <tytso@mit.edu>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Wed, Nov 18, 2026 at 6:36=E2=80=AFPM Jeff Layton <jlayton@kernel.org> wr=
-ote:
->
-> On Wed, 2026-11-18 at 18:28 +0100, Amir Goldstein wrote:
-...
-> > Guys,
-> >
-> > Let's take a step back.
-> >
-> > If this discussion is proving anything is that the btime/ptime
-> > duality is a big headache and it's going to be a source of confusion to=
- users
-> > even if we come up with some smart pants consistent semantics.
-> >
-> > As Jeff writes, I think we should consider making btime mutable
-> > be a per-fs choice and not an API limitation.
-> >
-> > A filesystem can even decide to store both the forensics btime
-> > alongside the user settable crtime.
-> >
-> > There are some precedents in xfs with settable UUID which is
-> > a different field then the origin UUID from mkfs.
-> >
-> > Fs that have immutable btime have a few choices:
-> > 1. Keep it immutable
-> > 2. Start making it muttbale (like the Win fs)
-> > 3. Start making the user visible btime (STATX_BTIME) mutable
-> >     but keep the forensics btime on-disk for, well, forensics
-> >
-> > If btime becomes settable via options 2 or 3, this could require
-> > admin opt-in (e.g. tune2fs -O crtime).
-> >
-> > With option 3 the crtime feature would be ROCOMPAT
-> > With option 2, it could probably be COMPAT. Maybe.
-> >
-> > If we accept this story and the major fs maintainers are
-> > in agreement with this plan, then I think the missing piece
-> > is making the "settable mask" visible to users via the new API.
-> >
-> > IOW, we need to somehow export FS_XFLAG_RDONLY_MASK
-> > to userspace instead of only exporting the supported mask.
-> > And then with the addition of xflags_mask, we could also
-> > -EINVAL on users trying to set readonly flags/values.
-> >
-> > Perhaps a single xflags_settable_mask is enough.
-> >
-> > For file_setattr(), xflags_mask is anyway a set-those mask.
-> > For file_getattr(), does it matter if we get an answer
-> > Filesystem does not support casefold on this file
-> > OR
-> > Filesystem does not have casefold on this file and
-> > you cannot set casefold on this file
-> >
-> > It's kind of the same, isn't it?
-> >
-> > What do you say?
-> >
-> > Shall we drop PTIME in favor of "is BTIME settable?" API?
-> > Leaving STATX_BTIME exactly as is.
-> >
-> >
->
-> +1
->
-> I think this is the better approach.
->
-> Looking over some of the earlier discussions around this since 2010
-> (!?!): I think some of the XFS devs objected to making it settable for
-> forensic reasons. So, on XFS you might need to rev the on-disk format
-> if you want to do it there to preserve the "historical" btime, and
-> maybe some xfs userland work to make it accessible for forensics.
+From: Benjamin Coddington <bcodding@hammerspace.com>
 
-XFS_IOC_FSBULKSTAT will likely continue to publish the original bs_btime.
-if a mutable field is added it could be published as bs_crtime.
+When a file's flexfiles layouts carry FF_FLAGS_NO_IO_THRU_MDS, the client
+keeps reads and writes off the MDS when it has no layout segment for
+them.  Reads and writes handle that differently:
 
-For forensics this should be enough.
+ - Reads test the inode's NFS_INO_NO_IO_THRU_MDS bit, wait a second
+   between attempts, and honour io_maxretrans on soft mounts.
 
->
-> For the record, the statx manpage documents the btime field very
-> sparsely:
->
->        stx_btime
->               The file's creation timestamp.
->
-> There is no documented guarantee that this will be immutable, AFAICT.
+ - Writes test a bit on the layout header and return -EAGAIN.
+   nfs_writepages() and the O_DIRECT reschedule path resend at once, so
+   writers spin for as long as there is no layout.  nfs_wb_folio()
+   returns the -EAGAIN, so a read(2) or write(2) that has to flush a
+   folio another open context dirtied fails with EAGAIN.  Once the
+   header is freed the bit is gone and writes go through the MDS, and
+   ff_layout_pg_init_write() sends them there whenever
+   pnfs_generic_pg_check_layout() drops an invalidated segment.
 
-Yes, and it really isn't immutable for cifs already.
-It's just that we don't have a standard API to change it.
+Neither direction uses the MDS when the server has said there is no
+layout to give.  After NFS4ERR_LAYOUTUNAVAILABLE, RFC 8435 says the I/O
+is to go to the MDS (section 5.1.1), and the flag is a hint (section
+5.1.2).  Instead, reads wait and writes spin until the 120 second fail
+bit expires, then send a LAYOUTGET that can fail the same way.
 
-Thanks,
-Amir.
+Patch 1 sends writeback of a single locked folio (nfs_wb_folio(),
+reclaim, migration) through the MDS instead of refusing it.  Resending
+with the folio locked could deadlock against a bulk recall, which can't
+complete while nfs_writepages() holds a layout segment, and
+nfs_writepages() would be waiting for that folio.  Patch 2 has the
+remaining writes test the inode bit, and has nfs_writepages() and the
+O_DIRECT reschedule path wait a second before resending a refused
+write, after their folios and requests are unlocked.  Patch 3 removes
+the header bit, which nothing tests after patch 2.  Patch 4 sends
+reads, writes and the resend after a data server error through the MDS
+while the fail bit for their iomode is set.
+
+That last change is also the path for a data server the client can't
+use, such as a version mismatch: the client reports the failure with
+LAYOUTERROR or LAYOUTRETURN, and the server decides whether to answer
+the next LAYOUTGET with NFS4ERR_LAYOUTUNAVAILABLE.  The missing-nfsv3
+case is covered separately by Roberto's "NFSv4/flexfiles: couple back
+with NFSv3".
+
+These patches are independent of the series "pNFS: don't reply
+NOMATCHING to a layout recall with I/O in flight", but both change
+ff_layout_pg_get_mirror_count_write(), so whichever goes second will
+need a small rebase.  The series is based on Anna's linux-next.
+
+Tested against a reffs MDS and DS, injecting LAYOUTGET errors after a
+file recall.  With NFS4ERR_LAYOUTUNAVAILABLE, reads and writes go through
+the MDS at once.  With a retryable error (NFS4ERR_SERVERFAULT) held for
+8 seconds, writeback sends one LAYOUTGET a second and no I/O to the MDS,
+SIGKILL ends a writer blocked in fsync, and a soft mount with
+io_maxretrans=3 returns EIO after about 4 seconds.  During the hold, a
+read of a folio that another open context had dirtied flushes it
+through the MDS and returns without EAGAIN.
+
+Benjamin Coddington (4):
+  pNFS/flexfiles: use the MDS for locked-folio writeback without a
+    layout
+  pNFS/flexfiles: pace writes that have no layout and can't use the MDS
+  pNFS/flexfiles: remove the layout-header NO_IO_THRU_MDS bit
+  pNFS/flexfiles: use the MDS when the server has no layout to give
+
+ fs/nfs/direct.c                        |   2 +
+ fs/nfs/flexfilelayout/flexfilelayout.c | 113 +++++++++++++++++--------
+ fs/nfs/flexfilelayout/flexfilelayout.h |  16 ----
+ fs/nfs/internal.h                      |  11 +--
+ fs/nfs/nfs4trace.c                     |   1 +
+ fs/nfs/nfs4trace.h                     |   1 +
+ fs/nfs/pagelist.c                      |   2 +
+ fs/nfs/pnfs.c                          |  22 +++++
+ fs/nfs/pnfs.h                          |   1 +
+ fs/nfs/write.c                         |  21 ++++-
+ include/linux/nfs_page.h               |  10 +++
+ 11 files changed, 139 insertions(+), 61 deletions(-)
+
+-- 
+2.53.0
+
