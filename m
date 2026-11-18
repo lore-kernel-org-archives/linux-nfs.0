@@ -1,49 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795007802;
-	b=s+HVcvVlA+URfv2dcK50zoWt7VsPdv5G2rVwJXBuZz14/7X9etVFMbl0iXF/w2D9byKt
-	 JeZiRdc3As3pYTGu7QAiLbwC1Y52om+ux0Sfxej9l+5YN1b2SrSCiNrGeLCsrZnvZHA2n
-	 nUmwkh4vA/lr2HXzqjmBUVFPW1Fd1cwp0ndkTSwXghCM3HKDtFCpe5x+sWmiQCzInU5rq
-	 vBRYMZrjomFZe/jEIPsw2Dcx780ITT7vM3f8Otd2zty95n38L6GeWbYhFa1ydZLQWs7uA
-	 IIRFDGo2NR7DpOtlsFayt9GmZfU1z3rFDrdhJ9YhuIhImWJ9gJUQ9DnOg7/Ie2rrjXw==
+	t=1795007807;
+	b=gZd0tSF/g7XJqulfe9aTW0GCbGairf1GJ/OT+sTg5ybZU82Mr5D6QRRd8VteTka9xba7
+	 o95FfE7/69VLmUe/YH8pC9pZLbPAVuhxSqiSfygCJj8xx9rKq6lHyeYaKXGenAMxa5D4Q
+	 GGJN5mknJPMCrJbCusTyAXPWnX14av31W/mhMCgkIbD1UcR7bYHSXtHq9fgBSOY/Btr6b
+	 dZ/6KgPovCOKRvS5emY2hCZ8eDJL00JyYfO0B/QCI694b/Mn8E5/37VPDsSRL/w7kMGG8
+	 Zcc+gr4OGN7pWzRPKL1SoWxnwjf5UJ+EtK53yZn3vRrriVzY7x4bztNGwrfHRJA6PHA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795007802;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=hB9UzleAIkWHJrqq6SqfTW60PW5YtSUer1QfUULJtCg=;
-	b=0IPA9dnc5pUZLv27CV5QA2DUvVXdpUPPZ4Fc+ja+GIVIaIGXw/5SagUQzTuGEZXYUQck
-	 V/d2KXYV8lMngcu7ZPde615cBplJxeSiLfuQa3XW28v/PfrpIcUvph6SYBfTE0XUsyi4d
-	 nvJ/pwDIc+zrhV6hPYwOVGxDKOtU5BwhqQvM8MiHv4PIoTO7cXn5H1JjfDyiXAO8SmObn
-	 L+/+pA9rp4LAwwO9fdhrd+c/PMKFTjOdTo6BNg7uH2BTPaiXwQPcWd/ptT47m5vLV6hFc
-	 r7gzAE3EDQ2S6J2uxJ6ruR1EBq9dy14ka8RaKZNStoFQWYL++mcyao5vTksiroISCPg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795007807;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=CR+E1bRGy+jkpAi4tD+qyGoEqwHX5pXB8QpxemAdSZo=;
+	b=tmsVtlXr+p9fgejFH3Dr987d91O7jTu3je9P2deNaQ6k2ROLBftxPdLn67Jim0W/uu6h
+	 owpMP/M2/Ggsxk3L+eDSNwbbN0n730goPg1U5ibnGq1qPFStR708qC0EmkOipCzpCzZys
+	 NwrrQAyplpDJIKkgb2S7njhsQei4RhNCdKRnt+tHJoDGlgJu0WcnCqK8a2t6vaVP643Tv
+	 6k+Za5e69UZgiHKl5Kki/uDGzouPvNiyjTz80KiLAcHwa2pn3NlhQDYKW2xB2qqnnizzF
+	 gKySJHNiw5OBAupdtJByxQROvmgrbFXigueLyqPsKCWkkFeff8VskOTfGjFai0SaqBQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CKbNLiOt;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R05bb917;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7595E606A32C;
-	Wed, 18 Nov 2026 13:16:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9B01606A331;
+	Wed, 18 Nov 2026 13:16:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CKbNLiOt
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EF9191F000C4;
-	Wed, 18 Nov 2026 13:16:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=R05bb917
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 592A71F000C4;
+	Wed, 18 Nov 2026 13:16:45 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795007802;
-	bh=hB9UzleAIkWHJrqq6SqfTW60PW5YtSUer1QfUULJtCg=;
-	h=From:Subject:Date:To:Cc;
-	b=CKbNLiOtnQArVEW7ZPUs5wZ+GoPNnxHHl/IA4Kigx1MdiDJYsF/TfqkvXPOnrf4QS
-	 CLMJekPxNF+BXbpTwHJURn1Mq11paeCU7zbXP4LDsBJjscDxBtI4/V2wjLx/Mag3ZV
-	 xwuOMSzYbIQpR0xnJjPsx5g8QPO38nioygtWcsZpG+T//MY1y13oSF3ims58wsElcy
-	 tP+1JUwKodT9MrGypya7bHV+k6A1JKOcnvoia2U0F0UVKXQsJhQM/5iG89E5+n1qJm
-	 U6BgZy0nRf2q2/dVq3JXp+WuiXBF5U9IJj343bl5reWMHPfrYsbf9PQElZMmuFu2MH
-	 CVr0J62YV7hMg==
+	s=k20260515; t=1795007807;
+	bh=CR+E1bRGy+jkpAi4tD+qyGoEqwHX5pXB8QpxemAdSZo=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=R05bb917AdmhBwWHZVe6VaYbHwPrMNPSXjjry2qEiHt+C1OyqFQ06OiZE2auKry4m
+	 GR0NR4BGdSP0gLnK4sUQbYxtxx323yCVehWSLcX6llKhEbyH5rJ5IEBNuWAWgG7iPl
+	 rhlj7WxqGKYH7M1JL/E0ZrcWOn9r2gCJl1nPhVDVVlpaepHL5HTtewhkH1miCh+ume
+	 9qmmxrII/WfZXnSXVfA4np7FkD+4+jt9ccX3wRHw7GbKkkO94BhMYTH0RUJChQAI+1
+	 3eU6OXnVY5iP/ojQxFjDRdNMOUUYN92ETrIHMWBgo3FBcznJVWyGJinYhW3kSJ9orT
+	 92558h14t/CpA==
 From: Christian Brauner <brauner@kernel.org>
-Subject: [PATCH 0/2] fs: reintroduce SB_I_MULTIROOT
-Date: Wed, 18 Nov 2026 14:16:16 +0100
-Message-Id: <20261118-work-nfs-multiroot-v1-0-66e4458b7d32@kernel.org>
+Date: Wed, 18 Nov 2026 14:16:18 +0100
+Subject: [PATCH 2/2] fhandle: don't warn about multi-root filesystems
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,55 +54,82 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMyw7CIBBFf6WZtWOEGm38FeMC6GDxAc0MrSZN/
- 12wy3Nzz1lAiAMJXJoFmOYgIcUCateAG0y8E4a+MOiDPimlOvwkfmL0gu/plQOnlLHvNLXt0Z2
- 10VDEkcmH7z96vW0sk32Qy7VUH9YIoWUT3VCn2ct+M9b1B1jiur6SAAAA
-X-Change-ID: 20261118-work-nfs-multiroot-d82e334c72a2
+Message-Id: <20261118-work-nfs-multiroot-v1-2-66e4458b7d32@kernel.org>
+References: <20261118-work-nfs-multiroot-v1-0-66e4458b7d32@kernel.org>
+In-Reply-To: <20261118-work-nfs-multiroot-v1-0-66e4458b7d32@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>, 
  Jan Kara <jack@suse.cz>, Chuck Lever <cel@kernel.org>, 
  Jeff Layton <jlayton@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
  "Christian Brauner (Amutable)" <brauner@kernel.org>, stable@vger.kernel.org
 X-Mailer: b4 0.17-dev-04696
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1477; i=brauner@kernel.org;
- h=from:subject:message-id; bh=XolEZKg0n/Jhtb65dQs63UYEaAuPALwcP0dpFXFAw8w=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9XWrUqrbmPm/HHZ4/FjXZf84tbVx2+3jSmph9+btuu
- /ZW8nxQ7ChlYRDjYpAVU2RxaDcJl1vOU7HZKFMDZg4rE8gQBi5OAZhIzxKG/0V/E3tevQu4v/1o
- 0rQw9+DanwKBYvbPz+TuLpQvbXhueZXhn66QaSL/n6UTk/j5NDKkZ+UI1E75H+587nvlmeZL99L
- E2AE=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2405; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=NoD43R4Ikusm+jKrw678i5OjqLPNWC4Kyx7Fj2FDdIU=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWT9XWry3Cru0vQtz0+0d4stfRe45eFZrb82SgKpU9/rf
+ FfObGC62lHKwiDGxSArpsji0G4SLrecp2KzUaYGzBxWJpAhDFycAjCRBYcYGbof9itw9bevY0+b
+ ZVGXMaGtLVenIEir9dXmnxNLVWJ63zIyXLokydaeXm/51sGq2uzSjUuhLZG3W7fMeV6feputsU2
+ OHwA=
 X-Developer-Key: i=brauner@kernel.org; a=openpgp;
  fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-Welcome to 2018: Since the nfs conversion to the new mount api in v5.6
-".." can escape an NFSv2/NFSv3 mount again when the client shares the
-superblock between mounts of different subtrees of the same server
-filesystem.
+When I relaxed the permission checks for open_by_handle_at() in
+commit 620c266f3949 ("fhandle: relax open_by_handle_at() permission
+checks") I added a warning for when walking up from a decoded directory
+ends neither at the root of the mount fd nor at the root of the
+superblock. But a superblock can have more than one root. nfs shares a
+superblock between mounts of disjoint subtrees of the same server
+filesystem and each of them has its own root dentry. If the decoded
+directory lives below one of the other roots the walk ends there and we
+warn.
 
-I reproduced it in a VM with knfsd exporting a single ext4 filesystem
-and the client mounting two subdirectories of it over loopback. On
-v7.4-rc3 ".." from a directory that got moved into the other mount's
-subtree lands in that other mount, from inside a chroot as well. With
-the first patch it fails with ENOENT. The first patch just restores what
-we had so it can go to stable easily.
+Mount two subdirectories of the same export with vers=3, encode a
+directory below the second mount with name_to_handle_at() and decode it
+from a new user and mount namespace with open_by_handle_at() and the
+first mount as the mount fd:
 
-While testing this I noticed that the same setup trips the warning I
-added to vfs_dentry_acceptable() for open_by_handle_at(). The handle is
-correctly refused but an unprivileged user can trigger the warning
-from a user namespace if they own the directories. The second patch
-uses the flag to not warn on multi-root superblocks.
+  WARNING: fs/fhandle.c:260 at vfs_dentry_acceptable+0x2e3/0x4b0
+  Call Trace:
+   <TASK>
+   exportfs_decode_fh_raw+0x1de/0x840
+   do_handle_open+0x46e/0xb20
+   do_syscall_64+0x110/0x600
+   entry_SYSCALL_64_after_hwframe+0x77/0x7f
+   </TASK>
 
+The handle is still refused because the directory isn't reachable from
+the mount fd. But an unprivileged user can trigger the warning if the
+directories involved belong to them, e.g. if their home directory is
+one of the mounts.
+
+Don't warn for superblocks with multiple roots. This depends on the
+previous patch reintroducing SB_I_MULTIROOT.
+
+Fixes: 620c266f3949 ("fhandle: relax open_by_handle_at() permission checks")
+Cc: stable@vger.kernel.org
 Signed-off-by: Christian Brauner (Amutable) <brauner@kernel.org>
 ---
-Christian Brauner (2):
-      fs: reintroduce SB_I_MULTIROOT
-      fhandle: don't warn about multi-root filesystems
+ fs/fhandle.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
- fs/fhandle.c                   | 6 ++++--
- fs/namei.c                     | 4 ++--
- fs/nfs/super.c                 | 2 ++
- include/linux/fs/super_types.h | 1 +
- 4 files changed, 9 insertions(+), 4 deletions(-)
----
-base-commit: 94ca49563acb36a19fb578499b04c84d5b0a5181
-change-id: 20261118-work-nfs-multiroot-d82e334c72a2
+diff --git a/fs/fhandle.c b/fs/fhandle.c
+index 32fcff14f88fd..8e6110215469d 100644
+--- a/fs/fhandle.c
++++ b/fs/fhandle.c
+@@ -254,9 +254,11 @@ static int vfs_dentry_acceptable(void *context, struct dentry *dentry)
+ 	/*
+ 	 * exportfs_decode_fh_raw() does not call acceptable() callback with
+ 	 * a disconnected directory dentry, so we should have reached either
+-	 * mount fd directory or sb root.
++	 * mount fd directory or sb root. Multi-root filesystems have more
++	 * than one root.
+ 	 */
+-	if (ctx->fh_flags & EXPORT_FH_DIR_ONLY)
++	if ((ctx->fh_flags & EXPORT_FH_DIR_ONLY) &&
++	    !(root->d_sb->s_iflags & SB_I_MULTIROOT))
+ 		WARN_ON_ONCE(d != root && d != root->d_sb->s_root);
+ 	dput(d);
+ 	return retval;
+
+-- 
+2.53.0
 
