@@ -1,33 +1,33 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=193.43.10.250
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795002329;
-	b=kV1+jxpALKFxphSCpHuDP4UFMrzKEHZDfJf7fVJ23pCZhSqRNVFkdTKdqmxGbX6XNOET
-	 2wM5Sxu8EGZUZtTuO/kiq0u2v8Rd7D+atIxHHL/LvGKGgPIYUoM2VvBmRb0m4WrRDZ39d
-	 aYz/seva2gKF69CEyb2WTSJjhUpRCRxwVhtZcPXuRY1RHx8mPE2x6TRDt/l9z77gVXSum
-	 DXjyfLAW84Y6zNU8JbVVRLcVJRAa6xCD/d5HbcP7KHmh7hppvhkDzrxlnw3/Ur3FksCPu
-	 KtXPY6faSbqaAN+4S9yQZVF8jPbStpujhu0NO7Je+KDlMFivriPqksK7xhRfAF117UQ==
+	b=Imn9XfA1rRgdGKstq1xhgs4vt5Lo4MWKIeJ7ylR3z0UyPGONZGSw9cbX17dP7IHteIA7
+	 kuD3Qc+tPPtDod5Emil8ADgipLRday1ipAVSmiTOIfsfmcRlLMN9O8fP2iYU95T+hPcLl
+	 rHF7qgXRL1msl/e71KMVMPmpe2GLXAIz6arJDLABEc9BbiWTGNo+tjm+qcX8tiE5IFX7r
+	 LAAO7VxKKxQO0qPXRPHxnjqGfvjuzZbK8EuqSs3ODrdZJVPEur7KH4/uZG8awwBxOzhy7
+	 XOhrU7Pf5sM0akf03af3VXAIJj+FN+2wE3qIyFL1KZaMIh75tfKgIO4s0CADQ1mkLsA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795002329;
 	h=DMARC-Filter:Received:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
 	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=S28adRf1oFbzkE6QXQDQ41sT8RTsMRp/NYXyPKCgYOc=;
-	b=OzD+zjY6QJzLqzN7gqLmLjQW+CKoNIXxMGrXiHogH/qR5vfswNmUsuE/EuyBjWasfoqa
-	 dT/tsO3mp8vS/1TTuznCUiegQYg/2Z9p0fS/asPCn1kMvKk4cZyx8aT+PU/LrM+jnOlr1
-	 F1Mw5NgyzH7FpNJhxubA4GUzb7q+YUcRD38nAk/x2o9+iYXRDraxeIcGPAs9rZ8WuDr88
-	 z51T/WgLiPedMmWawuENXkJAGINr7e/kuO2Gm0go/JAR2TpywANlzakBQ/ts6SURN53Fr
-	 ynH24wHf9a/njmVhiGl3uTS8pAYreUiJ8Pqlvx2fn2fnIwLnZz6IXlWOzRMtY1XXp5g==
+	bh=tc5ZdEvcuXQuXynPAUFr9RDALnggzL7BTBT5IgSsgJE=;
+	b=Btdnvn/ZpJK+L2fl6uw4mm4RzyAJqIE3W8SpuaROrQpsRP3/OV7up4QKu7K3J4Jlb05n
+	 unLiaWHxbBEMmEzWUQ3dkWo1hid2piqiD3oP8ruSWgt1vC543+DQCmPModNTc3CEfioAA
+	 SlOv5XFGUsG4jgEGu9cybMHvj6w1fA2K3nZ3XjPpsbsNzwOnmZzvTQ9fCsefdclR6NA2v
+	 TBh8i1np6HGbyMqy3auszkoLbcTTCSjzRptf9MDksJszo7TVltTTy8+CBTK5ubyNLbT3V
+	 vQ3MQwZJNqgXbx4jQF9ZtG1zi/Zl+LwmGQYNC8wEtU5rUkBOkJP9vYStBTz2LLko6Zg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=altlinux.org;
 	spf=fail smtp.mailfrom=altlinux.org;
 	arc=none smtp.remote-ip=193.43.10.250
 Received: from basalt.external.altlinux.org (unknown [193.43.10.250])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id AC26C60A2620;
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id BF41560A2624;
 	Wed, 18 Nov 2026 11:45:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AC26C60A2620
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BF41560A2624
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=altlinux.org
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=altlinux.org
 Received: by basalt.external.altlinux.org (Postfix, from userid 1137)
-	id E96A12DF33F; Wed, 18 Nov 2026 14:45:18 +0300 (MSK)
+	id F401B2DF345; Wed, 18 Nov 2026 14:45:18 +0300 (MSK)
 From: Alexey Shabalin <shaba@altlinux.org>
 To: devel-kernel@altlinux.org
 Cc: David Howells <dhowells@redhat.com>,
@@ -43,9 +43,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-nfs@vger.kernel.org,
 	linux-crypto@vger.kernel.org,
 	netdev@vger.kernel.org
-Subject: [PATCH 6.12/sisyphus 08/29] crypto/krb5: Provide RFC3961 setkey packaging functions
-Date: Wed, 18 Nov 2026 14:44:57 +0300
-Message-ID: <20261118114518.3605222-9-shaba@altlinux.org>
+Subject: [PATCH 6.12/sisyphus 11/29] crypto/krb5: Implement the AES enctypes from rfc3962
+Date: Wed, 18 Nov 2026 14:45:00 +0300
+Message-ID: <20261118114518.3605222-12-shaba@altlinux.org>
 X-Mailer: git-send-email 2.50.1
 In-Reply-To: <20261118114518.3605222-1-shaba@altlinux.org>
 References: <20261118114518.3605222-1-shaba@altlinux.org>
@@ -62,10 +62,8 @@ Content-Transfer-Encoding: 8bit
 
 From: David Howells <dhowells@redhat.com>
 
-Provide functions to derive keys according to RFC3961 (or load the derived
-keys for the selftester where only derived keys are available) and to
-package them up appropriately for passing to a krb5enc AEAD setkey or a
-hash setkey function.
+Implement the aes128-cts-hmac-sha1-96 and aes256-cts-hmac-sha1-96 enctypes
+from rfc3962, using the rfc3961 kerberos 5 simplified crypto scheme.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Herbert Xu <herbert@gondor.apana.org.au>
@@ -80,179 +78,189 @@ cc: linux-afs@lists.infradead.org
 cc: linux-nfs@vger.kernel.org
 cc: linux-crypto@vger.kernel.org
 cc: netdev@vger.kernel.org
-(cherry picked from commit 8bcdbfa89f4fc1ab7b06e784cb9c3346a943955e)
+(cherry picked from commit 7c164b66b276c49b3888d3280e1b70a85732a38c)
 ---
- crypto/krb5/internal.h           |  20 +++++
- crypto/krb5/rfc3961_simplified.c | 122 ++++++++++++++++++++++++++++++-
- 2 files changed, 138 insertions(+), 4 deletions(-)
+ crypto/krb5/Kconfig       |   1 +
+ crypto/krb5/Makefile      |   3 +-
+ crypto/krb5/internal.h    |   6 ++
+ crypto/krb5/krb5_api.c    |   2 +
+ crypto/krb5/rfc3962_aes.c | 115 ++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 126 insertions(+), 1 deletion(-)
+ create mode 100644 crypto/krb5/rfc3962_aes.c
 
+diff --git a/crypto/krb5/Kconfig b/crypto/krb5/Kconfig
+index 079873618abf..2ad874990dc8 100644
+--- a/crypto/krb5/Kconfig
++++ b/crypto/krb5/Kconfig
+@@ -5,6 +5,7 @@ config CRYPTO_KRB5
+ 	select CRYPTO_AUTHENC
+ 	select CRYPTO_SKCIPHER
+ 	select CRYPTO_HASH_INFO
++	select CRYPTO_HMAC
+ 	select CRYPTO_SHA1
+ 	select CRYPTO_CBC
+ 	select CRYPTO_CTS
+diff --git a/crypto/krb5/Makefile b/crypto/krb5/Makefile
+index 8dad8e3bf086..35f21411abf8 100644
+--- a/crypto/krb5/Makefile
++++ b/crypto/krb5/Makefile
+@@ -6,6 +6,7 @@
+ krb5-y += \
+ 	krb5_kdf.o \
+ 	krb5_api.o \
+-	rfc3961_simplified.o
++	rfc3961_simplified.o \
++	rfc3962_aes.o
+ 
+ obj-$(CONFIG_CRYPTO_KRB5) += krb5.o
 diff --git a/crypto/krb5/internal.h b/crypto/krb5/internal.h
-index 7d60977dc0c5..ae00588619a8 100644
+index 07a47ddf3ea9..43f904a69e32 100644
 --- a/crypto/krb5/internal.h
 +++ b/crypto/krb5/internal.h
-@@ -136,3 +136,23 @@ int krb5_derive_Ki(const struct krb5_enctype *krb5, const struct krb5_buffer *TK
-  * rfc3961_simplified.c
-  */
- extern const struct krb5_crypto_profile rfc3961_simplified_profile;
+@@ -179,3 +179,9 @@ int rfc3961_verify_mic(const struct krb5_enctype *krb5,
+ 		       const struct krb5_buffer *metadata,
+ 		       struct scatterlist *sg, unsigned int nr_sg,
+ 		       size_t *_offset, size_t *_len);
 +
-+int authenc_derive_encrypt_keys(const struct krb5_enctype *krb5,
-+				const struct krb5_buffer *TK,
-+				unsigned int usage,
-+				struct krb5_buffer *setkey,
-+				gfp_t gfp);
-+int authenc_load_encrypt_keys(const struct krb5_enctype *krb5,
-+			      const struct krb5_buffer *Ke,
-+			      const struct krb5_buffer *Ki,
-+			      struct krb5_buffer *setkey,
-+			      gfp_t gfp);
-+int rfc3961_derive_checksum_key(const struct krb5_enctype *krb5,
-+				const struct krb5_buffer *TK,
-+				unsigned int usage,
-+				struct krb5_buffer *setkey,
-+				gfp_t gfp);
-+int rfc3961_load_checksum_key(const struct krb5_enctype *krb5,
-+			      const struct krb5_buffer *Kc,
-+			      struct krb5_buffer *setkey,
-+			      gfp_t gfp);
-diff --git a/crypto/krb5/rfc3961_simplified.c b/crypto/krb5/rfc3961_simplified.c
-index 75eafba059c7..335c5bb6904f 100644
---- a/crypto/krb5/rfc3961_simplified.c
-+++ b/crypto/krb5/rfc3961_simplified.c
-@@ -68,6 +68,8 @@
++/*
++ * rfc3962_aes.c
++ */
++extern const struct krb5_enctype krb5_aes128_cts_hmac_sha1_96;
++extern const struct krb5_enctype krb5_aes256_cts_hmac_sha1_96;
+diff --git a/crypto/krb5/krb5_api.c b/crypto/krb5/krb5_api.c
+index 8fc3a1b9d4ad..ecc6655953d5 100644
+--- a/crypto/krb5/krb5_api.c
++++ b/crypto/krb5/krb5_api.c
+@@ -17,6 +17,8 @@ MODULE_AUTHOR("Red Hat, Inc.");
+ MODULE_LICENSE("GPL");
  
- #include <linux/slab.h>
- #include <linux/lcm.h>
-+#include <linux/rtnetlink.h>
-+#include <crypto/authenc.h>
- #include <crypto/skcipher.h>
- #include <crypto/hash.h>
- #include "internal.h"
-@@ -399,9 +401,121 @@ static int rfc3961_calc_PRF(const struct krb5_enctype *krb5,
- 	return ret;
- }
- 
-+/*
-+ * Derive the Ke and Ki keys and package them into a key parameter that can be
-+ * given to the setkey of a authenc AEAD crypto object.
-+ */
-+int authenc_derive_encrypt_keys(const struct krb5_enctype *krb5,
-+				const struct krb5_buffer *TK,
-+				unsigned int usage,
-+				struct krb5_buffer *setkey,
-+				gfp_t gfp)
-+{
-+	struct crypto_authenc_key_param *param;
-+	struct krb5_buffer Ke, Ki;
-+	struct rtattr *rta;
-+	int ret;
-+
-+	Ke.len  = krb5->Ke_len;
-+	Ki.len  = krb5->Ki_len;
-+	setkey->len = RTA_LENGTH(sizeof(*param)) + Ke.len + Ki.len;
-+	setkey->data = kzalloc(setkey->len, GFP_KERNEL);
-+	if (!setkey->data)
-+		return -ENOMEM;
-+
-+	rta = setkey->data;
-+	rta->rta_type = CRYPTO_AUTHENC_KEYA_PARAM;
-+	rta->rta_len = RTA_LENGTH(sizeof(*param));
-+	param = RTA_DATA(rta);
-+	param->enckeylen = htonl(Ke.len);
-+
-+	Ki.data = (void *)(param + 1);
-+	Ke.data = Ki.data + Ki.len;
-+
-+	ret = krb5_derive_Ke(krb5, TK, usage, &Ke, gfp);
-+	if (ret < 0) {
-+		pr_err("get_Ke failed %d\n", ret);
-+		return ret;
-+	}
-+	ret = krb5_derive_Ki(krb5, TK, usage, &Ki, gfp);
-+	if (ret < 0)
-+		pr_err("get_Ki failed %d\n", ret);
-+	return ret;
-+}
-+
-+/*
-+ * Package predefined Ke and Ki keys and into a key parameter that can be given
-+ * to the setkey of an authenc AEAD crypto object.
-+ */
-+int authenc_load_encrypt_keys(const struct krb5_enctype *krb5,
-+			      const struct krb5_buffer *Ke,
-+			      const struct krb5_buffer *Ki,
-+			      struct krb5_buffer *setkey,
-+			      gfp_t gfp)
-+{
-+	struct crypto_authenc_key_param *param;
-+	struct rtattr *rta;
-+
-+	setkey->len = RTA_LENGTH(sizeof(*param)) + Ke->len + Ki->len;
-+	setkey->data = kzalloc(setkey->len, GFP_KERNEL);
-+	if (!setkey->data)
-+		return -ENOMEM;
-+
-+	rta = setkey->data;
-+	rta->rta_type = CRYPTO_AUTHENC_KEYA_PARAM;
-+	rta->rta_len = RTA_LENGTH(sizeof(*param));
-+	param = RTA_DATA(rta);
-+	param->enckeylen = htonl(Ke->len);
-+	memcpy((void *)(param + 1), Ki->data, Ki->len);
-+	memcpy((void *)(param + 1) + Ki->len, Ke->data, Ke->len);
-+	return 0;
-+}
-+
-+/*
-+ * Derive the Kc key for checksum-only mode and package it into a key parameter
-+ * that can be given to the setkey of a hash crypto object.
-+ */
-+int rfc3961_derive_checksum_key(const struct krb5_enctype *krb5,
-+				const struct krb5_buffer *TK,
-+				unsigned int usage,
-+				struct krb5_buffer *setkey,
-+				gfp_t gfp)
-+{
-+	int ret;
-+
-+	setkey->len = krb5->Kc_len;
-+	setkey->data = kzalloc(setkey->len, GFP_KERNEL);
-+	if (!setkey->data)
-+		return -ENOMEM;
-+
-+	ret = krb5_derive_Kc(krb5, TK, usage, setkey, gfp);
-+	if (ret < 0)
-+		pr_err("get_Kc failed %d\n", ret);
-+	return ret;
-+}
-+
-+/*
-+ * Package a predefined Kc key for checksum-only mode into a key parameter that
-+ * can be given to the setkey of a hash crypto object.
-+ */
-+int rfc3961_load_checksum_key(const struct krb5_enctype *krb5,
-+			      const struct krb5_buffer *Kc,
-+			      struct krb5_buffer *setkey,
-+			      gfp_t gfp)
-+{
-+	setkey->len = krb5->Kc_len;
-+	setkey->data = kmemdup(Kc->data, Kc->len, GFP_KERNEL);
-+	if (!setkey->data)
-+		return -ENOMEM;
-+	return 0;
-+}
- const struct krb5_crypto_profile rfc3961_simplified_profile = {
--	.calc_PRF	= rfc3961_calc_PRF,
--	.calc_Kc	= rfc3961_calc_DK,
--	.calc_Ke	= rfc3961_calc_DK,
--	.calc_Ki	= rfc3961_calc_DK,
-+	.calc_PRF		= rfc3961_calc_PRF,
-+	.calc_Kc		= rfc3961_calc_DK,
-+	.calc_Ke		= rfc3961_calc_DK,
-+	.calc_Ki		= rfc3961_calc_DK,
-+	.derive_encrypt_keys	= authenc_derive_encrypt_keys,
-+	.load_encrypt_keys	= authenc_load_encrypt_keys,
-+	.derive_checksum_key	= rfc3961_derive_checksum_key,
-+	.load_checksum_key	= rfc3961_load_checksum_key,
+ static const struct krb5_enctype *const krb5_supported_enctypes[] = {
++	&krb5_aes128_cts_hmac_sha1_96,
++	&krb5_aes256_cts_hmac_sha1_96,
  };
+ 
+ /**
+diff --git a/crypto/krb5/rfc3962_aes.c b/crypto/krb5/rfc3962_aes.c
+new file mode 100644
+index 000000000000..5cbf8f4638b9
+--- /dev/null
++++ b/crypto/krb5/rfc3962_aes.c
+@@ -0,0 +1,115 @@
++// SPDX-License-Identifier: BSD-3-Clause
++/* rfc3962 Advanced Encryption Standard (AES) Encryption for Kerberos 5
++ *
++ * Parts borrowed from net/sunrpc/auth_gss/.
++ */
++/*
++ * COPYRIGHT (c) 2008
++ * The Regents of the University of Michigan
++ * ALL RIGHTS RESERVED
++ *
++ * Permission is granted to use, copy, create derivative works
++ * and redistribute this software and such derivative works
++ * for any purpose, so long as the name of The University of
++ * Michigan is not used in any advertising or publicity
++ * pertaining to the use of distribution of this software
++ * without specific, written prior authorization.  If the
++ * above copyright notice or any other identification of the
++ * University of Michigan is included in any copy of any
++ * portion of this software, then the disclaimer below must
++ * also be included.
++ *
++ * THIS SOFTWARE IS PROVIDED AS IS, WITHOUT REPRESENTATION
++ * FROM THE UNIVERSITY OF MICHIGAN AS TO ITS FITNESS FOR ANY
++ * PURPOSE, AND WITHOUT WARRANTY BY THE UNIVERSITY OF
++ * MICHIGAN OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING
++ * WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE
++ * REGENTS OF THE UNIVERSITY OF MICHIGAN SHALL NOT BE LIABLE
++ * FOR ANY DAMAGES, INCLUDING SPECIAL, INDIRECT, INCIDENTAL, OR
++ * CONSEQUENTIAL DAMAGES, WITH RESPECT TO ANY CLAIM ARISING
++ * OUT OF OR IN CONNECTION WITH THE USE OF THE SOFTWARE, EVEN
++ * IF IT HAS BEEN OR IS HEREAFTER ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGES.
++ */
++
++/*
++ * Copyright (C) 1998 by the FundsXpress, INC.
++ *
++ * All rights reserved.
++ *
++ * Export of this software from the United States of America may require
++ * a specific license from the United States Government.  It is the
++ * responsibility of any person or organization contemplating export to
++ * obtain such a license before exporting.
++ *
++ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
++ * distribute this software and its documentation for any purpose and
++ * without fee is hereby granted, provided that the above copyright
++ * notice appear in all copies and that both that copyright notice and
++ * this permission notice appear in supporting documentation, and that
++ * the name of FundsXpress. not be used in advertising or publicity pertaining
++ * to distribution of the software without specific, written prior
++ * permission.  FundsXpress makes no representations about the suitability of
++ * this software for any purpose.  It is provided "as is" without express
++ * or implied warranty.
++ *
++ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
++ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
++ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
++ */
++
++/*
++ * Copyright (C) 2025 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ */
++
++#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++
++#include "internal.h"
++
++const struct krb5_enctype krb5_aes128_cts_hmac_sha1_96 = {
++	.etype		= KRB5_ENCTYPE_AES128_CTS_HMAC_SHA1_96,
++	.ctype		= KRB5_CKSUMTYPE_HMAC_SHA1_96_AES128,
++	.name		= "aes128-cts-hmac-sha1-96",
++	.encrypt_name	= "krb5enc(hmac(sha1),cts(cbc(aes)))",
++	.cksum_name	= "hmac(sha1)",
++	.hash_name	= "sha1",
++	.derivation_enc	= "cts(cbc(aes))",
++	.key_bytes	= 16,
++	.key_len	= 16,
++	.Kc_len		= 16,
++	.Ke_len		= 16,
++	.Ki_len		= 16,
++	.block_len	= 16,
++	.conf_len	= 16,
++	.cksum_len	= 12,
++	.hash_len	= 20,
++	.prf_len	= 16,
++	.keyed_cksum	= true,
++	.random_to_key	= NULL, /* Identity */
++	.profile	= &rfc3961_simplified_profile,
++};
++
++const struct krb5_enctype krb5_aes256_cts_hmac_sha1_96 = {
++	.etype		= KRB5_ENCTYPE_AES256_CTS_HMAC_SHA1_96,
++	.ctype		= KRB5_CKSUMTYPE_HMAC_SHA1_96_AES256,
++	.name		= "aes256-cts-hmac-sha1-96",
++	.encrypt_name	= "krb5enc(hmac(sha1),cts(cbc(aes)))",
++	.cksum_name	= "hmac(sha1)",
++	.hash_name	= "sha1",
++	.derivation_enc	= "cts(cbc(aes))",
++	.key_bytes	= 32,
++	.key_len	= 32,
++	.Kc_len		= 32,
++	.Ke_len		= 32,
++	.Ki_len		= 32,
++	.block_len	= 16,
++	.conf_len	= 16,
++	.cksum_len	= 12,
++	.hash_len	= 20,
++	.prf_len	= 16,
++	.keyed_cksum	= true,
++	.random_to_key	= NULL, /* Identity */
++	.profile	= &rfc3961_simplified_profile,
++};
 -- 
 2.50.1
 
