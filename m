@@ -1,121 +1,102 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795047920;
-	b=P6LZoVeSOlJULpZuqrj9muOw+KMNQ1li6+SuGdDoppWGEmHkEVfX7hdP4SXEHjAtDLJS
-	 HCL7KzIzosVkDhaziuBYtCEfr+l+rE5Z4PlijS56GnYTISSeHyETqjE0C+QpmlDh1+2zk
-	 r5GUtenkE/Yah2hr30ro37hmjoeak5kqCGBWyj3jidE+5zw+ypBKZse0Epp6zsc7cgUBY
-	 zF17Bfxv7s47WCOEovxS5E/WzzifanhM33lwRE/NtpM2zmP3lc1ZLsXFkg9fu5F0XWOCz
-	 0DRQ5MXdLPMnuvCWLgxsIolkRVVgb2PwfsGRzTuyPZm3m7DbiQmqgjWpeLfOPQuCgqQ==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795047920;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 X-Received:MIME-Version:References:In-Reply-To:From:Date:
-	 X-Gm-Features:Message-ID:Subject:To:Cc:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=M4+iI66pVBP+4vibL3T75xrw5k3lOfdLMjtLDFVvV8g=;
-	b=brHDYdNVsG/8EY/tQmpxe1+j/Rpv90HWVHZDmutUksE6d6ttpPwVgOr/fwnRW2ZUYqDW
-	 xjohSzSBoMHMCKcJVWmRvuSIP/8hdmjrhBGzkO6zE+Ag3TDymGy5QdCqQVwjLfo3QwntN
-	 aJBKcZUQujq/QFL7vUEHxBh1r+Q8pE6ubJ2dz/ASfSkv/MmwewiFK0BDxKIL/QmUT2lBD
-	 gV7F6tOzLNW7yXx6xZVpAec+GBpk7301W2jjR3IRvon/3XtZMJ9Iw8EnHX45x7fk2gMex
-	 yV2tCapih4giHh2Knsa5W3I1bEBm8PeCdJOxaz0QmVQaJLGKg5pI7Xy4kXNXQY5rHLQ==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=figiuMqN;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=cFVw0AE7;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=178.63.21.144
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795056461;
+	b=GfIEoqb6WC0J/C51KR2Sr/8odGwRVtDZnDqLdF4nQI2GqJ/JUzpx6lVbDCEEBSskSXrN
+	 +7VSzFpj+KlBoP6P+uPy73ncwjXsSbewJ57hoJ0I7C+NmPXcsogOBkM3uGp9lS/RB6Grc
+	 L9Y+c+7JBeKy8Az7LUNcWM2HP3lNCtDwKw42mL15FG9bLWZeQTHMsrls0pAG0HRSMCos/
+	 /TpI/PfYHwJBZMWH74ebC8BejK7+eAvCxLwTfjQ6FACvIUOGR4XBEyH89Uj/JbHwc+yL9
+	 KbrlqXOa4w6TUbiRMGm53QL0z3/OyQ4r5fSyJzrtis6ehiZhE6lP76l44EcguzpwoJg==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795056461;
+	h=DMARC-Filter:DKIM-Signature:Received:Received:Received:X-ME-Sender:
+	 X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:From:
+	 To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding:X-Greylist;
+	bh=Zfs/mZkSzGM5aX8ipR571btLK0cF3xTqtEpu5UVT4go=;
+	b=r2UWp4oAuPx/3CJCoo/w0bLiVD8eR5kf4RzyqOaiTTr2RAmftc4TUlUqmeICVYM59p5l
+	 mchSV+zdIjDTuYgdin1gZoe4OSFbKe8fh2obxma3XBS1Dd3hWOxxkKFG6YJoKv3XWSCYT
+	 ts0bh20LnYIlsUg6nxPpvSrvfBeqUCGKPdY/PaK1itQ6qAsD3gfZUZnKOlnWEsuPRPTyJ
+	 18iQKRffKtP5V5S0fBPTBRsnNrHWU/rCcihrSai6jNQOB/z/t4HlAEu5XN/eNIee5gY0w
+	 Bt0LF2I9sId9K91L+lbyI02nr9PRmjKI0kWXToa0vhwXEBx5PEEb78WePzMVmKuRp9w==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=sericyb.com.au;
+	spf=pass smtp.mailfrom=shining.glasswings.com.au;
+	dkim=pass header.d=sericyb.com.au header.i=@sericyb.com.au header.a=rsa-sha256 header.s=shining header.b="QDc18k/5";
+	arc=none smtp.remote-ip=178.63.21.144
+Received: from shining.glasswings.com.au (shining.glasswings.com.au [178.63.21.144])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53BF9606A32C
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 00:25:20 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 53BF9606A32C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCD29606A320;
+	Thu, 19 Nov 2026 02:47:40 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BCD29606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=sericyb.com.au
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=shining.glasswings.com.au
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=figiuMqN;
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=cFVw0AE7
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1795047919;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=M4+iI66pVBP+4vibL3T75xrw5k3lOfdLMjtLDFVvV8g=;
-	b=figiuMqNPSbJSC+rppKYW73jTrxg0F5RFlFTF8isncIxQMPE1WxN7Bn1FHZTvLkpofJq4d
-	7m420J1xkEdKbn3Rcx5/MaC0RJqvUstWY08DU3pgmjHol80seQFiw6J/Lwkk9/s2t1SRbD
-	9rIFexGnSFloom9KDpPKlHqDR/WtULw=
-Received: from mail-yx1-f70.google.com (mail-yx1-f70.google.com
- [74.125.224.70]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-640-7ugsEUdONX-FmiQrMNmtXw-1; Wed, 18 Nov 2026 19:25:18 -0500
-X-MC-Unique: 7ugsEUdONX-FmiQrMNmtXw-1
-X-Mimecast-MFC-AGG-ID: 7ugsEUdONX-FmiQrMNmtXw_1795047918
-Received: by mail-yx1-f70.google.com with SMTP id 956f58d0204a3-67c041acd09so2332017d50.3
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 16:25:18 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795047917; cv=none;
-        d=google.com; s=arc-20260327;
-        b=AO7xMnSvj5sYn4Et/2amWSfswWLEwWO/MqR0oUgBl0YRxD3UpeJSoOMmClEoIRk0Hm
-         57vvPc8ivaS8H4iRArBj6ZzytnkwufacE1T0uvdItnj9YwYY8cUoTnnmeGl7dmVhEhvw
-         Jtv+QbJxnBD/gPEi/WQ9anL3kPZ6YLgB9rjm/yH60pAjFNIPvSou40CbBmnko+ipZY7M
-         4bZB8vUHZYEsVCD3cgTl79vlbv+p/45P+4wynKMrdK89eJa3Wtt0k8nPr5RDHaBBptMR
-         aZ2se7WQd6WUcyVt6XrCOPnSBjNhHeNTbCg7DPUOcScmF/Bn1Ps/8c8G0K3PL3vnGkxb
-         Nk9w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=M4+iI66pVBP+4vibL3T75xrw5k3lOfdLMjtLDFVvV8g=;
-        fh=ILr7decRYnK4wE8SxM8JKScRH1q7gAlTPx8UC14Zsjc=;
-        b=e2vw8BS4+TMrpfoW6Lw7Qap2HMK3c8GPIkb1w0tmYl/SV+iw71nzdN1s+3YQf8od3v
-         jVHEDPZLaTE1SEyR9IdiO0XeETgSBkNK+IJe8rk4mWjx6hZC8gPEz+VELUlswgNlhOXs
-         p3b2bYc1BUfVUMiHh6B6gXxmaBgoQIvDr1uuxzwh+q/9MycV2whsETH5FtOrFNSNGk5s
-         19+ZCLiuEtEC2jq7Cw3nEHbN4pj0VgzmezhX2hu75Y3L+x0fBmSE7RWrEv5GgitIJOX0
-         VKo4RO01fwsPwDuOsetdy2fa1K9k5H/RaDFlyjRO5fWpGoQsJttS0tWJWU9r2ZjyMoK2
-         q3Ow==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1795047917; x=1795652717; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=M4+iI66pVBP+4vibL3T75xrw5k3lOfdLMjtLDFVvV8g=;
-        b=cFVw0AE7k4Sx3klhOI+hIwBtN7pzKUDLCwxIvf1GwEfUyqXl+PBjIT0RRQORJGI2M5
-         cr2BBRmZtSCGNDYE5TPt41nwQkXbpYRg+5nucbc1EyR77axD55D/rR3B9wEO/uO+mByo
-         19pL3U/soO/odNlWuJH9T++t7gllhpBDYBkgbumJk/d3GIiLVhUTgGFX/u2cI2o7FltH
-         /behdt6HVdhB8gjxhLqdWz+ZcLdeAisVvcqYEqfwiIRg9p2BYheknbhM2KU7DM5iRlJe
-         R8KwC8LwBJEykAvLNnC6BIN3sAPeAHyzoBlzurMX0iFs/hlpJIP9XFKvRiilgYXmDhGt
-         x1Dg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795047917; x=1795652717;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=M4+iI66pVBP+4vibL3T75xrw5k3lOfdLMjtLDFVvV8g=;
-        b=NcEnmp6fSr8dm+7ifI6aaE7iOaXJ8sAK8AueLuXXVEh9ABaR+z4S12cqGxFpkFWC6N
-         CIqw3efaY9SArYE144qBesJpagbL63Z99z4JcgNPcEgYto2NX3tvEFwLYNR4nfO+42tr
-         SvzPBS9wi9Qo+AcgZ9N3wvsl6yXe01FtTeKkL4kFs4/qiVNciso+/0CAfsWtnIEOyrDG
-         oSB9fPUNzGJEIoGJ/79G6TGrjr1q4LlSWCXIylJiOj/ip3r0dMlZ5cU8QTTDPzEptT/W
-         ZlSrUvjx0oouvWj13Sov+RC8vn4KqDfSXRqVyggDdOoswd4R1OHB9qVO2Qs3B9DmDfoF
-         I7Qw==
-X-Forwarded-Encrypted: i=1; AL+hErHJJa6IaD2FHJLTxEZ/b0I1bkwHmpaJglxN30bzpAacELyg9kh880nGG4KzcpizcoaXffccSBX1CBI=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/Rc+S3o+15Z0tHD5md59ZwZMMdJD1yD2juhw+3a/BPBer9nac5
-	4Ah4lfZ4gu0tQhXR3VzUUgsuEB/AYQ48K+EotBsTrnMii+6J97f8D1QgruTCJMqc6jeGJ8+dpfI
-	E/PEnrz5pCL/YTaDNTf7hN8lm9bZK4foZJoFGHofHdb41k00bUECXhmMu2h+ACHC56IDvA/PV/I
-	ASkWytlswzWimLmicGHr+S566/VhMpcZvCvdMY
-X-Gm-Gg: AZFdTZfb2iz6OVQ0E8dEHrS6Vzdd0IeHROOToRO3XfG/bNzJTW6QRqaqCEl+gPoiP0f
-	ltVVm4/trbLew0B8LxCSAQvMZ1QNSNZJOHeigqkttyaJZo8XMV60z5WHZw9qcJn+50UbX+xXWj9
-	UVLh6PhWtDwX023oMvbK66wEBGlIBPK1+PYS7YDcShex6+UHwaAxXdWF7Nd0EuxGJlbYTZDowZR
-	Rfp2nQwMv0ZBkK8yPfHfkNSEQQy4MCPISIXAprlNVeijA==
-X-Received: by 2002:a05:690e:1553:20b0:67d:b309:a247 with SMTP id 956f58d0204a3-67dd3f89d1amr1300405d50.81.1795047917502;
-        Wed, 18 Nov 2026 16:25:17 -0800 (PST)
-X-Received: by 2002:a05:690e:1553:20b0:67d:b309:a247 with SMTP id
- 956f58d0204a3-67dd3f89d1amr1300383d50.81.1795047916923; Wed, 18 Nov 2026
- 16:25:16 -0800 (PST)
+	dkim=pass (2048-bit key, unprotected) header.d=sericyb.com.au header.i=@sericyb.com.au header.a=rsa-sha256 header.s=shining header.b=QDc18k/5
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=sericyb.com.au;
+	s=shining; t=1795056453;
+	bh=mwXCopiP9I1Zc69OmrECthJzg3itd0NAL19oqxAFCcc=;
+	h=From:To:Cc:Subject:Date:From;
+	b=QDc18k/5lM6u3eaWbtZ74JVpseaahfy217KwXCmF3ji471cgxFD8K1s/TaXo5stzo
+	 Y0oDuD+YUpjLx8ezuSRVN4VTrRSQvQ+E1SbE3KkfGPoL/m5C/sbygnT2p8amT5TEUd
+	 i+k+D+NDvjmZH173+uZhBhieaf8U5WhcMV4Y5ib9LN3MDEZ/0/JMBQ7ELMBQMspNrJ
+	 04GahS/tvaKbafDw1oJsczy++MQdjTiAM6Y4zR2Mb2n0yQBzQ7zaVb0hH6M8zFqWNj
+	 lkV9zMz40HqmEGxYZoArbLTO+SIifY5nHW/joJd7u9UYZMGdV7xQQc1WXlSNTe83+5
+	 w4NOEjAEEQKRQ==
+Received: from fauth-a2-smtp.messagingengine.com (fauth-a2-smtp.messagingengine.com [103.168.172.201])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by shining.glasswings.com.au (Postfix) with ESMTPSA id A12BE10A47D0B;
+	Thu, 19 Nov 2026 02:47:31 +0000 (UTC)
+Received: from phl-compute-03.internal (phl-compute-03.internal [10.202.2.43])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 6D163F40066;
+	Wed, 18 Nov 2026 21:47:30 -0500 (EST)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-03.internal (MEProxy); Wed, 18 Nov 2026 21:47:30 -0500
+X-ME-Sender: <xms:QmP-amEYvPgOBoYXv4SrtpB_JA3HG1r_u6cRma6d7PBFgunXH6VKcQ>
+    <xme:QmP-au5W-9Pki3HFWZatWheOPnattbKd-nGU-PbpDR2PAUgyxzxKP-Lqn6c5ZxYru
+    xSWCEy1F7vgCm94BfkjJmSXfxjk14f3fzlFitV48NZfLO2r3CgWT4hX>
+X-ME-Received: <xmr:QmP-avzhMLTu-qUQePV9G3nokgUZRguOV-w5FuOTOLrUr_hVkNwmsd3kGJKIzOXtf8Tbmq5pEmMdRKsu1S_gOdACBoOupIZ8gyqt6esCcuefE1N19HQQKXO3F-6r>
+X-ME-Proxy-Cause: dmFkZTGjblIteJsh8okDPJnXMJT0QMSgN/rrzfz7VvZN0KFPBls5yjfZVCEBxI0ESNWsBs
+    7uIffPLeSn3LrvJRn/TMwerWyC5iH1SAdhSifkOHPhnDl1tkObQaMb/7tcU6Z0S3Rg/zbP
+    pOKkuChynybjxMq9u/bWepYNoXJdyYuD8gkoeV7Tmc2BXmbqDFF+XQU+bcEVSPdF8GWQw1
+    vlI/+NZ5gGTlKJ0NbDRspLKv0Dcta0vlTy1L72w+nFIq8WxC2DmsJfCMrGaY1eE0J5r0tH
+    6gE0vIkbnkFjwMpySGPuhwOAa6MqCirLqqwxgnVLnUxbeXERxIKk4xodtWfjMmwEX/yZcN
+    Re3Wba8ETsl3cKJIDyK6P2XRVcCOOLj9l+pG7wRTF9pJuAhecsRDqHF2UrHjL67E7qQ36b
+    kqvF1iI42kDtD2C258n5kdl9aDb623QxszirFL4fVsZR0ap3A9h+NZyH5aB8i30KHqhXfd
+    BiDUfBbB/uB7Z4SZ9hE0BgPn+1KBIL3Y5yhKrQs7JzcwAZ3icjPQb7LRCozw0aTtZngsIq
+    rnrr9lLzrej1Bha/iMya7HCfE3Xaj6X/ig65g4UWvVbwR+gem7TgOsAKNnX7QkRpQ8Ykkx
+    rwudFytA/c2+xnaNhZrUKL0JblBacWDA0jiVSp4yNkj42E+QWeqs9vYChWBw
+X-ME-Proxy: <xmx:QmP-as3_2zOfKA-pG8Ynx2fvWJQmpCi7BrbTT7sdBHjBBEqaOMoUNQ>
+    <xmx:QmP-ai6gy2dbwkiMIw98BPJ3n7JzlQFz7riJqsnjhEEWWSROQwjkgg>
+    <xmx:QmP-aqbFipHG5DWblsqH37cJVwDK3OeMWumGOqnY8N3kdRDgDItLWQ>
+    <xmx:QmP-aoRnrUQ_IDrvt3fijdNX0AdgS_IABc_hZK7VKnvR9cqkmafzkQ>
+    <xmx:QmP-avL267_-0A4v06x1IC6f-SAh7X9OP8Rac7lYQfo6g4QB0HqvpjH7>
+Feedback-ID: i558e4b61:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
+ 18 Nov 2026 21:47:25 -0500 (EST)
+From: Andrew Pam <andrew@sericyb.com.au>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: Andrew Pam <andrew@sericyb.com.au>,
+	Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	"Rafael J. Wysocki" <rafael@kernel.org>,
+	Mike Snitzer <snitzer@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	linux-pm@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v3 0/3] SUNRPC: keep NFS client connections consistent across hibernation
+Date: Thu, 19 Nov 2026 13:47:15 +1100
+Message-ID: <20261119024719.311474-1-andrew@sericyb.com.au>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -125,67 +106,137 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261116171044.6938-1-jack@suse.cz> <20261118145941.1063127-21-jack@suse.cz>
-In-Reply-To: <20261118145941.1063127-21-jack@suse.cz>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Thu, 19 Nov 2026 01:25:06 +0100
-X-Gm-Features: AclHuK8SUbQZgISlLcenRaPXTNhazVJfuhMt4GCT6fjiABD73HgWRuB83sKw5Dc
-Message-ID: <CAHc6FU7qgJ1R-bz2icUyQTQFs7_mKt=tat-ut66K-cgn-uet3Q@mail.gmail.com>
-Subject: Re: [PATCH 08/13] fs: Provide inode_or_folios_dirty() helper
-To: Jan Kara <jack@suse.cz>
-Cc: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev, 
-	Mike Marshall <hubcap@omnibond.com>, Martin Brandenburg <martin@omnibond.com>, devel@lists.orangefs.org, 
-	Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net, 
-	Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
-	David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
-	linux-afs@lists.infradead.org, Miklos Szeredi <miklos@szeredi.hu>, 
-	fuse-devel@lists.linux.dev, linux-block@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org, 
-	Eric Biggers <ebiggers@kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>, linux-fscrypt@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-Greylist: Sender succeeded SMTP AUTH, not delayed by milter-greylist-4.6.2 (shining.glasswings.com.au [178.63.21.144]); Thu, 19 Nov 2026 02:47:33 +0000 (UTC)
 
-On Wed, Nov 18, 2026 at 4:00=E2=80=AFPM Jan Kara <jack@suse.cz> wrote:
-> Provide a helper function checking whether inode itself or some of its
-> folios are dirty. We'll use it in filesystems instead of direct i_state
-> checks. Note that this check returns true also if only timestamps are
-> dirty when lazytime is enabled.
+An NFS client that hibernates with a mount active can resume with the
+mount hung, until the server's nfsd is restarted. The underlying
+problem was described on linux-pm in 2011 ("hibernate hangs TCP") and
+not fixed. This series fixes it for SUNRPC clients.
 
-This is confusing. Can we just say this here?
+After hibernation takes its snapshot, the kernel thaws devices, the NIC
+among them, to write the image. Freezable kernel work stays frozen until
+the image is restored, but rpciod, xprtiod and the NFSv4 lease renewal
+work are not freezable. So RPCs are still sent and answered while the
+image is written, and TCP acknowledges data from the server, none of
+which the restored image knows about. On resume the client's TCP
+sequence numbers, its acknowledgement point and its NFSv4.1 session slot
+sequence ids are all behind the server's.
 
-"Also returns true when only the timestamps are dirty."
+Captured between a Linux 7.0 client and a 6.12 server:
 
-> This is what users really want.
->
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  include/linux/fs.h | 7 +++++++
->  1 file changed, 7 insertions(+)
->
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 025f5d890689..f602deacf953 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -2228,6 +2228,13 @@ static inline bool inode_is_dirty(struct inode *in=
-ode, bool datasync)
->         return inode_state_read_once(inode) & mask;
->  }
->
-> +/* Check whether anything in the inode itself or its folios need writing=
- */
-> +static inline bool inode_or_folios_dirty(struct inode *inode)
-> +{
-> +       return inode_state_read_once(inode) & I_DIRTY_ALL ||
-> +               mapping_tagged(inode->i_mapping, PAGECACHE_TAG_DIRTY);
-> +}
-> +
->  static inline void set_inode_metadata_writeback(struct inode *inode)
->  {
->         spin_lock(&inode->i_lock);
-> --
-> 2.53.0
->
+  - 05:06:02 last exchange before the snapshot; client snd_nxt
+    2711544997.
+  - 05:06:15 hibernation entry.
+  - 05:06:44 and 05:07:48, after the snapshot: a lease-renewal
+    SEQUENCE on slot 0 (seqid 192219), the next (192220), and
+    DELEGRETURNs on slots 1-5. The server executes all of them and
+    acknowledges up to TCP sequence 2711546645.
+  - 14 hours later, on resume: the client retransmits the slot 0
+    SEQUENCE from TCP sequence 2711544997. The server discards it as a
+    duplicate and acknowledges 2711546645, which the client ignores as
+    acknowledging unsent data. Nothing more crosses the connection.
+  - On reconnecting, slot 0 gets NFS4ERR_SEQ_MISORDERED (server at
+    192220, client at 192219) every 15 seconds indefinitely; the state
+    manager waits in nfs4_begin_drain_session() for that task, and
+    every other RPC waits behind it.
 
-Thanks,
-Andreas
+Other resumes produced the same rollback with different symptoms:
+requests accepted by the server's TCP but never reaching nfsd, a partial
+overlap that left nfsd reading a session ID as a record marker
+("svc_tcp_read_marker nfsd RPC fragment too large"), or a client
+waiting for replies it had acknowledged before the restore, which the
+server will not send again.
+
+Patches 1 and 2 make rpciod, xprtiod and lease renewal freezable, so
+nothing is sent after the snapshot. That keeps the session slots
+consistent, but not the receive side: TCP still acknowledges replies
+that arrive after the snapshot. Patch 3 therefore disconnects every
+client transport once the system has resumed. Requests in flight are
+retransmitted on the new connection, and the server's reply cache
+answers any it has already executed.
+
+Testing, in QEMU/KVM: an NFSv4.2 client hibernating in test_resume mode
+(the image is written, then restored at once) against an nfsd with a 10
+second lease, with 1.2 GB of incompressible data in memory and the swap
+device throttled so that writing the image takes 81 seconds. The stress
+test runs 20 hibernations back to back while NFS writes (8 MB, fsync)
+and reads run continuously. On 7.4-rc2, for v1:
+
+                                         unpatched   1-2 only   1-3
+  RPCs received during the image write       12          0        0
+  20 hibernations under continuous I/O    hung at 1  hung at 6  20/20
+
+Unpatched, the restored client also showed a SEQUENCE error, two extra
+connections and 10 seconds of queueing after a single hibernation; with
+the series it resumed without errors. Every freeze of kernel threads
+completed in 1 ms or less. A capture of the stress runs confirms patch
+3's case: the client's acknowledgement went backwards on the cycle that
+hung with patches 1-2 only, and on two of the twenty cycles with patch
+3, where the client reconnected and carried on. The indefinite
+NFS4ERR_SEQ_MISORDERED loop seen on real hardware was not reproduced in
+the VM: it also needs a request holding a session slot across the
+restore.
+
+On 7.4-rc3, unpatched, the client hung on the third of twenty
+hibernations; v2 and v3 each completed all twenty. v3 also ran twenty
+hibernations under lockdep (PROVE_LOCKING, PROVE_RCU,
+DEBUG_ATOMIC_SLEEP) without a report from the new code, and was built
+with SUNRPC as a module. The test harness (two busybox
+initramfs VMs, no root needed) is available on request.
+
+Not addressed: the same window affects every active TCP connection, not
+only SUNRPC. Keeping network devices quiet while the image is written,
+or resetting TCP connections on restore, would fix that generally, but
+would need agreement between the PM core and netdev. This series fixes
+the case where protocol state outlives the connection and the client
+cannot recover by itself. Patches 1 and 2 also freeze rpciod and xprtiod
+during suspend to RAM, which is harmless there.
+
+This series applies on top of Chuck Lever's "SUNRPC: Set WQ_SYSFS on
+rpciod and xprtiod":
+https://lore.kernel.org/linux-nfs/20260915-performance-v3-3-ae26d460bfd3@kernel.org/
+Mike Snitzer's "SUNRPC: Make rpciod and xprtiod visible in sysfs"
+changes the same two alloc_workqueue() calls for the same purpose.
+Patch 3 is compatible with commit 9d84719d34cb ("SUNRPC: add
+request-scoped disconnects when cancelling tasks"): its conditional
+disconnect is skipped once the connection cookie has moved on, so it
+cannot close the connection that patch 3's reconnect creates.
+
+Changes in v3:
+  - Rebased onto Chuck Lever's WQ_SYSFS patch; patch 1 now adds
+    WQ_FREEZABLE to its shared wq_flags. The original comment in
+    rpciod_start() is left alone. (Anna Schumaker)
+  - Patch 3: no array, counting pass or transport references. The
+    notifier calls xprt_force_disconnect(), which does not sleep, on
+    each transport while holding its switch's xps_lock, which keeps the
+    listed transports alive. This also removes the misplaced double
+    comment. (Anna Schumaker)
+  - Changelogs trimmed to what each patch does and why; the capture and
+    test results moved here. (Anna Schumaker)
+  - v2: https://lore.kernel.org/all/20261116131428.1024230-1-andrew@sericyb.com.au/
+
+The analysis of the packet captures, the patches, the QEMU test harness
+and drafts of the changelogs and this letter were produced with an AI
+coding assistant (Claude, from Anthropic), working from the hung client
+and server, their logs and captures. It also ran the tests. I have
+reviewed and edited the patches and am responsible for them.
+
+Andrew Pam (3):
+  SUNRPC: freeze rpciod and xprtiod across system sleep
+  NFSv4: run lease renewal on a freezable workqueue
+  SUNRPC: reconnect client transports after resuming from hibernation
+
+ fs/nfs/nfs4renewd.c      |  2 +-
+ net/sunrpc/clnt.c        | 61 ++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/sched.c       |  3 +-
+ net/sunrpc/sunrpc.h      |  2 ++
+ net/sunrpc/sunrpc_syms.c |  7 +++++
+ 5 files changed, 73 insertions(+), 2 deletions(-)
+
+
+base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
+prerequisite-patch-id: a8475a72e4e9a2df387e41ca12df8aa67733256b
+-- 
+2.53.0
 
