@@ -1,90 +1,88 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.51
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.44
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795109108;
-	b=CBWsQTUZXjz5SVg/q2YlFHmZVt2zuhdKdjhyhK157ARENqts5wWP/HWGpAnYdSyJa7/l
-	 eVOx4VP7j4s8RlzDo6v4rFnhIqYX/6bVX+Y9jVNIkn4ev/v8KY13EN5c377ENxXGEYY4f
-	 8yHPMEweop98JptCUFO3N18nWnsG0Z7KE7aicQ+o3cr8VT+7XA9NqyMQzgj8Eju5yyEv8
-	 bQfBN/s0KgRQjNbeeJJZtVVzS2uKgNZKu7ngHqEtLEW9bmm0eFbdUu406bg/mfZAtIi8P
-	 aHAgEiLKVXGFt5TSBkMZsIeqOUYWUH3VV3J3UOHcnMurziyxMGPkh/26ck58HQ2vcXA==
+	t=1795109141;
+	b=ayGyofarfwwwYRoBmdayFQfeJHwg2Tvqwj91TZkJeDLZBFQ7t1fYGrgjg9Uiq8x++WGZ
+	 fQUq+/TGxu1ZPBgUU5KxywZc1PoabW1L5s7dSnX2jDZmGg9jpZKNMqSHmDYpWHTgfJHbW
+	 GWu5jBdu0x19lrL+8I+mqt3p1KknvL/Y/tSovpkVV0+R95sdU4rCj95n+SSKvhpIumt6c
+	 MbtjksIjO2/BU7Z7m5uc1hYWFYyGq8CFbqpzA6K78szvIRKU7VtfdlX5IDek2hIFP6kZu
+	 tCRkpoaqzD3K0bwXAv122dQ1o/SLP70dasgCWRuJYdLJEZ47ebVPQo+dEXzSulRdlfw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795109108;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795109141;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=1rcHE5CHzsVMtMuDdojH02EloAWT+8I+vlusNK/i0ns=;
-	b=Yo1KkWyvR+iYptiJDrVtulGN81IOD2Fcw3ecfllaxFte+0vapRjFSdmk3eGw3S3sEPhE
-	 y93eIpSOq1Kd/g2VJ/tx9AtmOGGtq3NYDWaj3ULKDzN/PLqMz/ANcuVwnZCfnq2a465Zz
-	 ZwkKCB7Rc3ONXlNmjEXrk8vJGWbTgby5bRiB8PTGuVmqonIyvyAQjyvo/Oq+2Y0JNFpE2
-	 fmaOS+dHE88D35Z5Eeup7kBIhYjJE/Or9srvKN3kYeVP2e+S/nQRXtYExeiySqU8A5aEv
-	 ZBm7oOJrBBueCwSIguCax6E+3DfdYBg1nMCNm14CWGa0k5jSooK9pADeVI1n942wyFg==
+	bh=bGQsOapv1goj1GRHYOPKsqcJh4s8/c1UOnTE9H6eLj4=;
+	b=rbjqA9+n3wKgfpd8V1UjusjSExuwybMuK8A8d9uz0/nFEm1x5XIOFb8Re98ktM3genPh
+	 PSsBSS13Xj+FRtZrwmCbllABBtk/mrBna64tj0Vk5NHS1uAmwaiko/Rz28lbhnmzdh0eO
+	 /NgtJYQis2PQIV5Zj0mASvQiE33cBgusk78VJ6stM87zat9IAKl/hKQLhGngo3uxShfdI
+	 C8Zm8dAhC/kvFTW1PBJe4Jto4kEguVRlekxacwMbapPaye2GgbtZ2w3ba5oPOhMyvumkD
+	 s6KTR8xqomCiXCygiJzGJdV2iU6rKyY4lwKi+R3QkGCcJ594OMDs0ghZ2S3feffPAiA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=EzYmHSQH;
-	arc=none smtp.remote-ip=209.85.161.51
-Received: from mail-oo1-f51.google.com (mail-oo1-f51.google.com [209.85.161.51])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=FXUOV60U;
+	arc=none smtp.remote-ip=209.85.210.44
+Received: from mail-ot1-f44.google.com (mail-ot1-f44.google.com [209.85.210.44])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 875A6606A325
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:25:06 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 875A6606A325
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 46E53606A32C
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:25:40 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 46E53606A32C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=EzYmHSQH
-Received: by mail-oo1-f51.google.com with SMTP id 006d021491bc7-705cb6ceebaso2024262eaf.3
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 09:25:06 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=FXUOV60U
+Received: by mail-ot1-f44.google.com with SMTP id 46e09a7af769-8490a7d6696so2355a34.3
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 09:25:40 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1795109105; x=1795713905; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1795109139; x=1795713939; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=1rcHE5CHzsVMtMuDdojH02EloAWT+8I+vlusNK/i0ns=;
-        b=EzYmHSQHDY1iEt1zOdKZ3BrnY3gJ+VBBlonPfCHMGgvLbX2V23a30Pu3tIfJSSwkuJ
-         WurrGH6TTW7DMOAjJI6NJg7+R57Byz52z4yCS1dASxzATe05vWPnszMVS3zZLV1gt8Yk
-         gBZQUEsQHRFPz1VCx1wX9QP8GDRkL1FJ6r82tyJjd1ePkG/QIufgCpPGVzkyvotTsgeV
-         8gXlQ9xzuSoFsaiTqqlCxKo5FbdTFJ5pRJRsRIoY7DlXQmCA1eKDBD0vI7b20ByiOKA2
-         j2B0LdAhIRYb3L4U2g8Us1aE0VNW4KXy6ITYIB4beMzxf6JYQbiQhCVdHR2azqQ0cVbb
-         JQcg==
+        bh=bGQsOapv1goj1GRHYOPKsqcJh4s8/c1UOnTE9H6eLj4=;
+        b=FXUOV60Ubqi64mlYuJYI4RhkqY4ONP6fp8ME8XUCuugP9HRAtcyJQMNxvWzWhKuU88
+         LefWZW5AgVgBmK0XtVFqZjTRXrcOJnPX+TZwI3MbA7qlSicUw+QjLyDVVhadaTjfuBPI
+         8sSYo1OTh98GjlYmC0zQuZguT6mvTP78rE53GlAtyryD1jyaZ8CJUUknZQs1OpdvlM8l
+         pIaDYwt1vdgl0smQ/CsOmATkVNT5KgpaVKtfG5w6fe93gqro0Flgr/nTCDAg1hUQT2EI
+         ayVMmrotl/a6xTMn+IADoLlKEsLGw6KfitB8MXtjv1ASu7OYqy/TblBuy5Ke16FVeiiV
+         jflQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795109105; x=1795713905;
+        d=1e100.net; s=20260707; t=1795109139; x=1795713939;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=1rcHE5CHzsVMtMuDdojH02EloAWT+8I+vlusNK/i0ns=;
-        b=m1vPHutlgpH1n1CCRrn1BPhtNSACPxYtOOkHUaOoIqeCLRK7tGr2tngqi7u4ScnsOg
-         68IA9eZ/LkDLstfzmhNGqFTuXRZw8z71zwc5YflcZUDgtvEBDyg8jXnf7DbwC/gnlcrS
-         I1vVcD1M2MCKXMsty/bS94wFnsf2rW+FL4f6CqvInNxYfa5ZLxIq7uTt+HhS/swfuvVO
-         U6tGg+DH4KZbkCLY3u36ToPJsJle6kBlcauHRXm1+cftrfBHUfNudF20zvT4fliwmkVf
-         mv8m+Khgibqa2ht2vRN3KC2mt3aa80rF1Bw9yXD68EPQPSbl8haJ1rtLHLhjDx72Cy88
-         sDaA==
-X-Gm-Message-State: APuU4Z8FOQkKEYC4RjX4sFwH+BjjPgLJP1zuQBT2YdBSyDgEwingVC0x
-	GUzNM36k//ktR+g+NlYOf+MrYB4kk+DabcyQLXuqQ9dGKB97CUB6jLLxl5SnIgYHe0SMsMVmCAM
-	tqfMB
-X-Gm-Gg: AYBFou2UxgqYhWZPHp3gmuW9BoKZe6l1U5tghXP+FjX/d8cpB61XwOZnwgF/uZXi7o7
-	deAunE/m8+qr8O1calJScSn/NtTYNIxrJFHirEl1SmSYS/fENhqXYLQ0A4DZcG+4+/Z0BCdP77i
-	dMkJe3N08uHBUX2E8liqOTU93VGF74jkH/dxWfYGe0XPxzubME8mDC0yLGm2oDIWLGeJJ+1JTEN
-	4ijBHqOw9X0j8hxw/t0xBYj9qJrfyPxIauWxOqyc0DKEpkGiiR0d2Yw+80vn3lWFZoAQ4gM7A87
-	Qs0EpHhBUP4OVBqaYAu7L2bH3dY45BOaJ7y5fwg67c8YY5Ajj8azUvLBv1qsNuUPMrdr86GbmDR
-	bfIkG7sOe6x3VLKtLejeJiv7VUpuqP/oJ7f+Xcvw0Era9G5TtTX4LOV1chOWvdLU1zm9AoNq0Jk
-	fwJKM2Rhi/W4hH4ME55847mxtjte7nJaVdGE8oYlIdiRYIxZsQNBHNbRS5Mx5LZtCO1h3i6PoXJ
-	jQkAC4MqcmIPjfSfgC4L96PKzraqKSu2Ils0+8XzHqirA5f1MPWgxGwmY7oBoBDegcXgIWR/odh
-	loGI+DeRJ0522aSy2bXIR2V06yMWP2FyJ86P2Z5aXFXwE9jMnzb1imdQEzx422AmIODRR3pUL2t
-	B
-X-Received: by 2002:a05:6820:a746:20b0:71a:ec65:1cbf with SMTP id 006d021491bc7-71b39447e69mr184894eaf.24.1795109105188;
-        Thu, 19 Nov 2026 09:25:05 -0800 (PST)
+        bh=bGQsOapv1goj1GRHYOPKsqcJh4s8/c1UOnTE9H6eLj4=;
+        b=uyokTnG3gtQKBWd1rgohYBzF5Yvnsi4D/boOW91wW/bvbqP/xEG3ARlUjuBbpzgnOO
+         D2uE0PxNrmuMHrQbYY5SpZ6zBcAkUVDl0s1iEbR0N8Kq4HQvN9qWU4Z3sXt0eCH6xvK3
+         cQHQ6YshaKZxYPIpHc89B7BJLxyZt0wKQgM77UqiTTkgoXjlrF2M0LS94Ca9gaVWKQ82
+         qJbV88Y+NdpnCyfVc08dqYoRgMw2ww/qgNe+12DFbHA8XgFINPUudaGKTds0tZKkOpk9
+         ezYz894iaNsuyRMEFbQ0XzAUjw3IUQ1nqYiIpamwtvWcNW97dr+FHzCcuJH3eoWGXgQL
+         1XUQ==
+X-Gm-Message-State: APuU4Z/mzwBTL8dBV5+E+4qNIXSpbqLVZvpWUalNDbD65mT63kmzt0Jo
+	SfhfnKNtmzbEw2+9uWFXj38XNvK91h0HlKbEPvWRKfxRmOhhgzuIIVKVJ5bB5NlxgIs=
+X-Gm-Gg: AYBFou0plw843L8OC1Y4qV6krur5D7TkBaSYkV8LYTLfXJQYAp7n4QhGyPys9Q/aSd9
+	adOZnMMxElu0LH+LucZHK3r0ovi20hjJUzgDKTur6gojzNfoTO9IXj6EzdaVKRoigB1/azMxET9
+	ucz3UtbnG14WIOdYsImCXDRon9OqaO0Ue+UnmxBlLOb6jrRY8QEN/ziKLHNytOGP0NviuMpp3U1
+	folqFU6uqEiILWJkjRA6fEsf3cSVkZ4lDXtg5tXMVSJz020CqNu4Hd1qqXKIjbe3okQWAPmLBqR
+	dlyFFmbL/3trHpyEkXsQgLcYuCFFAWPAl1KDG9W05rLdJ5d1N61ARi6jq51Yaqjh2fEtSmoQka9
+	LK0E5ouq4Dh/Hjc/Q+bCH+tyfGDZGbxRQ7aptoXFCTIQ29pm7PKHqN0OBPX5oADLNasmquR1kq0
+	A3o6r4qd3mzhcAyCNTDZSIgXZU6chWtoIK1iPZVvYbvdgbGFJF9K/oN3X7YyAaKRhjtxjMSsGzo
+	ECRv9T3qq+EiQe7Ua5V4om9TDygvIlc6gZZadOCzT8AyF8kVl878iAAZk0zE+INpvOA3urE8CqF
+	t1ySj96vivkcZkaHsk0oId6G6URmz3PdrXa6vEHPyeq/11Zz8pZ978o97LpG2PqWnKgjKpbNgFk
+	g
+X-Received: by 2002:a05:6830:913:b0:862:9ff6:53b6 with SMTP id 46e09a7af769-86315a6d2aemr784812a34.23.1795109139054;
+        Thu, 19 Nov 2026 09:25:39 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-71b380bdff9sm401643eaf.11.2026.11.19.09.25.03
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-863168dd6besm102897a34.11.2026.11.19.09.25.38
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 09:25:04 -0800 (PST)
+        Thu, 19 Nov 2026 09:25:38 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Mike Snitzer <snitzer@kernel.org>
+	Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] pNFS/flexfiles: read the layout hdr under i_lock in pg_get_mirror_count_write
-Date: Thu, 19 Nov 2026 12:25:02 -0500
-Message-ID: <23435d398481f51ce2680053cd3a151fe673f91c.1795108831.git.bcodding@hammerspace.com>
+Subject: [PATCH] pNFS/flexfiles: restart a write that the DS error handler retries
+Date: Thu, 19 Nov 2026 12:25:36 -0500
+Message-ID: <8ee107c9d0c68b6d0ee7305605ff7edbe0ffa160.1795108832.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -99,57 +97,39 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-When a write has no layout segment, ff_layout_pg_get_mirror_count_write()
-reads NFS_I(inode)->layout twice to test the hdr's NO_IO_THRU_MDS bit,
-without i_lock and without a reference.  No lseg pins the hdr at that
-point, so pnfs_put_layout_hdr() can detach it under i_lock and free it
-in between: the bit test then reads freed memory, or the second read
-finds NULL and the bit test dereferences it.
+When ff_layout_async_handle_error() returns -EAGAIN for a write,
+ff_layout_write_done_cb() passes it up without restarting the call.
+The v4 handler doesn't restart it either: its out_retry path, taken for
+NFS4ERR_DELAY, NFS4ERR_GRACE and the session errors among others, only
+clears tk_status and returns -EAGAIN, after an rpc_delay() for DELAY
+and GRACE.  nfs_pgio_result() returns early on -EAGAIN, so the task
+exits without resending the WRITE, and nfs_write_completion() queues
+its pages for COMMIT as if they had been written.  They are written
+again only when that COMMIT returns a verifier that doesn't match the
+zeroed one the failed WRITE left behind.
 
-Read the pointer once under i_lock and test the bit before dropping it.
-The hdr is detached under i_lock before it is freed, so a pointer found
-there is still valid.
+Restart the call on -EAGAIN, as ff_layout_read_done_cb() and
+ff_layout_commit_done_cb() do.
 
-Fixes: 1d62e659c0bf ("NFSv4/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS in pg_get_mirror_count_write")
-Cc: stable@vger.kernel.org # v7.2+
-Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://sashiko.dev/#/bug/linux-712f3ebb-939d-4967-b9e6-09142f7b68b3
+Fixes: c22eeb869735 ("pnfs/flexfiles: do not mark delay-like status as DS failure")
+Cc: stable@vger.kernel.org # v4.5+
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 5c289737366f..a797a2a8e688 100644
+index 5c289737366f..41cd9254bdd5 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1211,6 +1211,10 @@ static unsigned int
- ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
- 				    struct nfs_page *req)
- {
-+	struct inode *inode = pgio->pg_inode;
-+	struct pnfs_layout_hdr *lo;
-+	bool no_fallback;
-+
- 	if (!pgio->pg_lseg) {
- 		pgio->pg_lseg =
- 			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
-@@ -1229,8 +1233,13 @@ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
- 			0, NFS4_MAX_UINT64, IOMODE_RW,
- 			NFS_I(pgio->pg_inode)->layout,
- 			pgio->pg_lseg);
--	if (NFS_I(pgio->pg_inode)->layout &&
--	    ff_layout_hdr_no_fallback_to_mds(NFS_I(pgio->pg_inode)->layout)) {
-+
-+	/* No lseg pins the layout hdr, and it is detached under i_lock */
-+	spin_lock(&inode->i_lock);
-+	lo = NFS_I(inode)->layout;
-+	no_fallback = lo && ff_layout_hdr_no_fallback_to_mds(lo);
-+	spin_unlock(&inode->i_lock);
-+	if (no_fallback) {
- 		/*
- 		 * FF_FLAGS_NO_IO_THRU_MDS: no current lseg but the server's
- 		 * policy forbids MDS fallback.  Surface -EAGAIN so writeback
+@@ -1922,6 +1922,7 @@ static int ff_layout_write_done_cb(struct rpc_task *task,
+ 		set_bit(NFS_IOHDR_RESEND_MDS, &hdr->flags);
+ 		return task->tk_status;
+ 	case -EAGAIN:
++		rpc_restart_call_prepare(task);
+ 		return -EAGAIN;
+ 	case -NFS4ERR_FATAL_IOERROR:
+ 		task->tk_status = -EIO;
 -- 
 2.53.0
 
