@@ -1,56 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795124540;
-	b=F0hBh4HCk500mnzq1FRV3CjpJrjakdRQj7jtkTtM4VbqV3k4qDcsT02OE2/Izi6J/Pmh
-	 bnljDPBU69qGPYQAI1tRQ8gD73Im0KkRY9hliinTdfVy/HmLWXh65A83FcA4F8EFb3uWq
-	 XNobdeoDgfzC8RUNPdQDpAeAX50pIK3HG9JGqBsAM7d9qpe+cELCX5RHLJL/iUTv8krT9
-	 6Sl6OxVKo+DWPTsxtEtbmuXB8DkycO93iGaI3ItDN0vrvnLsVDwhlJZYVyahu8ZrOHzH+
-	 rNRWAfDb3i09zDyWipr6LhJnkkEREJlvIoaYiveyby1ttPhWnj+IcS27EogKmaxWfJg==
+	t=1795124716;
+	b=Vu/Yp6+cXKGv/TNX9e6ZNuSBkp4YiIjcP9VpgYlSUt4R6iYC3HCCCuDsaGa0DvpuMx8g
+	 OtzqrZrQzUGfig6il71oN+murrCaper0FoNYz4qSWGemnn+QumsmfDUlyN+gZdeEmUYBt
+	 nZ5a9RJSc5Tpj3Av32UHj2CBthxJyk7tjHMgZ6YpYbfWbrx+v7IrhtUPKi7zl2/+CkQOn
+	 E8eCZpUpvrYXcaXqsDvvTzYONk5/XfevR0p3g7Lir4bG5FKdLxg92IMXK8h1BmVMrZFN7
+	 3vjYm/b2+9GOKq6mOIVXDt/5rQvv63GFHITkvgWUr46qkfd5by1NC9TFQX/OXeHgpig==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795124540;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795124716;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=CDCf9TfG+CaO/g2AR70iueskKVq+2RjIoYyrci6cuFo=;
-	b=3CTHNdhPVfUIniDd5PHu06qTNOFRtK87/5fPaGO4uEhA8+xVtHCvpg3D8Z2Jya7YS7y/
-	 f9HYUQz+3HE7vDp7A9lKdoPbyJ/5FAn6kbGF8jyoy351g6JsIO0i9ZUuVsG80Zu7R7Rht
-	 RBH5g6wBIF6VRcvLE2a9k84I28EJBVo934purvLHt4o7qosiSy7UlzxixYFOD/WHYyO/L
-	 cZlgAG6jIIT096P5t/9rb9aDJz8KV40baMg0Qy/6zEZQ7dGcFUeZQL19T3pCyFnwrjmgM
-	 5+IUjAttowCxO3Lix0Ks3uL5P/QaEDSBTLNCqK9DcyuOXp6FN+7kWyFZFKmKpnEBHOA==
+	bh=XOVdrNuLfgnrf0SbMGeAGv9+OSoCkmYhSNxQDDYbhEw=;
+	b=ZjV+xGpy/AKkvY/XPozqROJEmA21HwGwgLu/jWmjnbXvyEhm1T7gupfzcw3LJaYOU6tY
+	 7+xQdQdCLzGoM60xO5x6aArfLmfBpiSKX1u7YJatcvdQdLSfgrL+eMoW0kqNzOZSl45Z0
+	 +CClxZuTN3o8H/EJPcbeYfKmFOSG4vNyq8tZhRofpgPJyrVOA2KqTJSXXTEFBK43eJxwc
+	 gC89LzQVjSeIrd5v07LUC0TkbR20LGt3HHLjh0zESN0FsxnugdSXtvXhpS188AIGHCEk+
+	 KdnEkAO6iryw9IlIjPQuJThRy4J7wjNC0DpAFnOgsdnj1bJAXT8+BhSAJvoFBSy7lIQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RuGdXP1a;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SoXYaa4b;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5CEEA606A32A
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:42:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 89843606A324
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:45:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RuGdXP1a
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A66A71F000C6;
-	Thu, 19 Nov 2026 21:42:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SoXYaa4b
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DCA3A1F000C0;
+	Thu, 19 Nov 2026 21:45:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795124539;
-	bh=CDCf9TfG+CaO/g2AR70iueskKVq+2RjIoYyrci6cuFo=;
+	s=k20260515; t=1795124716;
+	bh=XOVdrNuLfgnrf0SbMGeAGv9+OSoCkmYhSNxQDDYbhEw=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=RuGdXP1aF+6ROs9hCvAOChI4VSiEt4a3ebd5Ns0rIXUogXQaJbRIgcavLjTXekExB
-	 zniBpvRkzek9mjWsSyyt5J33YinDo/L/bQzwsdVGfJchQ3V67uhXV+Jdwec2qJerL9
-	 hOGziX40gkldTtFM6cMV0m90jyHkwq8yQ331RuR2aKsogPDKLBFSLw/xu7D/q4xBTx
-	 CH+cLY8fgK1E1e/ao/NFcywhG5u0AKp4BqCPkUzrMdledI6PayhnCquLss4HnovfbR
-	 sUKuNwuqLA8VtXKUSgFTDeEVlqu3fhdnK300432lehVlh4eaNZImExoiRF4A+s2Vzr
-	 39xtED2k8SvLg==
-Message-ID: <5039f48347ea0f9e3aee411604c6f9cf95c29481.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: enforce export checks in nfsd4_restorefh() and
- nfs4_check_file()
+	b=SoXYaa4bLLdBteUCBi3nMNdyscAknu7LfS4tkUhjekLXESn9I80/iiXcxapbLl/D8
+	 ohsM7Rg+suvzzEghmp9Bd7W228DFN8X629Otk4HngsCilqKl7nyYXMdTgy7ZmhKHhQ
+	 ZAbxOyRgLFVd3RRuodoPkBO5o8RACRkmzcSJPRZ/aORGsH8ufJED+3nNWFMo24WSNa
+	 bK9swyoOLt7eq6qOdTXuSUHgRmhykkKEe+IeRCCbjiQSHV00gKAJamqQbj0YXBIL95
+	 xoaziwWCcTe5dJ6Jg6bFRtSz6chxug1sW9sYl2N2f6pFuyUwA/OCB62s0eb3u2vfzF
+	 otbe2emjHbcJA==
+Message-ID: <a36e3bd7fdca210e482f14eb0f0daedd95c074b7.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: only set NFSD_MAY_BYPASS_GSS for RPC_AUTH_UNIX in
+ nlm_fopen()
 From: Jeff Layton <jlayton@kernel.org>
 To: Dominik Maier <dmnk@google.com>, Chuck Lever <cel@kernel.org>
 Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
  linux-nfs@vger.kernel.org, 	dmnk+artist@google.com
-Date: Thu, 19 Nov 2026 13:42:19 -0800
-In-Reply-To: <20261119192331.2695154-1-dmnk@google.com>
-References: <20261119192331.2695154-1-dmnk@google.com>
+Date: Thu, 19 Nov 2026 13:45:15 -0800
+In-Reply-To: <20261119192336.2697518-1-dmnk@google.com>
+References: <20261119192336.2697518-1-dmnk@google.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -139,94 +139,72 @@ Precedence: list
 MIME-Version: 1.0
 
 On Thu, 2026-11-19 at 20:23 +0100, Dominik Maier wrote:
-> When an NFSv4 compound saves a filehandle from a UID-squashed export
-> (all_squash or root_squash), switches current_fh to an unsquashed export
-> via PUTFH, and then restores the saved filehandle via RESTOREFH,
-> nfsd4_restorefh() duplicates save_fh back into current_fh without
-> recomputing the worker thread's subjective credentials via
-> nfsd_setuser().
+> As documented in nlm_fopen(), NFSD_MAY_BYPASS_GSS is intended to let NLM
+> clients using AUTH_SYS (RPC_AUTH_UNIX) lock files on Kerberos NFS
+> exports, whereas NLM clients using AUTH_NULL (RPC_AUTH_NULL) are only
+> meant to bypass authentication when NFSEXP_NOAUTHNLM (no_auth_nlm) is
+> enabled via NFSD_MAY_NLM.
 >=20
-> In addition, when nfs4_check_file() finds a cached nfsd_file on a
-> stateid, it calls nfsd_permission() directly instead of running
-> fh_verify() for fhp (unlike the uncached nfsd_file_acquire() path).
-> Because PUTFH and SAVEFH defer security-flavor checks via
-> OP_HANDLES_WRONGSEC, both post-RESTOREFH operations and cross-export
-> COPY/CLONE operations (via nfsd4_verify_copy()) can skip nfsd_setuser(),
-> check_xprtsec_policy(), check_security_flavor(), and originating-port
-> checks on the cached-file fast path. While nfsd4_restorefh() has omitted
-> credential restoration since early NFSv4 compound support,
-> nfs4_check_file() and commit b7342204253a ("NFSD check stateids against
-> copy stateids") expanded cached-stateid checks that bypass fh_verify().
+> However, nlm_fopen() has historically passed NFSD_MAY_BYPASS_GSS
+> unconditionally, and check_security_flavor() accepts both RPC_AUTH_UNIX
+> and RPC_AUTH_NULL whenever may_bypass_gss is true on an export with a
+> pseudoflavor >=3D RPC_AUTH_DES. Since commit bb4f07f2409c ("nfsd: Fix
+> NFSD_MAY_BYPASS_GSS and NFSD_MAY_BYPASS_GSS_ON_ROOT") restricted
+> may_bypass_gss to exports with pseudoflavor >=3D RPC_AUTH_DES, default
+> auth_nlm rejects RPC_AUTH_NULL NLM requests on sec=3Dsys exports with
+> nfserr_wrongsec while still accepting RPC_AUTH_NULL NLM requests on
+> sec=3Dkrb5* exports even when no_auth_nlm is not set.
 >=20
-> Call nfsd_setuser() when restoring save_fh in nfsd4_restorefh()
-> (preserving deferred OP_IS_PUTFH_LIKE WRONGSEC handling) and call
-> fh_verify() on the cached-file branch in nfs4_check_file() to match the
-> uncached branch.
+> Only set NFSD_MAY_BYPASS_GSS in nlm_fopen() when rq_cred.cr_flavor is
+> RPC_AUTH_UNIX so auth_nlm and no_auth_nlm behave consistently across
+> sec=3Dsys and GSS exports, requiring no_auth_nlm or an explicit sec=3Dnon=
+e
+> export flavor for RPC_AUTH_NULL NLM requests.
 >=20
-> This issue was discovered by an AI-assisted code review tool (ARTIST)
-> and validated in QEMU against an unmodified v7.4-rc3 kernel without
-> kernel modifications or error injection. A standalone reproducer is
-> available on request. The fix was build-tested with KCFLAGS=3D-Werror and
+> This issue was discovered by an AI-assisted code review tool (ARTIST),
+> validated in QEMU against an unmodified v7.4-rc3 kernel without kernel
+> modifications or error injection, build-tested with KCFLAGS=3D-Werror, an=
+d
 > checked with checkpatch.pl --strict.
 >=20
-> Fixes: b7342204253a ("NFSD check stateids against copy stateids")
 
-nit: Sashiko says the Fixes: tag may be wrong.
+Sashiko suggests:
 
-> Cc: stable@vger.kernel.org
+Fixes: 4cc9b9f2bf4d ("nfsd: refine and rename NFSD_MAY_LOCK")
+
 > Signed-off-by: Dominik Maier <dmnk@google.com>
 > ---
->  fs/nfsd/nfs4proc.c  | 9 +++++++++
->  fs/nfsd/nfs4state.c | 4 +---
->  2 files changed, 10 insertions(+), 3 deletions(-)
+>  fs/nfsd/lockd.c | 8 +++++---
+>  1 file changed, 5 insertions(+), 3 deletions(-)
 >=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 3a82af3..1e7abe5 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -49,6 +49,7 @@
->  #include "xdr4.h"
->  #include "nfs4ctl.h"
->  #include "vfs.h"
-> +#include "auth.h"
->  #include "current_stateid.h"
->  #include "netns.h"
->  #include "acl.h"
-> @@ -847,9 +848,17 @@ static __be32
->  nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cst=
-ate,
->  		union nfsd4_op_u *u)
->  {
-> +	int err;
-> +
->  	if (!cstate->save_fh.fh_dentry)
->  		return nfserr_restorefh;
+> diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
+> index f24e45d..2683939 100644
+> --- a/fs/nfsd/lockd.c
+> +++ b/fs/nfsd/lockd.c
+> @@ -41,8 +41,8 @@ static int nlm_fopen(struct svc_rqst *rqstp, struct nfs=
+_fh *f,
+>  	fh.fh_export =3D NULL;
 > =20
-> +	if (cstate->save_fh.fh_export) {
-> +		err =3D nfsd_setuser(&rqstp->rq_cred, cstate->save_fh.fh_export);
-> +		if (err)
-> +			return nfserrno(err);
-> +	}
-> +
->  	fh_dup2(&cstate->current_fh, &cstate->save_fh);
->  	if (HAS_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG)) {
->  		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid=
-_t));
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 567a856..8e5c3ca 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -8434,9 +8434,7 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_=
-fh *fhp, struct nfs4_stid *s,
+>  	/*
+> -	 * Allow BYPASS_GSS as some client implementations use AUTH_SYS
+> -	 * for NLM even when GSS is used for NFS.
+> +	 * Allow BYPASS_GSS for AUTH_SYS as some client implementations use
+> +	 * AUTH_SYS for NLM even when GSS is used for NFS.
+>  	 * Allow OWNER_OVERRIDE as permission might have been changed
+>  	 * after the file was opened.
+>  	 * Pass MAY_NLM so that authentication can be completely bypassed
+> @@ -50,7 +50,9 @@ static int nlm_fopen(struct svc_rqst *rqstp, struct nfs=
+_fh *f,
+>  	 * for NLM requests.
+>  	 */
+>  	access =3D (flags =3D=3D O_WRONLY) ? NFSD_MAY_WRITE : NFSD_MAY_READ;
+> -	access |=3D NFSD_MAY_NLM | NFSD_MAY_OWNER_OVERRIDE | NFSD_MAY_BYPASS_GS=
+S;
+> +	access |=3D NFSD_MAY_NLM | NFSD_MAY_OWNER_OVERRIDE;
+> +	if (rqstp->rq_cred.cr_flavor =3D=3D RPC_AUTH_UNIX)
+> +		access |=3D NFSD_MAY_BYPASS_GSS;
+>  	nfserr =3D nfsd_open(rqstp, &fh, S_IFREG, access, filp);
+>  	fh_put(&fh);
 > =20
->  	nf =3D nfs4_find_file(s, flags);
->  	if (nf) {
-> -		status =3D nfsd_permission(&rqstp->rq_cred,
-> -					 fhp->fh_export, fhp->fh_dentry,
-> -				acc | NFSD_MAY_OWNER_OVERRIDE);
-> +		status =3D fh_verify(rqstp, fhp, 0, acc | NFSD_MAY_OWNER_OVERRIDE);
->  		if (status) {
->  			nfsd_file_put(nf);
->  			goto out;
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
