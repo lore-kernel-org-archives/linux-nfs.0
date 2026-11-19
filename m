@@ -1,67 +1,91 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.47
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795106158;
-	b=mjS6UmYa8Ay2x/qEAr2f2XrjK9c1XCjq6xSI0yjk2MhGUd+fqhD4BAzs3veVnTjHvxkR
-	 FoO8V0mKTiRJlWSecX0nVuFcX7EFkcMbmjvCbwtRRt/DHhkYeX5x6HWl2rvTw7j/kWEDD
-	 l2+ydm4XGRuSVKlyJbeP7tCaRkwly7JLhXBkjc/Zwjrac8qbQXTK6Vn0RSsEvdO+I6whF
-	 95UhscPg1UoRG3KRfIkRiZD5Ku8SzbN1GZ9Ru4wZhEEHYXri1/JCzL/8cULUqHWEqGQJW
-	 pYByaZ1vmV04PBMxJ6+eHIFbWFnXaLIgR1KJJfDc7Yl05WOT0UBzeoC7sN/yhRXpQdA==
+	t=1795106908;
+	b=3ym8aHssz9r+FL596N7DM4ckurPvuLVQP+XwW1XCeWkdfcXdPhmKl4fylany5gjLVzn3
+	 rJ1sXQJeJl/FslWFouIj4X2BsDAXVB8kM83n3B/vR/eRhcPhr9PELfXiAHFlYL9P/gAbW
+	 SD9J1lmX3+ymcVFKDq4VMlt7rJqY1nZNLnCR7xmO4vPfPkqm6ptMZPbrkxg1ez2JxVHML
+	 KLJE5+u5ejFtdSoGlL6YJMf7r6HWUiCriTgSf/3chGKCTVNewyXy0vmBcV6cBBMRJ8Q2Y
+	 9LljHDRRJ/+0biUlEaFhokQRCLvEe6VNw5WBuru9R0vqEKKL3eomblohTdBCzaQ6/sA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795106158;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=vdpT6LJvyJoZU056rFgJK1cgm13iBFK2/AWVWgyfxl0=;
-	b=sl1krUtugMx+K3e+KTssrtawfI6wexaOVujC+9bxxqRh+2nWDKV3snjcmx/iy28H/+QY
-	 hOz5r1DTdxxixrIf0JjJLYQjigsXZ6MQpm5+KMvCKpMNuoJ3eUNA/uUC/vAqGrtYK4u08
-	 RTB3nWKHo/UuAzkLwiKucoCAa+FdPWu+2YfLD02SndFFRJSlhZNnGFf7v57I1Kakg6Qns
-	 1ybvU92vYxmt33AhOE/2zoUmpdO4T7Sq+xnqWNIbxo4RLCroTRNT5RIilBDUq40BnSO8n
-	 klSCitZbX3+8bSqyIfpH1tlJH7QsrX9PoiwxUv8A1J1LgIr1z/D7od5Zs3/DIcKc3mw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795106908;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:X-Google-Original-From:To:Subject:Date:Message-ID:X-Mailer:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=ITmnRSGm+SZNrHX5w09Tuht/srybBIYz4hEHB4zI8E4=;
+	b=0pyItFfb5JJuEz1kluxx43LLQs5S7Yot78pl40GJIy0SQxeCusU5PWgweVhgAFDX4PU1
+	 T9DlqWjprWeGau6M/SxuN+7E/tA7ye+BIA8v4dbFs9k4VNHMr5WEdjqtChMmHZpN3K9rD
+	 25zbK/XPSeVEvvrA6oBtZW2k7+E5YW9KU2xy4Ay5qCMIwoNE124W7Egavl6HGJStSHlQH
+	 p08LMtiN0tA77Mx+0JnR7visMSe2MI/zrR7w0CZXthzyIShIVNAjEP3DAUE/XnnDX4/TP
+	 lGR42U9PgFX+Fbtppf0MhOLVEQNzzrmy/QhLb+xqZLzFpcl1cjLJSYndIfQ8bI9C7GA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gQYSVpk8;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=hammerspace.com;
+	spf=pass smtp.mailfrom=hammerspace.com;
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b="hf7/9LQu";
+	arc=none smtp.remote-ip=209.85.210.47
+Received: from mail-ot1-f47.google.com (mail-ot1-f47.google.com [209.85.210.47])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CA86606A324;
-	Thu, 19 Nov 2026 16:35:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1AAD0606A336
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 16:48:26 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1AAD0606A336
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gQYSVpk8
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 511101F000C4;
-	Thu, 19 Nov 2026 16:35:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795106158;
-	bh=vdpT6LJvyJoZU056rFgJK1cgm13iBFK2/AWVWgyfxl0=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=gQYSVpk8Ti3Dz/c09ltm5E6cnoyLoK3hTNLppD3CmR67E27lg38E+/NCiyJoo762q
-	 1JxZAcpE2jNuyH7arhdRbACTCBIFV5B499W36m5xUxPglxihcgAMnUl6P1qFnWYZ4A
-	 ezd6Xu771igMuOdZ5aggHIRRgwgXfRlWMMFAGf478Zt4qaRiCtizOmkjNT/qvfXO4d
-	 2MjjshcGxxPN+92CMQDEpdEjqWE48UfVSvxylXsMxjVHk0GG+Z3S8S5vdgqPqRWYZV
-	 DCmzsDYax8vY22yr/uMKPF5oDO7+HGcLKgrnNe476l85h2K5RNG1vW5btEEM7rwpZF
-	 YE6t540hluycQ==
-Date: Thu, 19 Nov 2026 16:35:52 +0000
-From: Simon Horman <horms@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: Donald Hunter <donald.hunter@gmail.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	Paolo Abeni <pabeni@redhat.com>,
-	John Fastabend <john.fastabend@gmail.com>,
-	Sabrina Dubroca <sd@queasysnail.net>,
-	Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
-	Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
-	Chaitanya Kulkarni <kch@nvidia.com>,
-	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Eric Dumazet <edumazet@kernel.org>,
-	kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
-	linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
-	Hannes Reinecke <hare@kernel.org>
-Subject: Re: [PATCH net-next v3 00/10] Deliver TLS session tags to
- upper-layer consumers (NFSD)
-Message-ID: <20261119163552.GZ860048@horms.kernel.org>
-References: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
+	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=hf7/9LQu
+Received: by mail-ot1-f47.google.com with SMTP id 46e09a7af769-85c1135c286so1858706a34.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 08:48:26 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1795106906; x=1795711706; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:to
+         :from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=ITmnRSGm+SZNrHX5w09Tuht/srybBIYz4hEHB4zI8E4=;
+        b=hf7/9LQuM2+S1vIHSz7DUhJkCYmIgjvFF0cwxey2VwhVkec1n3tmwi/94kv9wR99YJ
+         pL6b2vBSGLpx2/0YHvQnmit0qbClk3njqKN0MDH67mjxgwCzju2Xprjq67qMuaoxgCCo
+         q63KvYekhqEPKZoqu9C3mEO8nTn2vsxY5ngQqBNMh6LhSMJPdctMlpvYTY9AMQCJg8iF
+         qFRvaZFTd0Lc6V0SljB3eH5vpRI+/vEJ+VRhZj/3TSMrKy5bJaEL+uyc/rk2H0NxAYNh
+         q5YF0SERveNlkBQrOnrAdRjN8v5I/8f/3Te3C4hWVqVp24BpJ0mmFY6JYrfFrbwPCW3R
+         pVfQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795106906; x=1795711706;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:to
+         :from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=ITmnRSGm+SZNrHX5w09Tuht/srybBIYz4hEHB4zI8E4=;
+        b=JTPh/X9vMzYyRtFbWQlHUO1zChGbRGLSxP1RlgZRCpo7WbhQdzvtPl9TFPKLPQjHdg
+         WAdzFdtsN75id4EJyNJQUHaPEq1AOS3ClSOC6u2bwHuwdwxdKNoC2FLPJ7XFr5/HFr92
+         PvlLoCnWjL/t9hVUxeWBD9lZE1oKMKf1+l3KmzWpLvhuerDvWF2nGUZLeoFDTL1GAliQ
+         za9WXEHNyZ6z91Mi/Py+3CHfV2PN2t82UWO9rZJb7U852wX1owkNeeZoab3qbhUs1O6J
+         +g5j0r6DVdPfYTPtctMWeeYPq4K6Qao7f5s60mJVT4eln/VjVryEOvrrSANCMMOifS1T
+         a7jg==
+X-Forwarded-Encrypted: i=1; AL+hErGHgPlnzOfBmwi3clKHKOfHBApLpmJAaZa5HY8Gl4EYsmeni3CyQNzrJfO0oc6nH3VLbjeGZ+4umvo=@vger.kernel.org
+X-Gm-Message-State: APuU4Z9xaeC8Xz6hHrJAo2AuUwIUi+Ywrf9LbAxzHLk5Dxbgmd2b8vBW
+	WtZlFINee90Gsw1BKM2VsH55/r/8ULoz20E3pMfNfVP0+tMMgxIMpqOSmxVkSrpuAcdelN3vsB5
+	uIVrq
+X-Gm-Gg: AYBFou0aG3qEWag3TsK17etx1zjUbtC6I9TJv7ygJso8BQqU8+MQJAkgSHsP1c7wpP4
+	6O07TlQcZvRBSoPnJSXM4XiCCEGXjuExIcSl5h5pCslMefsk2eT33qmLJOLpFTJQdrUlIFTOngw
+	bfQ97fnNDWcC/ebV969OV3hEv/Gqqnw0oFsG3akLUpOGgynTnF/Io0CitPfY6/RxPysrScHOevD
+	7w197HzOGy3ven1qXwQIxQRKKFi15JmiOnOxM4fHYYLvyTsdkh5dsyuVws6bNeR6hcBI7gobL5C
+	e3LB09+141rdJ2RNzunqemT5rCdW1r66SrymZYZQsVQVkpUj65eQ3en6SbvD7Zh/QDw0u2JkE1k
+	5w273WLH9HCmGmR1l9dDx93QDhOTBG+sxqgFHjANRgUVLWbFUWIq+kDaI21cv4p9L04OzhtTPHY
+	XoZ2N24Eb0Vbf3b3rBIDKamlBccNgEb1T9HZ3HbqJOTkyfAeGuRESx7uhVmtJECaMcXYI12IIB/
+	TutyXJNHjq7XMajyi0Nk6EUW+ST8zwKrr1bVKCHgyIW34ZBWSoj0L/FeFCSVKiptPQNaWV+uMy6
+	hzMGljtIKiQQzlGVFLDqv0kEMMPm0E2eYsSdFDBJb3vQ+o3B01nn8+9ItoEr1Cz+MoT8
+X-Received: by 2002:a05:6830:6410:b0:862:ba3a:f04b with SMTP id 46e09a7af769-86315a79781mr637288a34.31.1795106905759;
+        Thu, 19 Nov 2026 08:48:25 -0800 (PST)
+Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-8631692d9f7sm17041a34.24.2026.11.19.08.48.24
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 19 Nov 2026 08:48:25 -0800 (PST)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: steved@redhat.com,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsdcld: stop polling a dead cld pipe after nfsd shuts down
+Date: Thu, 19 Nov 2026 11:48:22 -0500
+Message-ID: <18b45da6abb51186d62cc0f8fb559fe8fa2bd0d2.1795106790.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -71,44 +95,77 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
+Content-Transfer-Encoding: 8bit
 
-On Fri, Nov 13, 2026 at 02:21:58PM -0500, Chuck Lever wrote:
-> NFSD controls remote access to its exports today by IP address and
-> hostname. Neither of these are cryptographically secure. For
-> instance, a MitM can replace the response to a server's plaintext
-> DNS query. As a result, a malicious NFS client can pretend to be a
-> client whose hostname matches one that has access to exports it
-> would otherwise be denied access to.
-> 
-> So instead, we want access-control decisions to be based on
-> cryptographically-vetted objects such as TLS peer-certificates.
-> In-kernel x.509 parsing would duplicate work mature userspace
-> libraries already do, so let's make tlshd evaluate peer certificates
-> in user space.
-> 
-> The certificates are evaluated against admin-defined policy, such
-> as whether the certificate's Issuer matches a particular string.
-> tlshd then marks NFS TLS sessions with those policy matches. Admins
-> also provide a set of policy names on each NFSD export (allow_tags).
-> Computing the intersection with these per-export tags is quick and
-> completely separate from the details of parsing x.509 certificates.
-> 
-> A yet-to-be-posted patch series introduces tag set support to the
-> exportfs command in nfs-utils. tlshd 1.5.0, current as of this
-> writing, already implements TLS session tagging.
+When nfsd shuts down, the kernel removes rpc_pipefs/nfsd/cld. The next
+read on the open pipe fails, and cld_pipe_read_msg() tries to reopen it.
+That open fails with ENOENT, cld_pipe_open() leaves the old fd and event
+in place, and cldcb() re-adds the event on the dead fd. The fd always
+reports HUP, so nfsdcld spins at full CPU and floods syslog with "pipe
+read failed: Broken pipe" until nfsd comes back.
 
-Hi Chuck, all,
+If the reopen fails, close the dead pipe and drop its event. The
+inotify watch on the pipefs directory reopens the pipe when nfsd
+recreates it.
 
-FYI, while looking over this patchset I noticed that CI flags
-shadow len variables in ynl generated C code.
+Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+---
+ utils/nfsdcld/nfsdcld.c | 26 ++++++++++++++++++++++++--
+ 1 file changed, 24 insertions(+), 2 deletions(-)
 
-I believe this is a bug in ynl-gen and have posted a patch to try to
-address it.
+diff --git a/utils/nfsdcld/nfsdcld.c b/utils/nfsdcld/nfsdcld.c
+index 772cf3147e88..3ffecb5a28f7 100644
+--- a/utils/nfsdcld/nfsdcld.c
++++ b/utils/nfsdcld/nfsdcld.c
+@@ -186,6 +186,19 @@ cld_pipe_open(struct cld_client *clnt)
+ 	return 0;
+ }
+ 
++static void
++cld_pipe_close(struct cld_client *clnt)
++{
++	if (clnt->cl_event) {
++		event_free(clnt->cl_event);
++		clnt->cl_event = NULL;
++	}
++	if (clnt->cl_fd >= 0) {
++		close(clnt->cl_fd);
++		clnt->cl_fd = -1;
++	}
++}
++
+ static void
+ cld_inotify_cb(int UNUSED(fd), short which, void *data)
+ {
+@@ -753,7 +766,15 @@ cld_pipe_read_msg(struct cld_client *clnt)
+ 	return 0;
+ 
+ fail_read:
+-	cld_pipe_open(clnt);
++	/*
++	 * If the pipe is gone, re-arming the dead fd would spin on HUP.
++	 * Drop it and let cld_inotify_cb reopen the pipe when it returns.
++	 */
++	if (cld_pipe_open(clnt) < 0) {
++		xlog(D_GENERAL, "%s: waiting for %s to reappear",
++			__func__, pipepath);
++		cld_pipe_close(clnt);
++	}
+ 	return -1;
+ }
+ 
+@@ -794,7 +815,8 @@ cldcb(int UNUSED(fd), short which, void *data)
+ 		cld_not_implemented(clnt);
+ 	}
+ out:
+-	event_add(clnt->cl_event, NULL);
++	if (clnt->cl_event)
++		event_add(clnt->cl_event, NULL);
+ }
+ 
+ int
 
-- [PATCH net-next] tools: ynl-gen: avoid shadow local variable declarations
-  https://lore.kernel.org/netdev/20261119-ynl-scope-v1-1-d3b0c964d4cb@kernel.org/
+base-commit: 79770ef91411cc2d3f97eb5efdd43a7d39b0070e
+-- 
+2.53.0
 
-...
