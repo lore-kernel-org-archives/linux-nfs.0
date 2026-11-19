@@ -1,65 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=170.10.133.124
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795077570;
-	b=iz8/UNAzYJw6Lwf78hagYMA8cYcBGKy/thV73KL5//4m4i8nZ5Q2BFyZKC9rLhzj8uY3
-	 IkQShI6ku1ZwvvXlmqPqeZPihBKxapd+pmceOL9a+MTU9MRTTzcIfQLGVuvV6MWh39Wsc
-	 hgFwQSjZks2NhUsURA7NhxpDLh2RWky5xul4DV0ZyIcOEbfYxPyWLZ1THtIby51Ym5uZz
-	 hI1cRZ+IhaUs1BTCeuLNVBoOfgtybq/hiKDHPufL/YzkRtbnHO5Ow4M7bU2um3yO5Zg8p
-	 5F4bmSYxdtPXb2z/zMxMCovZKnKUvJG9NhvqxgVeoKPqSCNmogBRSGRgfBrDYtfYXUA==
+	t=1795077577;
+	b=5LDTh3XUl784R+k/UpCwfM3x62vSPXvptRa2zoo9iQVoqhpjKm6R2m/UH8t9P2WcfEy2
+	 3URRZ/l0jSh+bWrmlo0ofqNtGda0tAVk700qCo7RYql7Te/MrcqkV8XXOuPuvg+bv3Ru9
+	 e7J05yWRDWM0p33wfJDqJ3WZUzyRw1rd73rqqx6D1Mmw4si4o/XQmu0T3JX71y2DrtWKg
+	 srun4FMqPfkL26DPjCh8z7LtQnIKfiSqZz9VFHaHThwuFEA9bOfWBi6UQz/ZIiHN0mg4g
+	 bYfMm0tKeQzm+49dnSATI8k8H6icPJmp5TaJQfAhiptdAWAvDsH0WfaQAUNti/JiGlQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795077570;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795077577;
 	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
 	 X-Mimecast-MFC-AGG-ID:Received:Received:From:To:Cc:Subject:Date:
 	 Message-ID:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding:X-Scanned-By;
-	bh=gkgjCGgNa+dQMD7rUY8+/52KhLBue37fpvFg9igM0wE=;
-	b=w+ERZb8gyadYIerxHulvjACdNw9gQgQHBhwwTZTcOQJNdeU3HOiJyqMsG7BtyA6WWxlS
-	 b9+3Qyhpt+VcUfa1AEOhfD6OIbAZUUQjCXkSwyn/YK23e/KI6A01ZDRyhFCOKfKV8rvsW
-	 +pe61ZyiOlrE9hpkbRRImHdBqPcs2j13Aaid5NkxHddcN3KYBN0ObAeFEcqZDJpHFq5Jv
-	 S/mqVrtB71YG3+ikgj+wMh7TC5OahqYFMHXgg6JeLfgs30gIggJ7FMKRI7WK84TAY50KS
-	 F6o8kdSByTAwr5iAaSIXq39e04AW7SmIE2C8yTeux0QHHRuOAObZPiYujUE/yEwBAuQ==
+	bh=9rZs/kVoqWwbdXCKmjPqC1JbQ/GWaqCvbtg+S62dX6k=;
+	b=oQfylnvQ40fEVtmCse2NcZ3t8wOFsq39xsRryBc6+6xKAxiC0h+cMCpaSzz0VKNTgXI/
+	 2t3Mcc8ENAxRHHPu1jqG3kFJ4nhGVNvykZ/KWIU3sapqCbqrV1y9wXRGsHnZJACU/RCSp
+	 EK75tKIa+cgyG+8V+gIGKvDxH+9Cwg4cvduwfyz8/YWAxysXKGxfSJco29LuWsNwEgeND
+	 vFn5VkLr5j5GdP/d76C5al7EC+oYpHLPjqOhP/TlaiY3HXFxrkZFJAmx6Ho7OcbsIp1wx
+	 3QvnenBm+87/FkZqZzYiuJotvrzFWLT4Mf6cMUWjOEi/hySt8nBH5A4zEmxeCW5AMRg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=redhat.com;
 	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=KsQoh5mf;
-	arc=none smtp.remote-ip=170.10.129.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=cxtk6wfh;
+	arc=none smtp.remote-ip=170.10.133.124
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13A5A606A330
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 08:39:29 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 13A5A606A330
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D365606A32F
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 08:39:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4D365606A32F
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=KsQoh5mf
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=cxtk6wfh
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1795077568;
+	s=mimecast20190719; t=1795077576;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=gkgjCGgNa+dQMD7rUY8+/52KhLBue37fpvFg9igM0wE=;
-	b=KsQoh5mfBXr9za7Gk/g4kBemxsHNjJZ0udqI7abuguway1/wsjCXI58LchPoVlNl++5Itm
-	a3wWRHMHRDoOLfbWsjeRz/LW4qznOjSJ2FdxYjGH02Lqk1WRiWXk9WQjQ/vUq+pSEvXLNu
-	LPCwzbndv7yuMBukOrtVKsJwXVwqRVY=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=9rZs/kVoqWwbdXCKmjPqC1JbQ/GWaqCvbtg+S62dX6k=;
+	b=cxtk6wfhBkAovaRw3dKxE/ys/VqoRt49GYEvdR2VJCLeyChkYxVrC9HPYugwVOsbxnsXWz
+	I3Vy4wJU4f+cIMBSXNzV/18y8w8OPkdgXEF/ILkmB8HyEHMwej/V/d70xGkbrBIoqxQuqv
+	uWrEo8LQFxP165mxgoD5WWO12lIO/h8=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-255-7IKaAWvDODO5ljUaiJLegw-1; Thu,
- 19 Nov 2026 03:39:26 -0500
-X-MC-Unique: 7IKaAWvDODO5ljUaiJLegw-1
-X-Mimecast-MFC-AGG-ID: 7IKaAWvDODO5ljUaiJLegw_1795077564
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-400-ZU1akQXfNG-sbf3u1sfRmA-1; Thu,
+ 19 Nov 2026 03:39:32 -0500
+X-MC-Unique: ZU1akQXfNG-sbf3u1sfRmA-1
+X-Mimecast-MFC-AGG-ID: ZU1akQXfNG-sbf3u1sfRmA_1795077570
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id E4E9D1954B04;
-	Thu, 19 Nov 2026 08:39:23 +0000 (UTC)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id B2BE81800556;
+	Thu, 19 Nov 2026 08:39:29 +0000 (UTC)
 Received: from dhowells-thinkpadp1gen8.rmtgb.csb (headnet04.pony-001.prod.iad2.dc.redhat.com [10.2.32.116])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id E5A151801976;
-	Thu, 19 Nov 2026 08:39:19 +0000 (UTC)
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 347A030000E8;
+	Thu, 19 Nov 2026 08:39:25 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>
 Cc: David Howells <dhowells@redhat.com>,
@@ -79,10 +79,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH v19 04/17] netfs: Add some tools for managing bvecq chains
-Date: Thu, 19 Nov 2026 08:38:35 +0000
-Message-ID: <20261119083851.3306418-5-dhowells@redhat.com>
+	Jens Axboe <axboe@kernel.dk>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-block@vger.kernel.org
+Subject: [PATCH v19 05/17] iov_iter: Add an API document for the bvecq structure
+Date: Thu, 19 Nov 2026 08:38:36 +0000
+Message-ID: <20261119083851.3306418-6-dhowells@redhat.com>
 In-Reply-To: <20261119083851.3306418-1-dhowells@redhat.com>
 References: <20261119083851.3306418-1-dhowells@redhat.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -95,942 +97,340 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-Provide a selection of tools for managing bvec queue chains and a memory
-pool for writeback to draw upon if needed.  The tools include the
-allocation, prepopulation and refcounting of bvecqs and bvecq chains.  When
-a chain is being cleaned up, the memory segments will be appropriately
-disposed of according to the flags on each bvecq in that chain, allowing
-for mixed memory cleanup types.
-
-A pair of memory pools is provided for emergency allocation under low
-memory conditions.  The two pools are intended for use in different
-circumstances with different usage characteristics.  The request-level pool
-will be used by netfslib requests to build a rolling buffer as it goes
-along, whereas the subrequest-level pool will be used by subrequests
-(e.g. cifs can use it to allocate an encryption buffer).  Separate pools
-are provided to avoid deadlocking between levels.
-
-The main use for this is to replace the use of both folio_queues and
-kvmalloc'd bio_vec arrays in netfslib and creating a structure that allows
-network filesystems to easily build an entire message by gluing bits of
-protocol on either side of the bvecq chains and also glue chains together
-for sparse writes and compound operations.  This allows TCP-based
-transports to pass a message in a single sendmsg() call and avoid corking
-as this makes things more efficient.
-
-This will also be used to do things like creating an encryption buffer in
-cifs or a directory content buffer in afs.
-
-Note that these tools are placed in netfslib for the moment, but can be
-moved to lib/ later if any non-netfslib code starts to use them.  The
-iov_iter bits don't depend on these tools and must live in the core.
+Add an API description document for the bvecq structure.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Paulo Alcantara <pc@manguebit.org>
+cc: Paulo Alcantara (Red Hat) <pc@manguebit.org>
 cc: Matthew Wilcox <willy@infradead.org>
+cc: Jens Axboe <axboe@kernel.dk>
 cc: Christoph Hellwig <hch@infradead.org>
+cc: linux-block@vger.kernel.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/netfs/Makefile         |   1 +
- fs/netfs/bvecq.c          | 429 ++++++++++++++++++++++++++++++++++++++
- fs/netfs/internal.h       |   5 +
- fs/netfs/main.c           |  46 +++-
- fs/netfs/objects.c        |   1 -
- fs/netfs/rolling_buffer.c |   1 -
- fs/netfs/stats.c          |   6 +-
- include/linux/bvecq.h     | 145 +++++++++++++
- include/linux/netfs.h     |   1 +
- lib/iov_iter.c            |  17 +-
- lib/scatterlist.c         |   5 +-
- 11 files changed, 645 insertions(+), 12 deletions(-)
- create mode 100644 fs/netfs/bvecq.c
+ Documentation/core-api/bvecq.rst | 259 +++++++++++++++++++++++++++++++
+ Documentation/core-api/index.rst |   1 +
+ MAINTAINERS                      |   1 +
+ fs/netfs/bvecq.c                 |   2 +
+ include/linux/bvecq.h            |   2 +
+ 5 files changed, 265 insertions(+)
+ create mode 100644 Documentation/core-api/bvecq.rst
 
-diff --git a/fs/netfs/Makefile b/fs/netfs/Makefile
-index 54834cde7e56..b1ea4439c1bb 100644
---- a/fs/netfs/Makefile
-+++ b/fs/netfs/Makefile
-@@ -3,6 +3,7 @@
- netfs-y := \
- 	buffered_read.o \
- 	buffered_write.o \
-+	bvecq.o \
- 	direct_read.o \
- 	direct_write.o \
- 	iterator.o \
-diff --git a/fs/netfs/bvecq.c b/fs/netfs/bvecq.c
+diff --git a/Documentation/core-api/bvecq.rst b/Documentation/core-api/bvecq.rst
 new file mode 100644
-index 000000000000..b140cd47a1fa
+index 000000000000..7e06ca81512a
 --- /dev/null
-+++ b/fs/netfs/bvecq.c
-@@ -0,0 +1,429 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/* Buffering helpers for bvec queues
-+ *
-+ * Copyright (C) 2026 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
++++ b/Documentation/core-api/bvecq.rst
+@@ -0,0 +1,259 @@
++.. SPDX-License-Identifier: GPL-2.0
 +
-+#include <linux/bvecq.h>
-+#include <linux/semaphore.h>
-+#include "internal.h"
++=========================================
++bvecq - Chainable bio_vec queue structure
++=========================================
 +
-+void bvecq_dump(const struct bvecq *bq)
-+{
-+	int b = 0;
++Author: David Howells <dhowells@redhat.com>
 +
-+	for (; bq; bq = bvecq_next(bq), b++) {
-+		pr_notice("BQ[%u] %u/%u\n", b, bq->nr_slots, bq->max_slots);
-+		for (int s = 0; s < bq->nr_slots; s++) {
-+			const struct bio_vec *bv = &bq->bv[s];
++.. Contents:
 +
-+			if (!IS_ERR_OR_NULL(bv->bv_page))
-+				pr_notice("BQ[%u:%02u] %10lx %04x %04x %u\n",
-+					  b, s,
-+					  page_to_pfn(bv->bv_page),
-+					  bv->bv_offset, bv->bv_len,
-+					  page_count(bv->bv_page));
-+			else
-+				pr_notice("BQ[%u:%02u] -          %04x %04x\n",
-+					  b, s, bv->bv_offset, bv->bv_len);
-+		}
-+	}
-+}
-+EXPORT_SYMBOL(bvecq_dump);
++ * Overview
++ * Allocating bvecqs
++ * Refcounting
++ * Expandable buffer
++ * Producer functions
++ * Consumer functions
++ * Utility functions
++ * I/O iterators
++ * API Function Reference
 +
-+/**
-+ * bvecq_alloc_one - Allocate a single bvecq node with unpopulated slots
-+ * @nr_slots: Number of slots to allocate
-+ * @gfp: The allocation constraints.
-+ * @flags: Pointer to the allocation flags
-+ *
-+ * Allocate a single bvecq node and initialise the header.  The allocation is
-+ * rounded up to the size of the smallest slab granule that will accommodate it
-+ * and all the remaining space is set as an inline slot array with max_slots
-+ * set to the number of slots.  The slot array is not initialised.
-+ *
-+ * Note that the number of slots allocated is limited to USHRT_MAX.  If more
-+ * than this are desired, a number of bvecqs should be chained.
-+ *
-+ * If *@flags includes %BVECQ_USE_REQ_POOL or %BVECQ_USE_SUBREQ_POOL, then an
-+ * emergency mempool may be used for allocation.  If it does allocate from such
-+ * a pool, the maximum number of slots available will be BVECQ_POOL_SLOTS which
-+ * may be less than requested.  Also, if one of these flags is set, the
-+ * function will not fail - though it may have to wait.
-+ *
-+ * Further, in order to access an emergency pool, the function must take a
-+ * count from the semaphore that governs access to that pool.  When it has
-+ * access to the pool, %BVECQ_HOLD_POOL_SEM is set in *@flags and the sem is
-+ * held - and access allowed - until explicitly dropped.  The pool has more
-+ * objects than the sem has counts, which means that there are always more
-+ * objects in the pool than processes trying to allocate from it - guaranteeing
-+ * that at least some progress can be made.
-+ *
-+ * Return: The node pointer or NULL on allocation failure.  BVECQ_HIT_OOM is
-+ * set in *flags if an allocation failure occurs.
-+ */
-+struct bvecq *bvecq_alloc_one(size_t nr_slots, gfp_t gfp, unsigned int *flags)
-+{
-+	enum bvecq_pool from_pool = *flags & BVECQ__USE_POOL;
-+	struct bvecq *bq;
-+	size_t size;
 +
-+	/* Don't overrun ->max_slots or ->nr_slots. */
-+	if (nr_slots > BVECQ_MAX_INLINE_SLOTS)
-+		nr_slots = BVECQ_MAX_INLINE_SLOTS;
++Overview
++========
 +
-+	size = kmalloc_size_roundup(struct_size(bq, __bv, nr_slots));
-+	gfp &= ~(GFP_ZONEMASK | __GFP_THISNODE);
++The ``bvecq`` struct can be used to form chains of arrays of ``bio_vec``
++structures - kind of a single layer of indirection.  Each bvecq segment points
++to the previous and next bvecq segments in the chain, but is not intended to
++form a circular queue as there are applications where the producer is adding to
++one end whilst the consumer is taking off the other.
 +
-+	if (from_pool != BVECQ_USE_NO_POOL) {
-+		struct semaphore *sem = &netfs_bvecq_pool_sem[from_pool];
-+		struct mempool *pool = &netfs_bvecq_pool[from_pool];
-+		gfp_t gfp_temp = gfp;
++To use this, the caller should do::
 +
-+		gfp_temp |= __GFP_NOMEMALLOC | __GFP_NORETRY | __GFP_NOWARN;
-+		gfp_temp &= ~(__GFP_DIRECT_RECLAIM | __GFP_IO);
++	#include <linux/bvecq.h>
 +
-+		if (size != BVECQ_POOL_SIZE) {
-+			bq = kmalloc(size, gfp_temp);
-+			if (bq) {
-+				from_pool = BVECQ_USE_NO_POOL;
-+				goto success;
-+			}
-+		} else {
-+			bq = mempool_alloc_noreserve(pool, gfp_temp);
-+			if (bq)
-+				goto success;
-+		}
-+		*flags |= BVECQ_HIT_OOM;
++The publicly accessible members of the structure are::
 +
-+		if (!(*flags & BVECQ_HOLD_POOL_SEM)) {
-+			down(sem);
-+			*flags |= BVECQ_HOLD_POOL_SEM;
-+		}
-+
-+		bq = mempool_alloc(pool, gfp);
-+		if (!bq)
-+			return bq;
-+		size = BVECQ_POOL_SIZE;
-+	} else {
-+		bq = kmalloc(size, gfp);
-+		if (!bq) {
-+			*flags |= BVECQ_HIT_OOM;
-+			return bq;
-+		}
-+	}
-+
-+success:
-+	*bq = (struct bvecq) {
-+		.ref		= REFCOUNT_INIT(1),
-+		.bv		= bq->__bv,
-+		.inline_bv	= true,
-+		.max_slots	= min((size - sizeof(*bq)) / sizeof(bq->__bv[0]),
-+				      BVECQ_MAX_INLINE_SLOTS),
-+		.from_pool	= from_pool,
++	struct bvecq {
++		struct bvecq	*next;
++		struct bvecq	*prev;
++		u32		priv;
++		u16		nr_slots;
++		u16		max_slots;
++		enum bvecq_mem	mem_type:3;
++		struct bio_vec	*bv;
++		...
 +	};
-+	netfs_stat(&netfs_n_bvecq);
-+	return bq;
-+}
-+EXPORT_SYMBOL(bvecq_alloc_one);
 +
-+/**
-+ * bvecq_alloc_chain - Allocate an unpopulated bvecq chain
-+ * @nr_slots: Number of slots to allocate
-+ * @gfp: The allocation constraints.
-+ * @flags: Pointer to the allocation flags
++A pair of pointers are provided, ``next`` and ``prev``, that point to the
++segments on either side of the segment being accessed.  Whilst this is a
++doubly-linked list, it is intentionally not a circular list; the outward
++sibling pointers in terminal segments should be NULL.
++
++The ``priv`` member is for the owner of the bvecq to use as they will.
++
++The ``bv`` pointer points at an array of bio_vecs that list a number of regions
++of memory.  ``max_slots`` indicates how large the array is and ``nr_slots``
++says how much of the array is being used.  Note that there are access functions
++for nr_slots that insert appropriate barriering in the case that there are
++separate producer and consumer threads.
++
++The ``mem_type`` member informs bvecq_put() of how to clean up the bio_vecs
++attached to this segment.  It can be one of:
++
++ * ``BVECQ_MEM_EXTERNAL`` - Externally managed; no cleanup.
++ * ``BVECQ_MEM_PAGECACHE`` - Part of pagecache; put_page() used.
++ * ``BVECQ_MEM_GUP`` - Pinned userspace memory; unpin_user_page() used.
++ * ``BVECQ_MEM_ALLOCED`` - Allocated page; __free_pages() used, may be pooled.
++
++
++Allocating bvecqs
++=================
++
++A number of functions are provided to allocate bvecqs::
++
++	struct bvecq *bvecq_alloc_one(size_t nr_slots,
++				      gfp_t gfp,
++				      unsigned int *flags);
++	struct bvecq *bvecq_alloc_chain(size_t nr_slots,
++					gfp_t gfp,
++					unsigned int *flags);
++	struct bvecq *bvecq_alloc_buffer(size_t size,
++					 gfp_t gfp,
++					 unsigned int *flags);
++	struct bvecq *bvecq_alloc_buffer2(size_t size,
++					  unsigned int pre_slots,
++					  gfp_t gfp,
++					  unsigned int *flags);
++
++The first of these, ``bvecq_alloc_one()`` allocates a single bvecq with at
++least the requested number of inline slots.  The size of the object is rounded
++up to the size of the slab granule that it will be allocated in and the number
++of slots increased appropriately to match.
++
++Two convenience slot count constants are provided:
++
++ * ``BVECQ_POOL_SLOTS`` - The right number of slots to alloc from the mempool
++ * ``BVECQ_4KB_SLOTS`` - The right number of slots to get a 4K allocation
++
++``bvecq_alloc_chain()`` will allocate a sufficiently large chain of bvecqs to
++hold the requested number of slots, capping each allocation at 4K.
++
++``bvecq_alloc_buffer()`` will allocate a chain and populate it, allocating
++sufficient pages to provide a buffer of the specified size attached to the
++chain.  ``bvecq_alloc_buffer2()`` is similar, but it reserves some unused slots
++at the front of the chain.  Note that these functions may add multipage pages
++in the future.
++
++With regard to the ``*flags``, if ``BVECQ_USE_REQ_POOL`` or
++``BVECQ_USE_SUBREQ_POOL`` is set therein, then the netfslib writeback bvecq
++pools will be used to backstop the allocation if the initial slab request
++fails; in such a case, the number of slots in the affected bvecq will be
++``BVECQ_POOL_SLOTS`` and ``*flags`` will have ``BVECQ_HIT_OOM`` set in it.
++
++There are two pools, one for use at the request level and one at the subrequest
++level so that a process which has allocated at one level won't then deadlock
++against the other.  The request-level pool allows 50 processes in and offers
++them 2 bvecqs each.  The subrequest-level pool allows 2 processes in and offers
++them sufficient bvecqs to point at 16MiB worth of pages each.
++
++For the chain and buffer allocation functions, if ``BVECQ_SHORT_OKAY`` is set
++in ``*flags`` then the returned chain may be shorter than requested if an OOM
++condition is hit but the appropriate mempool is tapped.  In such a case,
++``BVECQ_HIT_OOM`` will have been set in ``*flags``.
++
++Access to the bvecq mempools are throttled.  Only a certain number of processes
++may be using each pool at any one time and if the calling process is granted
++access, ``BVECQ_HOLD_POOL_SEM`` is set in the flags.  To end the emergency pool
++state, the caller must call::
++
++	void bvecq_pool_unlock(unsigned int *flags);
++
++after it is done allocating with the flags left by the last allocation call.
++It is not required that a process has returned all the objects from the pool
++when it calls this - but it is required to have returned all the objects before
++it can allocate from the pool again.
++
++Whilst holding a count on the semaphore, it may over-allocate a little from the
++pool, but must return what it has allocated as soon as possible and may then
++continue allocating as long as it holds the semaphore.
++
++
++Refcounting
++===========
++
++Each bvecq has a refcount and two functions are provided to handle that::
++
++	struct bvecq *bvecq_get(struct bvecq *bq);
++	void bvecq_put(struct bvecq *bq);
++
++The first of these gets a new reference and the second drops a reference.  When
++the refcount hits zero, the second iteratively drops the refs along the chain
++until it hits a segment that has a refcount that doesn't reduce to zero.
++
++
++Expandable buffer
++=================
++
++This facility provides a function to manage an expandable buffer::
++
++	int bvecq_expand_buffer(struct bvecq **_buffer,
++				size_t *_cur_size,
++				size_t size,
++				gfp_t gfp);
++
++Pages are added to the bvecq chain and the chain expanded such that, on
++returning, it holds ``size`` amount of space (without losing any content).  The
++caller needs to retain ``*_cur_size`` between calls as that tracks the amount
++of space currently allocated.  Note that pages in the chain may be allocated as
++compound pages larger than PAGE_SIZE.
++
++
++Producer functions
++==================
++
++When building and filling a bvecq, there are a number of utility functions that
++can be used to provide the correct barriering and to query the fields in the
++bvecq currently being filled.
++
++Firstly, there's a function to check to see if a bvecq has any spare slots
++left::
++
++	bool bvecq_is_full(const struct bvecq *bvecq);
++
++If not, ``bvecq_alloc_one()`` can be called to allocate a new segment which can
++be initialised and then added to the chain with::
++
++	void bvecq_append(struct bvecq *to, struct bvecq *add);
++
++bio_vec slots in the segment can then be filled and the number of occupied
++slots updated by calling::
++
++	void bvecq_filled_to(struct bvecq *bvecq,
++			     unsigned int to);
++
++to insert the appropriate barrier.
++
++
++Consumer functions
++==================
++
++When consuming and destroying a bvecq, there are some utility functions for
++that too, providing the needed barriering.  Firstly, there's a function to find
++out how many slots have been used in the current bvecq::
++
++	unsigned int bvecq_nr_slots_acquire(const struct bvecq *bvecq);
++
++Or, more conveniently, if the current slot position is valid within the bvecq::
++
++	bool bvecq_acquire_slot(const struct bvecq *bvecq,
++				unsigned int slot);
++
++If this returns true, the slot is valid and can be looked at; if it returns
++false, the bvecq may have been consumed.  If it has, the next bvecq can be
++obtained by calling::
++
++	struct bvecq *bvecq_next(const struct bvecq *bq);
++
++which inserts the appropriate barrier - though bvecq_acquire_slot should be
++rechecked after calling this in case the producer added more slots and then
++extended the list.
++
++
++Utility functions
++=================
++
++A utility function is provided to list the bio_vecs pointed to by a bvecq
++chain::
++
++	void bvecq_dump(const struct bvecq *bq);
++
++
++I/O iterators
++=============
++
++bvecq chains can be used with the ``iov_iter`` facility too.  An iterator can
++be initialised to point at a chain by calling::
++
++	void iov_iter_bvec_queue(struct iov_iter *i,
++				 unsigned int direction,
++				 const struct bvecq *bvecq,
++				 unsigned int first_slot,
++				 unsigned int offset,
++				 size_t count);
++
++In addition to setting the iterator, direction and count, the first bvecq in
++the chain to be iterated over is set, along with the starting slot in that
++iterator and the offset into the slot.  Once the iterator is set up, it can be
++treated like any other I/O iterator.
++
++In a producer/consumer environment, it is expected that when an iterator is set
++up, all the bvecqs and all the slots within the count of the iterator must
++exist and must be populated before this function is called.
++
++
++API Function Reference
++======================
++
++.. kernel-doc:: include/linux/bvecq.h
++.. kernel-doc:: fs/netfs/bvecq.c
+diff --git a/Documentation/core-api/index.rst b/Documentation/core-api/index.rst
+index 92f91c6a0d79..e39edef58ab6 100644
+--- a/Documentation/core-api/index.rst
++++ b/Documentation/core-api/index.rst
+@@ -39,6 +39,7 @@ Library functionality that is used throughout the kernel.
+    kref
+    cleanup
+    assoc_array
++   bvecq
+    folio_queue
+    xarray
+    maple_tree
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 250d0e324d49..a57adc745196 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -10386,6 +10386,7 @@ M:	Paulo Alcantara <pc@manguebit.org>
+ L:	netfs@lists.linux.dev
+ L:	linux-fsdevel@vger.kernel.org
+ S:	Supported
++F:	Documentation/core-api/bvecq.rst
+ F:	Documentation/filesystems/caching/
+ F:	Documentation/filesystems/netfs_library.rst
+ F:	fs/netfs/
+diff --git a/fs/netfs/bvecq.c b/fs/netfs/bvecq.c
+index b140cd47a1fa..4109bf4490ed 100644
+--- a/fs/netfs/bvecq.c
++++ b/fs/netfs/bvecq.c
+@@ -3,6 +3,8 @@
+  *
+  * Copyright (C) 2026 Red Hat, Inc. All Rights Reserved.
+  * Written by David Howells (dhowells@redhat.com)
 + *
-+ * Allocate a chain of bvecq nodes providing at least the requested cumulative
-+ * number of slots.  Each node is a maximum of 4KiB in size.  If
-+ * %BVECQ_SHORT_OKAY is set in *%flags, then the chain may be shortened on OOM.
-+ *
-+ * Return: The first node pointer or NULL on allocation failure.  BVECQ_HIT_OOM
-+ * is set in *flags if an allocation failure occurs.
-+ */
-+struct bvecq *bvecq_alloc_chain(size_t nr_slots, gfp_t gfp, unsigned int *flags)
-+{
-+	struct bvecq *head = NULL, *tail = NULL;
-+
-+	_enter("%zu", nr_slots);
-+	*flags &= ~BVECQ_HIT_OOM;
-+
-+	for (;;) {
-+		struct bvecq *bq;
-+
-+		bq = bvecq_alloc_one(min(nr_slots, BVECQ_4KB_SLOTS), gfp, flags);
-+		if (!bq)
-+			goto oom;
-+
-+		if (tail)
-+			bvecq_append(tail, bq);
-+		else
-+			head = bq;
-+		tail = bq;
-+		if (unlikely((*flags & BVECQ_HIT_OOM) && (*flags & BVECQ_SHORT_OKAY)) ||
-+		    tail->max_slots >= nr_slots)
-+			break;
-+		nr_slots -= tail->max_slots;
-+	}
-+
-+	return head;
-+oom:
-+	bvecq_put(head);
-+	return NULL;
-+}
-+EXPORT_SYMBOL(bvecq_alloc_chain);
-+
-+/**
-+ * bvecq_alloc_buffer2 - Allocate a bvecq chain and populate with buffers
-+ * @size: Target size of the buffer (can be 0 for an empty buffer)
-+ * @pre_slots: Number of preamble slots to set aside
-+ * @gfp: The allocation constraints
-+ * @flags: Pointer to the allocation flags
-+ *
-+ * Allocate a chain of bvecq nodes and populate the slots with sufficient pages
-+ * to provide at least the requested amount of space, leaving the first
-+ * @pre_slots slots unset.  The pre-slots must all fit into the first bvecq.
-+ * Note that any memory segments set in the pre_slots will be freed as
-+ * specified by BVECQ_MEM_ALLOCED.
-+ *
-+ * The caller should assume that the pages allocated may be compound pages
-+ * larger than PAGE_SIZE and thus occupy fewer slots.  The pages have their
-+ * refcounts set to 1 and can be passed to MSG_SPLICE_PAGES.
-+ *
-+ * Return: The first node pointer or NULL on allocation failure.  BVECQ_HIT_OOM
-+ * is set in *flags if a bvecq chain allocation failure occurs (though if
-+ * %BVECQ_SHORT_OKAY is set, the func may return early but will have at least
-+ * one bvecq in the allocation).
-+ */
-+struct bvecq *bvecq_alloc_buffer2(size_t size, unsigned int pre_slots, gfp_t gfp,
-+				  unsigned int *flags)
-+{
-+	struct bvecq *head = NULL, *tail = NULL;
-+	size_t count = pre_slots + DIV_ROUND_UP(size, PAGE_SIZE);
-+
-+	_enter("%zx,%zx,%u", size, count, pre_slots);
-+
-+	*flags &= ~BVECQ_HIT_OOM;
-+	if (WARN_ON_ONCE(pre_slots > BVECQ_POOL_SLOTS))
-+		return NULL;
-+
-+	do {
-+		struct page **pages;
-+		size_t unused, want, got, slot;
-+
-+		if (!tail || bvecq_is_full(tail)) {
-+			struct bvecq *bq;
-+
-+			bq = bvecq_alloc_one(min(count, BVECQ_4KB_SLOTS), gfp, flags);
-+			if (!bq)
-+				goto oom;
-+
-+			if (tail)
-+				bvecq_append(tail, bq);
-+			else
-+				head = bq;
-+			tail = bq;
-+
-+			/* Need to clear pre slots and pages[], so just clear all. */
-+			memset(tail->bv, 0, tail->max_slots * sizeof(tail->bv[0]));
-+			tail->mem_type = BVECQ_MEM_ALLOCED;
-+			if (tail == head) {
-+				tail->nr_slots = pre_slots;
-+				count -= pre_slots;
-+			}
-+		}
-+
-+		if (!count)
-+			break;
-+
-+		unused = tail->max_slots - tail->nr_slots;
-+
-+		/* We can put pages[] at the tail of bv[] as the elements are
-+		 * smaller and we won't overrun if the slots are filled in
-+		 * ascending order.
-+		 */
-+		pages = (struct page **)&tail->bv[tail->max_slots];
-+		pages -= unused;
-+
-+		want = min(count, unused);
-+		got = alloc_pages_bulk(gfp, want, pages);
-+		if (!got) {
-+			*flags |= BVECQ_HIT_OOM;
-+			goto pages_oom;
-+		}
-+
-+		slot = tail->nr_slots;
-+		for (int i = 0; i < got; i++)
-+			bvec_set_page(&tail->bv[slot++], pages[i], PAGE_SIZE, 0);
-+
-+		bvecq_filled_to(tail, slot);
-+		count -= got;
-+
-+		if (unlikely(*flags & BVECQ_HIT_OOM) && (*flags & BVECQ_SHORT_OKAY))
-+			break;
-+	} while (count > 0);
-+
-+out:
-+	return head;
-+
-+pages_oom:
-+	/* If tail is empty, discard it. */
-+	if (tail != head && tail->nr_slots == 0) {
-+		tail->prev->next = NULL;
-+		bvecq_put(tail);
-+	}
-+oom:
-+	if (!head || (tail == head && head->nr_slots == pre_slots))
-+		goto discard; /* Allocated no pages */
-+	if (*flags & BVECQ_SHORT_OKAY)
-+		goto out;
-+discard:
-+	bvecq_put(head);
-+	return NULL;
-+}
-+EXPORT_SYMBOL(bvecq_alloc_buffer2);
-+
-+/*
-+ * Free the page pointed to by a slot as necessary.
-+ */
-+static void bvecq_free_slot(struct bvecq *bq, unsigned int slot)
-+{
-+	struct page *page = bq->bv[slot].bv_page;
-+
-+	if (!page)
-+		return;
-+
-+	switch (bq->mem_type) {
-+	case BVECQ_MEM_EXTERNAL:
-+		break;
-+	case BVECQ_MEM_PAGECACHE:
-+		put_page(page);
-+		break;
-+	case BVECQ_MEM_GUP:
-+		unpin_user_page(page);
-+		break;
-+	case BVECQ_MEM_ALLOCED:
-+		__free_pages(page, compound_order(page));
-+		break;
-+	default:
-+		WARN_ON_ONCE(1);
-+		break;
-+	}
-+}
-+
-+/**
-+ * bvecq_put - Put a ref on a bvec queue
-+ * @bq: The start of the bvecq to free
-+ *
-+ * Put the ref(s) on the nodes in a bvec queue, freeing up the node and the
-+ * page fragments it points to as the refcounts become zero.
-+ */
-+void bvecq_put(struct bvecq *bq)
-+{
-+	struct bvecq *next;
-+
-+	for (; bq; bq = next) {
-+		if (!refcount_dec_and_test(&bq->ref))
-+			break;
-+		for (int slot = 0; slot < bq->nr_slots; slot++)
-+			bvecq_free_slot(bq, slot);
-+		next = bq->next;
-+		netfs_stat_d(&netfs_n_bvecq);
-+
-+		if (bq->from_pool != BVECQ_USE_NO_POOL)
-+			mempool_free(bq, &netfs_bvecq_pool[bq->from_pool]);
-+		else
-+			kfree(bq);
-+	}
-+}
-+EXPORT_SYMBOL(bvecq_put);
-+
-+/**
-+ * bvecq_pool_unlock - End emergency pool access
-+ * @flags: Pointer to current allocation flag state
-+ *
-+ * End emergency allocation pool access and clean up the semaphore state as
-+ * obtained by the bvecq_alloc_* functions.
-+ *
-+ * Note that the caller is allowed to call this before it has returned to the
-+ * pool all the bvecqs it allocated from the pool.  It just has to return the
-+ * objects to the pool when it has done with them and the next allocator will
-+ * wait inside the semaphore section until they become available.
-+ */
-+void bvecq_pool_unlock(unsigned int *flags)
-+{
-+	if (*flags & BVECQ_HOLD_POOL_SEM) {
-+		up(&netfs_bvecq_pool_sem[*flags & BVECQ__USE_POOL]);
-+		*flags &= ~BVECQ_HOLD_POOL_SEM;
-+	}
-+}
-+EXPORT_SYMBOL(bvecq_pool_unlock);
-+
-+/**
-+ * bvecq_expand_buffer - Allocate buffer space into a bvec queue
-+ * @_buffer: Pointer to the bvecq chain to expand (may point to a NULL; updated).
-+ * @_cur_size: Current size of the buffer (updated).
-+ * @size: Target size of the buffer.
-+ * @gfp: The allocation constraints.
-+ *
-+ * Append extra pages to a buffer to increase its capacity to the @size
-+ * specified.  If the current tail has space, but is not of the
-+ * BVECQ_MEM_ALLOCED memory type, a separate bvecq will be allocated to hold
-+ * the new memory.
-+ *
-+ * Return: 0 on success or -ENOMEM on failure.  Note that in the case of
-+ * failure, the buffer may have been partially expanded. In any event,
-+ * *@_cur_size will be updated to the new buffer size.
-+ */
-+int bvecq_expand_buffer(struct bvecq **_buffer, size_t *_cur_size, size_t size, gfp_t gfp)
-+{
-+	struct bvecq *tail = *_buffer;
-+	unsigned int alloc_flags = 0;
-+
-+	size = round_up(size, PAGE_SIZE);
-+	if (tail)
-+		while (tail->next)
-+			tail = tail->next;
-+
-+	while (*_cur_size < size) {
-+		struct page *page;
-+		size_t need = size - *_cur_size;
-+		gfp_t gfp_add;
-+		int order = 0;
-+
-+		if (!tail || bvecq_is_full(tail) || tail->mem_type != BVECQ_MEM_ALLOCED) {
-+			struct bvecq *p;
-+
-+			p = bvecq_alloc_one(BVECQ_POOL_SLOTS, gfp, &alloc_flags);
-+			if (!p)
-+				return -ENOMEM;
-+			if (tail)
-+				bvecq_append(tail, p);
-+			else
-+				*_buffer = p;
-+			tail = p;
-+			p->mem_type = BVECQ_MEM_ALLOCED;
-+		}
-+
-+		if (need > PAGE_SIZE)
-+			order = umin(ilog2(need) - PAGE_SHIFT, MAX_PAGECACHE_ORDER);
-+
-+		gfp_add = 0;
-+		if (order > 0)
-+			gfp_add |= __GFP_NORETRY | __GFP_NOWARN;
-+		page = alloc_pages(gfp | __GFP_COMP | gfp_add, order);
-+		if (!page && order > 0) {
-+			page = alloc_pages(gfp | __GFP_COMP, 0);
-+			order = 0;
-+		}
-+		if (!page)
-+			return -ENOMEM;
-+
-+		bvec_set_page(&tail->bv[tail->nr_slots], page, PAGE_SIZE << order, 0);
-+		*_cur_size += PAGE_SIZE << order;
-+		bvecq_filled_to(tail, tail->nr_slots + 1);
-+	}
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL(bvecq_expand_buffer);
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index 6b583152132f..10688314660f 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -11,6 +11,8 @@
- #include <linux/netfs.h>
- #include <linux/fscache.h>
- #include <linux/fscache-cache.h>
-+#include <linux/mempool.h>
-+#include <linux/semaphore.h>
- #include <trace/events/netfs.h>
- #include <trace/events/fscache.h>
- 
-@@ -46,6 +48,8 @@ extern spinlock_t netfs_proc_lock;
- extern mempool_t netfs_request_pool;
- extern mempool_t netfs_subrequest_pool;
- extern mempool_t netfs_folioq_pool;
-+extern mempool_t netfs_bvecq_pool[4];
-+extern struct semaphore netfs_bvecq_pool_sem[4];
- 
- #ifdef CONFIG_PROC_FS
- static inline void netfs_proc_add_rreq(struct netfs_io_request *rreq)
-@@ -205,6 +209,7 @@ extern atomic_t netfs_n_wh_retry_write_subreq;
- extern atomic_t netfs_n_wb_lock_skip;
- extern atomic_t netfs_n_wb_lock_wait;
- extern atomic_t netfs_n_folioq;
-+extern atomic_t netfs_n_bvecq;
- 
- int netfs_stats_show(struct seq_file *m, void *v);
- 
-diff --git a/fs/netfs/main.c b/fs/netfs/main.c
-index 609e22e8f76a..fe248eb978a8 100644
---- a/fs/netfs/main.c
-+++ b/fs/netfs/main.c
-@@ -7,7 +7,6 @@
- 
- #include <linux/module.h>
- #include <linux/export.h>
--#include <linux/mempool.h>
- #include <linux/proc_fs.h>
- #include <linux/seq_file.h>
- #include "internal.h"
-@@ -30,6 +29,9 @@ mempool_t netfs_request_pool;
- mempool_t netfs_subrequest_pool;
- mempool_t netfs_folioq_pool;
- 
-+mempool_t netfs_bvecq_pool[4]; /* unused (NO_POOL), REQ_POOL, SUBREQ_POOL, unused */
-+struct semaphore netfs_bvecq_pool_sem[4];
-+
- #ifdef CONFIG_PROC_FS
- LIST_HEAD(netfs_io_requests);
- DEFINE_SPINLOCK(netfs_proc_lock);
-@@ -111,6 +113,42 @@ static int __init netfs_init(void)
- 	if (mempool_init_kmalloc_pool(&netfs_folioq_pool, 100, sizeof(struct folio_queue)) < 0)
- 		goto error_folioq_pool;
- 
-+	/* We set up multiple bvecq emergency pools: one for requests and one
-+	 * for subrequests, though there may also need to be one for
-+	 * reconnection.  This is needed to avoid deadlock as a process will
-+	 * allocate for request and then for subrequest whilst still holding
-+	 * the first alloc (and may go through reconnection whilst setting up a
-+	 * subrequest).
-+	 *
-+	 * For the request pool, we allocate 100 bvecqs in the pool, but only
-+	 * allow half that number of processes to access the pool at any one
-+	 * time - which means at least one process will be able to access two
-+	 * bvecqs.  Combined with accelerated issuing of subreqs by a process
-+	 * using the pool, the pool should refill at a reasonable pace.
-+	 *
-+	 */
-+	int nr_per_proc = 2;
-+	int nr_procs = 50;
-+
-+	if (mempool_init_kmalloc_pool(&netfs_bvecq_pool[1], nr_per_proc * nr_procs,
-+				      BVECQ_POOL_SIZE) < 0)
-+		goto error_bvecq_pool_1;
-+	sema_init(&netfs_bvecq_pool_sem[1], nr_procs);
-+
-+	/* For the subrequest pool, the allocation is expected to be set up in
-+	 * one go and torn down in one go (e.g. allocating a cifs encryption
-+	 * buffer) and an allocation may be quite large.  Support up to 16MiB of
-+	 * bufferage in a single chain, and allow two concurrent chain
-+	 * allocations.
-+	 */
-+	nr_per_proc = DIV_ROUND_UP((16 << 20) / PAGE_SIZE, BVECQ_POOL_SLOTS);
-+	nr_procs = 2;
-+
-+	if (mempool_init_kmalloc_pool(&netfs_bvecq_pool[2], nr_per_proc * nr_procs,
-+				      BVECQ_POOL_SIZE) < 0)
-+		goto error_bvecq_pool_2;
-+	sema_init(&netfs_bvecq_pool_sem[2], nr_procs);
-+
- 	netfs_request_slab = kmem_cache_create("netfs_request",
- 					       sizeof(struct netfs_io_request), 0,
- 					       SLAB_HWCACHE_ALIGN | SLAB_ACCOUNT,
-@@ -163,6 +201,10 @@ static int __init netfs_init(void)
- error_reqpool:
- 	kmem_cache_destroy(netfs_request_slab);
- error_req:
-+	mempool_exit(&netfs_bvecq_pool[2]);
-+error_bvecq_pool_2:
-+	mempool_exit(&netfs_bvecq_pool[1]);
-+error_bvecq_pool_1:
- 	mempool_exit(&netfs_folioq_pool);
- error_folioq_pool:
- 	return ret;
-@@ -177,6 +219,8 @@ static void __exit netfs_exit(void)
- 	kmem_cache_destroy(netfs_subrequest_slab);
- 	mempool_exit(&netfs_request_pool);
- 	kmem_cache_destroy(netfs_request_slab);
-+	mempool_exit(&netfs_bvecq_pool[2]);
-+	mempool_exit(&netfs_bvecq_pool[1]);
- 	mempool_exit(&netfs_folioq_pool);
- }
- module_exit(netfs_exit);
-diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
-index 4b8d20559b0e..6d7839c0498d 100644
---- a/fs/netfs/objects.c
-+++ b/fs/netfs/objects.c
-@@ -6,7 +6,6 @@
++ * See also Documentation/core-api/bvecq.rst
   */
  
- #include <linux/slab.h>
--#include <linux/mempool.h>
- #include "internal.h"
- 
- static void netfs_free_request(struct work_struct *work);
-diff --git a/fs/netfs/rolling_buffer.c b/fs/netfs/rolling_buffer.c
-index d30d5ef6d86e..4347c99452d8 100644
---- a/fs/netfs/rolling_buffer.c
-+++ b/fs/netfs/rolling_buffer.c
-@@ -6,7 +6,6 @@
-  */
- 
- #include <linux/bitops.h>
--#include <linux/mempool.h>
- #include <linux/pagemap.h>
- #include <linux/rolling_buffer.h>
- #include <linux/slab.h>
-diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
-index 9a607c4e62dd..07c5f9165768 100644
---- a/fs/netfs/stats.c
-+++ b/fs/netfs/stats.c
-@@ -47,6 +47,7 @@ atomic_t netfs_n_wh_retry_write_subreq;
- atomic_t netfs_n_wb_lock_skip;
- atomic_t netfs_n_wb_lock_wait;
- atomic_t netfs_n_folioq;
-+atomic_t netfs_n_bvecq;
- 
- int netfs_stats_show(struct seq_file *m, void *v)
- {
-@@ -88,10 +89,13 @@ int netfs_stats_show(struct seq_file *m, void *v)
- 		   atomic_read(&netfs_n_rh_retry_read_subreq),
- 		   atomic_read(&netfs_n_wh_retry_write_req),
- 		   atomic_read(&netfs_n_wh_retry_write_subreq));
--	seq_printf(m, "Objs   : rr=%u sr=%u foq=%u wsc=%u\n",
-+	seq_printf(m, "Objs   : rr=%u sr=%u bq=%u foq=%u bqs=%d,%d wsc=%u\n",
- 		   atomic_read(&netfs_n_rh_rreq),
- 		   atomic_read(&netfs_n_rh_sreq),
-+		   atomic_read(&netfs_n_bvecq),
- 		   atomic_read(&netfs_n_folioq),
-+		   READ_ONCE(netfs_bvecq_pool_sem[1].count),
-+		   READ_ONCE(netfs_bvecq_pool_sem[2].count),
- 		   atomic_read(&netfs_n_wh_wstream_conflict));
- 	seq_printf(m, "WbLock : skip=%u wait=%u\n",
- 		   atomic_read(&netfs_n_wb_lock_skip),
+ #include <linux/bvecq.h>
 diff --git a/include/linux/bvecq.h b/include/linux/bvecq.h
-index 77fd07852c33..f670a031ac44 100644
+index f670a031ac44..1519de6d679b 100644
 --- a/include/linux/bvecq.h
 +++ b/include/linux/bvecq.h
-@@ -21,6 +21,20 @@ enum bvecq_mem {
- 	BVECQ_MEM_ALLOCED,	/* Memory alloc'd by bvecq - can be freed/pooled */
- } __mode(byte);
- 
-+/*
-+ * There are two emergency pools from which bvecqs can be allocated under OOM
-+ * conditions.  These are intended for use in writeback where allocation is not
-+ * typically allowed to fail.  One pool is for request-level allocs and one is
-+ * for subreq-level allocs - having two pools prevents the two levels from
-+ * blocking each other; further, the two pools can have different ratios and
-+ * capacities.
-+ */
-+enum bvecq_pool {
-+	BVECQ_USE_NO_POOL	= 0,	/* Don't use a pool */
-+	BVECQ_USE_REQ_POOL	= 1,	/* Use the request-level pool */
-+	BVECQ_USE_SUBREQ_POOL	= 2,	/* Use the subrequest-level pool */
-+};
-+
- /*
-  * Segmented bio_vec queue.
+@@ -3,6 +3,8 @@
   *
-@@ -43,8 +57,139 @@ struct bvecq {
- 	u16		max_slots;	/* Number of elements allocated in bv[] */
- 	enum bvecq_mem	mem_type:3;	/* What sort of memory and how to free it */
- 	bool		inline_bv:1;	/* T if __bv[] is being used */
-+	enum bvecq_pool	from_pool:2;	/* Which pool the bvecq can be returned to (if any) */
- 	struct bio_vec	*bv;		/* Pointer to array of page fragments */
- 	struct bio_vec	__bv[];		/* Default array (if ->inline_bv) */
- };
- 
-+/* Number of slots in a 512-byte mempool-backed bvecq. */
-+#define BVECQ_POOL_SIZE 512
-+#define BVECQ_POOL_SLOTS ((BVECQ_POOL_SIZE - sizeof(struct bvecq)) / sizeof(struct bio_vec))
-+
-+/* Number of slots in a 4K bvecq. */
-+#define BVECQ_4KB_SLOTS  ((4096 - sizeof(struct bvecq)) / sizeof(struct bio_vec))
-+
-+/* Maximum number of slots in an inline allocation */
-+#define BVECQ_MAX_INLINE_SLOTS USHRT_MAX
-+
-+/* Allocation flags */
-+#define BVECQ__USE_POOL		0x03	/* As enum bvecq_pool */
-+#define BVECQ_SHORT_OKAY	0x04	/* A short alloc due to OOM is okay */
-+#define BVECQ_HIT_OOM		0x08	/* OOM was hit during allocation (set by alloc func) */
-+#define BVECQ_HOLD_POOL_SEM	0x10	/* The caller now holds a sem on the emergency pool */
-+
-+void bvecq_dump(const struct bvecq *bq);
-+struct bvecq *bvecq_alloc_one(size_t nr_slots, gfp_t gfp, unsigned int *flags);
-+struct bvecq *bvecq_alloc_chain(size_t nr_slots, gfp_t gfp, unsigned int *flags);
-+struct bvecq *bvecq_alloc_buffer2(size_t size, unsigned int pre_slots, gfp_t gfp,
-+				  unsigned int *flags);
-+void bvecq_put(struct bvecq *bq);
-+int bvecq_expand_buffer(struct bvecq **_buffer, size_t *_cur_size, size_t size, gfp_t gfp);
-+void bvecq_pool_unlock(unsigned int *flags);
-+
-+/**
-+ * bvecq_alloc_buffer - Allocate a bvecq chain and populate with buffers
-+ * @size: Target size of the buffer (can be 0 for an empty buffer)
-+ * @gfp: The allocation constraints
-+ * @flags: Pointer to the allocation flags
+  * Copyright (C) 2026 Red Hat, Inc. All Rights Reserved.
+  * Written by David Howells (dhowells@redhat.com)
 + *
-+ * Wrapper around ``bvecq_alloc_buffer2()``.
-+ *
-+ * Return: The first node pointer or NULL on allocation failure.
-+ */
-+static inline struct bvecq *bvecq_alloc_buffer(size_t size, gfp_t gfp, unsigned int *flags)
-+{
-+	return bvecq_alloc_buffer2(size, 0, gfp, flags);
-+}
-+
-+/**
-+ * bvecq_get - Get a ref on a bvecq
-+ * @bq: The bvecq to get a ref on
-+ *
-+ * Return: @bq.
-+ */
-+static inline struct bvecq *bvecq_get(struct bvecq *bq)
-+{
-+	refcount_inc(&bq->ref);
-+	return bq;
-+}
-+
-+/**
-+ * bvecq_is_full - Determine if a bvecq is full
-+ * @bvecq: The object to query
-+ *
-+ * Return: true if full; false if not.
-+ */
-+static inline bool bvecq_is_full(const struct bvecq *bvecq)
-+{
-+	return bvecq->nr_slots >= bvecq->max_slots;
-+}
-+
-+/**
-+ * bvecq_filled_to - Release filled slots with release barrier
-+ * @bvecq: The object modified
-+ * @to: The latest slot filled + 1
-+ */
-+static inline void bvecq_filled_to(struct bvecq *bvecq, unsigned int to)
-+{
-+	/* Set the slot counter after filling the slot */
-+	smp_store_release(&bvecq->nr_slots, to);
-+}
-+
-+/**
-+ * bvecq_nr_slots_acquire - Get the number of filled slots with acquire barrier
-+ * @bvecq: The object to query
-+ *
-+ * Return: The number of filled slots
-+ */
-+static inline unsigned int bvecq_nr_slots_acquire(const struct bvecq *bvecq)
-+{
-+	/* Read the slot counter before looking at the slot */
-+	return smp_load_acquire(&bvecq->nr_slots);
-+}
-+
-+/**
-+ * bvecq_acquire_slot - Determine if a slot is valid with acquire barrier
-+ * @bvecq: The object to query
-+ * @slot: The next slot
-+ *
-+ * Return: true if valid; false if might not be valid
-+ */
-+static inline bool bvecq_acquire_slot(const struct bvecq *bvecq, unsigned int slot)
-+{
-+	/* Read the slot counter before looking at the slot */
-+	return slot < bvecq_nr_slots_acquire(bvecq);
-+}
-+
-+/**
-+ * bvecq_append - Get the next bvecq with appropriate barrier
-+ * @to: The bvecq to append to
-+ * @add: The bvecq to append
-+ *
-+ * Attach a new bvecq to a chain using an appropriate barrier to protect the
-+ * write.
-+ *
-+ * [!] Note that this function transfers the caller's ref to the chain.
-+ */
-+static inline void bvecq_append(struct bvecq *to, struct bvecq *add)
-+{
-+	add->prev = to;
-+
-+	/* Make sure the initialisation is stored before the next pointer. */
-+	smp_store_release(&to->next, add);
-+}
-+
-+/**
-+ * bvecq_next - Get the next bvecq with appropriate barrier
-+ * @bq: The bvecq to start from
-+ *
-+ * Return: The next bvecq in a chain, using an appropriate barrier to protect
-+ * the access.
-+ */
-+static inline struct bvecq *bvecq_next(const struct bvecq *bq)
-+{
-+	/* Read the contents of the next node after the pointer to it. */
-+	return smp_load_acquire(&bq->next);
-+}
-+
- #endif /* _LINUX_BVECQ_H */
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index e5961450f3f1..2cf1163aafa6 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -17,6 +17,7 @@
- #include <linux/workqueue.h>
- #include <linux/fs.h>
- #include <linux/pagemap.h>
-+#include <linux/bvecq.h>
- #include <linux/uio.h>
- #include <linux/rolling_buffer.h>
++ * See also Documentation/core-api/bvecq.rst
+  */
  
-diff --git a/lib/iov_iter.c b/lib/iov_iter.c
-index 7e1a31e3c371..c3e894b22fc6 100644
---- a/lib/iov_iter.c
-+++ b/lib/iov_iter.c
-@@ -558,11 +558,8 @@ static void iov_iter_bvecq_advance(struct iov_iter *i, size_t by)
- 			slot = 0;
- 			continue;
- 		}
--		if (!by)
--			break;
- 
- 		len = bq->bv[slot].bv_len;
--
- 		if (likely(by < len))
- 			break;
- 		by -= len;
-@@ -1183,7 +1180,7 @@ static ssize_t iter_bvecq_get_pages(struct iov_iter *iter,
- 	pages = *ppages;
- 
- 	/* Now transcribe the page pointers. */
--	do {
-+	for (;;) {
- 		const struct bio_vec *bv;
- 		size_t boff, blen;
- 
-@@ -1198,6 +1195,9 @@ static ssize_t iter_bvecq_get_pages(struct iov_iter *iter,
- 			continue;
- 		}
- 
-+		if (nr >= maxpages || extracted >= maxsize)
-+			break;
-+
- 		bv = &bvecq->bv[slot];
- 		boff = bv->bv_offset;
- 		blen = bv->bv_len;
-@@ -1230,7 +1230,7 @@ static ssize_t iter_bvecq_get_pages(struct iov_iter *iter,
- 			offset = 0;
- 			slot++;
- 		}
--	} while (nr < maxpages && extracted < maxsize);
-+	}
- 
- 	iter->bvecq = bvecq;
- 	iter->bvecq_slot = slot;
-@@ -1893,7 +1893,7 @@ static ssize_t iov_iter_extract_bvecq_pages(struct iov_iter *iter,
- 	offset = iter->iov_offset;
- 	slot = iter->bvecq_slot;
- 
--	do {
-+	for (;;) {
- 		const struct bio_vec *bv;
- 		size_t boff, blen;
- 
-@@ -1908,6 +1908,9 @@ static ssize_t iov_iter_extract_bvecq_pages(struct iov_iter *iter,
- 			continue;
- 		}
- 
-+		if (nr >= maxpages || extracted >= maxsize)
-+			break;
-+
- 		bv = &bvecq->bv[slot];
- 		boff = bv->bv_offset;
- 		blen = bv->bv_len;
-@@ -1934,7 +1937,7 @@ static ssize_t iov_iter_extract_bvecq_pages(struct iov_iter *iter,
- 			offset = 0;
- 			slot++;
- 		}
--	} while (nr < maxpages && extracted < maxsize);
-+	}
- 
- 	iter->bvecq = bvecq;
- 	iter->bvecq_slot = slot;
-diff --git a/lib/scatterlist.c b/lib/scatterlist.c
-index e8241edb1fcb..8a9b0256971a 100644
---- a/lib/scatterlist.c
-+++ b/lib/scatterlist.c
-@@ -1286,7 +1286,7 @@ static ssize_t extract_bvecq_to_sg(struct iov_iter *iter,
- 
- 	maxsize = umin(maxsize, iov_iter_count(iter));
- 
--	while (sg_max > 0 && ret < maxsize) {
-+	for (;;) {
- 		const struct bio_vec *bv;
- 		size_t blen, part;
- 
-@@ -1301,6 +1301,9 @@ static ssize_t extract_bvecq_to_sg(struct iov_iter *iter,
- 			continue;
- 		}
- 
-+		if (sg_max == 0 || ret >= maxsize)
-+			break;
-+
- 		bv = &bvecq->bv[slot];
- 		blen = bv->bv_len;
- 
+ #ifndef _LINUX_BVECQ_H
 
