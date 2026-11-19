@@ -1,72 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.72
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795116219;
-	b=pDKRGjt2e74m+U6KFJNl7uHW9CwD0rdwg8IgyWL1Zj3ijqdycH8VzdXgORb4GyGckLwT
-	 NoF4FWQMjBVdyr7RfKIHXncEpV9bYSVnIFoAQoFm+TXFf1ib8whhDHn02lzz25T/IF7HD
-	 h7SK3U/fyI+YHNxOnsLE1WlQqEB0dOEkyoSdI75czOYHLoUl7DiS9d+Pjj/As20SQg1M+
-	 BeJOJmIlp5rErOkN1trnmuiBk1DeslC0WEme/+vLk2ZU6/AVdqTQ2k2PpYfgj3tGbcCY4
-	 dDOmhXzCoB+AlzugWdKkoDqiFafDsAUpGBFxnof0rG21zvduGsXK//g7yGrM9IC/50Q==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795116219;
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.42
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1795117028;
+	b=4oiiP8xUV9DD453YlNMCyGgXcyxmh6UzJCKb/r18rBUIGHiCMlRGRzqF9StQqCRBkAfH
+	 4Tv6MC1njeD/HSPzWoaDMivYi3SdNfXYI0gBivjsNvEcG5fVSxe4mysUfzQiDCcIQWvMP
+	 ZAPC9zNn4sru+ftyCZqvBq09uj5MsoY5jJrl8HIldolcRb1kgbswksHPh1mp1fzyCbs7N
+	 DVSXH6tzV09bqc0Ab4xAzRSflKl5UzjXpFvYt1H8XNUsRlYoS2zY4frT5akyszTzQLOHD
+	 aYXMyYxJc04p6+8W+Sezmcymk+Gh9V3+OiO0bc3WqlOI/aKgrPfIATxJYGlWkijzJIg==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795117028;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Received:Date:Mime-Version:
-	 X-Mailer:Message-ID:Subject:From:To:Cc:Content-Type;
-	bh=3ZHyNRe+Mfv05RQ57vLWJy+Mrx7YIm+0I1diPr9nzeo=;
-	b=JBbSAAhaMZA52f5+va21RlmDOofjDludGYsP7/OwN0A3XUtZzotzHN+JnU9/IFGguHHj
-	 qLH2jTLjZXmW2XDbaMSpW0ql+UEsUGzfQmBqaE4x3GxfTUuC881QGDC/7VgNO1bo9QhRr
-	 da5mazzOSDqy4HyJsq6r8c4M9b5clxUVzwJQndyH0T8JN48GEw+ebrTCaRCNTt6j24HkK
-	 4RpqSojy6+L7o5NaDkZOwyqbNcd2ot0gpJYrBirY5FB0Jej+R5+0qw1bgnLxJhD2iAbRa
-	 Hh9ZO5io3aFgGhdk1ZiMiZaBfejVYxx+zIvURxiSH/ZsHlTln1hek9E9frcPciuKbIg==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=google.com;
-	spf=pass smtp.mailfrom=flex--dmnk.bounces.google.com;
-	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=a7br0hUZ;
-	arc=none smtp.remote-ip=209.85.221.72
-Received: from mail-wr1-f72.google.com (mail-wr1-f72.google.com [209.85.221.72])
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=vs2p+NKw9cBxSHvLMTQ1TCNiiuqtzY0tMFYF/M3imDY=;
+	b=ESC5jLObMejzElQHsvgtQ64FzXt+rOQSuWW215EsWP4WotvfCoGYSEakWwBKGmw1aj/q
+	 311bhySSVZlhAIvJSW06wUu0moJvp8248NmEyP0mxDA33n7P7RY0c3HcSnVwWffvmw4op
+	 N0pHEt/YBefau3TDtnKVpxjuvOLhR0xyvoPABS44V5ZYr8kSW43Lk40POIacdHlZ8fNIA
+	 haYQB7jEOCUnNj0cXYBlQgPXuZWkd3AsL/R769wLL9BBSf0HByeVP8NZapuSMYWsKSe5Z
+	 P7rp47OVGuHShUhX5SuRJZhgjW7DAAlTJuoKo/eQb0a0CvyvNrVl84aoRv/qOY3eaEA==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=J2P1rliW;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.42
+Received: from mail-ed1-f42.google.com (mail-ed1-f42.google.com [209.85.208.42])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AAB97606A331
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 19:23:38 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org AAB97606A331
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--dmnk.bounces.google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4609460A2609
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 19:37:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4609460A2609
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=a7br0hUZ
-Received: by mail-wr1-f72.google.com with SMTP id ffacd0b85a97d-48fcb657f32so18529f8f.2
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 11:23:38 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=J2P1rliW
+Received: by mail-ed1-f42.google.com with SMTP id 4fb4d7f45d1cf-6b4bd3d98bfso129242a12.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 11:37:07 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795117026; cv=none;
+        d=google.com; s=arc-20260327;
+        b=s7R9KjIrH10sg/Tw4T/OiGfXMp0/tlhAHf2+aNuv9KiSqNzlQO79kmZfEY07fMYAsf
+         1jG81jcMvi3tf7ie6Quk8qrFVAjiu8tfMFPqv0eAPvz21E1vqSChpFFA8Oe5lReQzgzo
+         j1N8dlfNOBLaNTpWa4rBv+AFjCie8Ugx+1l0H3cq/C2jPJ5Fp2EaVZk4e6anCQqi7A28
+         zdMkZiYj7Xc+fu9vN9tmPPbexFIIVAtYa5m3siDCyIpFTHc7URmt3LR6aaYDhn7Q2Qgx
+         KBnHZgSkfUwNb6Irajm1pdB17DqX1Jhxbh5P4XYpnKM0IOqOb7BGNm2D57K2cODuR6Po
+         fv7w==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=vs2p+NKw9cBxSHvLMTQ1TCNiiuqtzY0tMFYF/M3imDY=;
+        fh=Uhen/Yx98MNS3ZQi68f7cHgHikXjs7ZBnVtC+jayry0=;
+        b=IFJ6kUJ2BlYXXzIxO1tcIPdZunSiGAeFgHAudCwOdAUQP8cpmCHHHZVGjqUuUapCb5
+         WjMSjSVX2Qm767r58T0KIbMq5m7UXN4ldUFem22qrsKh8sQ8oB6yYHvJpcBVNqqxNa7y
+         KqrwYvlbjRlFx7/VEyxMo6o7dLGZEzA8TaEgurWd/oWFtarIjClRY8sKRZL0btq0TCqK
+         nJd/pzE+cJeRCmyKZjM50EMJWrkv1f+3LWA3ql5svosiPpb75EVizrEnSreVe0n4gVaS
+         20TFpbxE0htXx4JvJ5qvva1NuyhyoQphKhY4KwhS/mwcu7BSH7BiX+WBfhMPvfSME3wM
+         mE2g==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20260707; t=1795116217; x=1795721017; darn=vger.kernel.org;
-        h=content-type:cc:to:from:subject:message-id:mime-version:date:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=3ZHyNRe+Mfv05RQ57vLWJy+Mrx7YIm+0I1diPr9nzeo=;
-        b=a7br0hUZZAAOec4xkxj+NBeC+qLB4ygwQ8BB3DZkJpYrPoHDi6AgStIKthczFbfCw1
-         z+zGDlr07L4BvRPrnK7PcceXwemnCml4rRM8vbePnnTsSEzI7hmZw7qiKuRSYU5Y1DjZ
-         1WxyqeAAqMzeNOHNbD05lL3COA3aEZyxsf4GTp0mAUrEqPReT7oH5VpuXyp7lxwGnD4O
-         Ka9E5dA3kFZpbsqKtpW2sGbQBgYtfj0FqvjxSWQLUsDwGdYYZHb66q+uwYeGShpGF6ur
-         EVlhjYHmjToJ+sRxvAV/C2vUtGLbbeNg7hyPOPw9JqOnPnaxsLi/ux4sw2wj7FghjLsC
-         vMKQ==
+        d=gmail.com; s=20260707; t=1795117026; x=1795721826; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=vs2p+NKw9cBxSHvLMTQ1TCNiiuqtzY0tMFYF/M3imDY=;
+        b=J2P1rliWlWFeXXFXmXF+ohrZY4u8BY5guzLNIZE4zyZEFvv9XjVp6qSFQEuKBYS4gw
+         tRHKICBYDX7EHD7dOjit9dYAF5zAZQoiMjaWziJZS+p8scKNzprADKCa9phj/1Tq5rLq
+         AdLh58YB1IlCzIIphjpmi7F6IODiO1Lb028EXgDFuQRtiOTbHyBQqFgQJ2a9rTkXFmIk
+         rIDw5jsAro28ug3nEE4pf9UY06m6dKeDy1GLSXALfX/FhKkPB24uxc9fzqALY5d5/0zY
+         o3ELAOqepaHkRc8vyIjpo6spF9jSLJ5v2/RpEGLV7zg0pNxm6ebUphbxyHHPfV1Pvs4Y
+         7KvQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795116217; x=1795721017;
-        h=content-type:cc:to:from:subject:message-id:mime-version:date
+        d=1e100.net; s=20260707; t=1795117026; x=1795721826;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=3ZHyNRe+Mfv05RQ57vLWJy+Mrx7YIm+0I1diPr9nzeo=;
-        b=GkNVv623AzGLlB4S70njV5YChKMI5VfRsHApws5eScw8qAiSWMp1jucRwnw9kju1j3
-         JllkGfs0BDHxJLH/9P/74lpxwb6VFIbvIf8SLLkfmHQHOtFkWwYf3FcRDUhCBwcVV+KD
-         H1WysTasypjhI8mQeQAMLf/nhQfI26jqZKjlJgsbknb+O2oRq8Tx9p7sDEYjzHRB8gC4
-         jqM9easEsT1+wI7URuUHnpS6AyIisnr91JGOtcptGYNJVtnqZUhu7685Y/ZKFan81plV
-         RUwsFDXco+tjP4DrnFh1NDAEQ52d0i0n+jkNvaQrjKpoyIvgByS11TNEG6BatcDOntD3
-         Bo/A==
-X-Forwarded-Encrypted: i=1; AL+hErEICH9wgvFauxgULf+HZ5R+WautFCL6ebtEz5HwofYqZ3I+ReZjH+0vWYReIi6xkV2/1CYJEH1JewE=@vger.kernel.org
-X-Gm-Message-State: APuU4Z9knA6bw7akEX6RU1HDcJhrCGoq61hZzt30VcA5D2f2455YpCkb
-	+WEBqRPNz3rFGzNxFGUvV8U1f0kt3lFrc/5iA6Lbs0Sr26v5CqbUp/QV4n3S9H+RXOSeqIjU6Q=
-	=
-X-Received: from wrqd17.prod.google.com ([2002:adf:f851:0:b0:4a5:c04a:462])
- (user=dmnk job=prod-delivery.src-stubby-dispatcher) by 2002:a05:6000:2385:b0:497:9e2a:b1e
- with SMTP id ffacd0b85a97d-4abb36787a4mr823728f8f.9.1795116217025; Thu, 19
- Nov 2026 11:23:37 -0800 (PST)
-Date: Thu, 19 Nov 2026 20:23:36 +0100
+        bh=vs2p+NKw9cBxSHvLMTQ1TCNiiuqtzY0tMFYF/M3imDY=;
+        b=YcsWHxyhNB+9nTVIBwldCMRO5lqQu1JG/BfEn31DrTTqt6ztgc/N3XXaAZGUchSI5h
+         o2akdT2PfimKomkutw1ed6RG7VPjCccLK7CFrgwEdW+NzYmeSNl1GlDRLBsYH1/0uaWh
+         6Blr5Yyg4TnRs8WbrcepOghC9fgg6NU85LU0KVP/Tv3dVkH4h4pk2yHRn7QyvOLhnz2W
+         gsE8j076gi4+lrsHELpqSN/PRYo3cX6mFxWId9L6kIohxBfD2pYijNz0bmqRz20xZBPq
+         VRFSQJYmGLMxtVDmV/KtuVMGyHIRhokSekZgUzUGW2kywu2pxgjVBko/rmSaQu0oOePE
+         osaQ==
+X-Forwarded-Encrypted: i=1; AL+hErENwNK4JXLkQ6GrLsizpTqH+ygE0l5719ItcoVqxhavM8JrvcXMLzW2fAb4iVbXWmmarecdGQsWgjA=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+wAvMLun8dgRCNzcuAec41AYkxcIO3gol7Jglq7pAFHhd4+c2Y
+	jZvYftWgzXwQcWvil7OnvY7G+g0jLezeaor2fMsmP67qtsWXLaFRIvRhZVcARdnHicXDbh+Q9sH
+	BUCjeso/1ZCPne5l1qNQg+Zh6jSav+Yk=
+X-Gm-Gg: AYBFou3QgNT0WEk5VBb7NPtYl3hc3RX1O7QuQ50feqRyd/FcnE0v33A3fc47LkerxJQ
+	xyYld8tsqCKe3dZPZ3FRhAhuf4QmdzT2cGDGSUQhc+ZeVWzcAqYMeHIohPKgE6Bj/iDPUG6ZXHS
+	QmwAJWWnejb88M8MZtYhdsWfdatm6UWfNYbF0WJd0SXtGGBn9AFNEAcrEz0935HnmFw9TB+82i5
+	BXpb3GIndiX3tDScNqMNm6kMrgXvzR/KP++j5OgjyRs3xkKEDmDAQyZB40WZO99PRa6hf8YBf4t
+	/tyAFhVy0eT59sNSXs1wGUQ09U44PrFvMkG0lPleMjOjd9AI0R5TC/K3MNDPyMaWjJ1enHMO5sv
+	Qet0JdBxgyaWcS7EKNX1xgq6ZkRKNCeTzdKKeXixAaa17gtYpq5eCKTxafVrb+LHex43R3dE=
+X-Received: by 2002:a05:6402:897:b0:6b8:8328:8e66 with SMTP id
+ 4fb4d7f45d1cf-6ba37d62a2dmr239724a12.7.1795117025446; Thu, 19 Nov 2026
+ 11:37:05 -0800 (PST)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -75,73 +103,135 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.56.1.809.ga0b61035b5-goog
-Message-ID: <20261119192336.2697518-1-dmnk@google.com>
-Subject: [PATCH] nfsd: only set NFSD_MAY_BYPASS_GSS for RPC_AUTH_UNIX in nlm_fopen()
-From: Dominik Maier <dmnk@google.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>
-Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
-	Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org, dmnk+artist@google.com, 
-	Dominik Maier <dmnk@google.com>
+MIME-Version: 1.0
+References: <20261115180343.576773-1-koray.fra@gmail.com> <20261115180343.576773-3-koray.fra@gmail.com>
+In-Reply-To: <20261115180343.576773-3-koray.fra@gmail.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Thu, 19 Nov 2026 20:36:52 +0100
+X-Gm-Features: AclHuK-9kUyGBTzq0h8pZyp8mMZSXIXsu9pOi4Bu2Y5vLjqBJOsUk2EoN70jtkI
+Message-ID: <CAOQ4uxiRFUqgUMvngvXc1nA7e_HMKSs+aXWVQmAEpcR7yQiQLw@mail.gmail.com>
+Subject: Re: [RFC PATCH v4 02/10] vfs: add fileattr_has_fsx_mask()
+To: koraynilay <koray.fra@gmail.com>
+Cc: David Sterba <dsterba@suse.com>, Namjae Jeon <linkinjeon@kernel.org>, 
+	Sungjong Seo <sj1557.seo@samsung.com>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Christian Brauner <brauner@kernel.org>, Trond Myklebust <trondmy@kernel.org>, 
+	Anna Schumaker <anna@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, 
+	Paulo Alcantara <pc@manguebit.org>, Chris Mason <mason@kernel.org>, Yuezhang Mo <yuezhang.mo@sony.com>, 
+	Jan Kara <jack@suse.cz>, NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+	Ronnie Sahlberg <ronniesahlberg@gmail.com>, Shyam Prasad N <sprasad@microsoft.com>, 
+	Bharath SM <bharathsm@microsoft.com>, Sergey Senozhatsky <senozhatsky@chromium.org>, 
+	ChenXiaoSong <chenxiaosong@chenxiaosong.com>, "Darrick J . Wong" <djwong@kernel.org>, 
+	Sean Smith <defendthedisabled@gmail.com>, Andrey Albershteyn <aalbersh@kernel.org>, 
+	Pedro Falcato <pfalcato@suse.de>, =?UTF-8?Q?Pali_Roh=C3=A1r?= <pali@kernel.org>, 
+	linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, exfat@lists.linux.dev, ntfs3@lists.linux.dev, 
+	linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-api@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-As documented in nlm_fopen(), NFSD_MAY_BYPASS_GSS is intended to let NLM
-clients using AUTH_SYS (RPC_AUTH_UNIX) lock files on Kerberos NFS
-exports, whereas NLM clients using AUTH_NULL (RPC_AUTH_NULL) are only
-meant to bypass authentication when NFSEXP_NOAUTHNLM (no_auth_nlm) is
-enabled via NFSD_MAY_NLM.
+On Sun, Nov 15, 2026 at 7:04=E2=80=AFPM koraynilay <koray.fra@gmail.com> wr=
+ote:
+>
+> Add fileattr_has_fsx_mask() as a helper to let filesystems check for
+> unsupported xflags while allowing supported ones. Can be used in the
+> same way as fileattr_has_fsx().
+>
+> Also make fileattr_has_fsx() a wrapper around fileattr_has_fsx_mask().
+>
+> Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.4.7
+> Signed-off-by: koraynilay <koray.fra@gmail.com>
+> ---
+>  include/linux/fileattr.h | 21 ++++++++++++++++++---
+>  1 file changed, 18 insertions(+), 3 deletions(-)
+>
+> diff --git a/include/linux/fileattr.h b/include/linux/fileattr.h
+> index 42b92ccdc583..ba7ed3b387d8 100644
+> --- a/include/linux/fileattr.h
+> +++ b/include/linux/fileattr.h
+> @@ -65,6 +65,23 @@ int copy_fsxattr_to_user(const struct file_kattr *fa, =
+struct fsxattr __user *ufa
+>  void fileattr_fill_xflags(struct file_kattr *fa, u32 xflags);
+>  void fileattr_fill_flags(struct file_kattr *fa, u32 flags);
+>
+> +/**
+> + * fileattr_has_fsx_mask - check for extended flags/attributes
+> + * @fa:                                fileattr pointer
+> + * @allowed_xflags_mask:       additional xflags permitted
+> + *
+> + * Return: true if any attributes are present that are not represented i=
+n
+> + * ->flags or @allowed_xflags_mask.
+> + */
+> +static inline bool fileattr_has_fsx_mask(const struct file_kattr *fa,
+> +                                        u32 allowed_xflags_mask)
+> +{
+> +       return fa->fsx_valid &&
+> +               ((fa->fsx_xflags & ~(FS_XFLAG_COMMON | allowed_xflags_mas=
+k)) ||
+> +                fa->fsx_extsize !=3D 0 || fa->fsx_projid !=3D 0 ||
+> +                fa->fsx_cowextsize !=3D 0);
+> +}
+> +
 
-However, nlm_fopen() has historically passed NFSD_MAY_BYPASS_GSS
-unconditionally, and check_security_flavor() accepts both RPC_AUTH_UNIX
-and RPC_AUTH_NULL whenever may_bypass_gss is true on an export with a
-pseudoflavor >= RPC_AUTH_DES. Since commit bb4f07f2409c ("nfsd: Fix
-NFSD_MAY_BYPASS_GSS and NFSD_MAY_BYPASS_GSS_ON_ROOT") restricted
-may_bypass_gss to exports with pseudoflavor >= RPC_AUTH_DES, default
-auth_nlm rejects RPC_AUTH_NULL NLM requests on sec=sys exports with
-nfserr_wrongsec while still accepting RPC_AUTH_NULL NLM requests on
-sec=krb5* exports even when no_auth_nlm is not set.
+Every patch in your series did:
 
-Only set NFSD_MAY_BYPASS_GSS in nlm_fopen() when rq_cred.cr_flavor is
-RPC_AUTH_UNIX so auth_nlm and no_auth_nlm behave consistently across
-sec=sys and GSS exports, requiring no_auth_nlm or an explicit sec=none
-export flavor for RPC_AUTH_NULL NLM requests.
+       if (fileattr_has_fsx_mask(fa, EXFAT_SUPPORTED_XFLAGS))
+               return -EOPNOTSUPP;
 
-This issue was discovered by an AI-assisted code review tool (ARTIST),
-validated in QEMU against an unmodified v7.4-rc3 kernel without kernel
-modifications or error injection, build-tested with KCFLAGS=-Werror, and
-checked with checkpatch.pl --strict.
+       if (fa->fsx_xflags_mask & ~EXFAT_SUPPORTED_XFLAGS)
+               return -EOPNOTSUPP;
 
-Signed-off-by: Dominik Maier <dmnk@google.com>
----
- fs/nfsd/lockd.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+It looks like this helper is not as helpful as it could have been
+and you have raised this question yourself in the cover letter.
 
-diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-index f24e45d..2683939 100644
---- a/fs/nfsd/lockd.c
-+++ b/fs/nfsd/lockd.c
-@@ -41,8 +41,8 @@ static int nlm_fopen(struct svc_rqst *rqstp, struct nfs_fh *f,
- 	fh.fh_export = NULL;
- 
- 	/*
--	 * Allow BYPASS_GSS as some client implementations use AUTH_SYS
--	 * for NLM even when GSS is used for NFS.
-+	 * Allow BYPASS_GSS for AUTH_SYS as some client implementations use
-+	 * AUTH_SYS for NLM even when GSS is used for NFS.
- 	 * Allow OWNER_OVERRIDE as permission might have been changed
- 	 * after the file was opened.
- 	 * Pass MAY_NLM so that authentication can be completely bypassed
-@@ -50,7 +50,9 @@ static int nlm_fopen(struct svc_rqst *rqstp, struct nfs_fh *f,
- 	 * for NLM requests.
- 	 */
- 	access = (flags == O_WRONLY) ? NFSD_MAY_WRITE : NFSD_MAY_READ;
--	access |= NFSD_MAY_NLM | NFSD_MAY_OWNER_OVERRIDE | NFSD_MAY_BYPASS_GSS;
-+	access |= NFSD_MAY_NLM | NFSD_MAY_OWNER_OVERRIDE;
-+	if (rqstp->rq_cred.cr_flavor == RPC_AUTH_UNIX)
-+		access |= NFSD_MAY_BYPASS_GSS;
- 	nfserr = nfsd_open(rqstp, &fh, S_IFREG, access, filp);
- 	fh_put(&fh);
- 
--- 
-2.56.1.750.gf70dc682cf-goog
+Effectively every filesystem that supports fileattr_set() already has
+a defined SUPPORTED mask, so I think it's better to do the negated
+something like:
+
+static inline bool fileattr_supported_fsx_mask(const struct file_kattr *fa,
+                                               u32 supported)
+{
+        if (!fa->fsx_valid)
+                return true;
+        if ((fa->fsx_xflags | fa->fsx_xflags_mask) & ~supported)
+                return false;
+        if (fa->fsx_extsize &&
+            !(supported & (FS_XFLAG_EXTSIZE | FS_XFLAG_EXTSZINHERIT)))
+                return false;
+        if (fa->fsx_cowextsize && !(supported & FS_XFLAG_COWEXTSIZE))
+                return false;
+        if (fa->fsx_projid && !(supported & FS_XFLAG_PROJID))
+                return false;
+        return true;
+}
+
+
+...
+
+       if (!fileattr_supported_fsx_mask(fa, EXFAT_SUPPORTED_XFLAGS))
+               return -EOPNOTSUPP;
+
+
+>  /**
+>   * fileattr_has_fsx - check for extended flags/attributes
+>   * @fa:                fileattr pointer
+> @@ -74,9 +91,7 @@ void fileattr_fill_flags(struct file_kattr *fa, u32 fla=
+gs);
+>   */
+>  static inline bool fileattr_has_fsx(const struct file_kattr *fa)
+>  {
+> -       return fa->fsx_valid &&
+> -               ((fa->fsx_xflags & ~FS_XFLAG_COMMON) || fa->fsx_extsize !=
+=3D 0 ||
+> -                fa->fsx_projid !=3D 0 || fa->fsx_cowextsize !=3D 0);
+> +       return fileattr_has_fsx_mask(fa, 0);
+
+            return !fileattr_supported_fsx_mask(fa, FS_XFLAG_COMMON);
+
+I hope I got this right.
+
+Thanks,
+Amir.
