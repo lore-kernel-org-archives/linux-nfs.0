@@ -1,53 +1,67 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795105363;
-	b=tsQy11LFjGOeZjt4DDC8G3p13YAU8hA3V3rhr8hb6Ww1XerIDe/ReoCI0IZobUOLAxKG
-	 05poKbF7SIy8w6H1EecdNtxBlzwBOHW3z1+csDMBI8oSlfa5cE65ecIZijjFjpl36SEDt
-	 ffXcfP1zlh9coaoin2FcLJyZR8iCtw91dQxILNRLvyerPY/pAxlnjFnYsHc6PQK9LJGUy
-	 EzIqXBlvS/8g7xvxQSU+rvqRNlLPOvfR8NPYzEgqtUi9yzWqt5w5N1WybbBzkg9wINIJS
-	 pQo8KKOh/nbsQHoyZrgsh6sssty44X6WFSyANHk8YjXfmAVk/0l0/7+srzwL8XgrS4w==
+	t=1795106158;
+	b=mjS6UmYa8Ay2x/qEAr2f2XrjK9c1XCjq6xSI0yjk2MhGUd+fqhD4BAzs3veVnTjHvxkR
+	 FoO8V0mKTiRJlWSecX0nVuFcX7EFkcMbmjvCbwtRRt/DHhkYeX5x6HWl2rvTw7j/kWEDD
+	 l2+ydm4XGRuSVKlyJbeP7tCaRkwly7JLhXBkjc/Zwjrac8qbQXTK6Vn0RSsEvdO+I6whF
+	 95UhscPg1UoRG3KRfIkRiZD5Ku8SzbN1GZ9Ru4wZhEEHYXri1/JCzL/8cULUqHWEqGQJW
+	 pYByaZ1vmV04PBMxJ6+eHIFbWFnXaLIgR1KJJfDc7Yl05WOT0UBzeoC7sN/yhRXpQdA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795105363;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=JYrk4VAUHfTSUyCvYz1otc/07YDf8u+vR6+XMAZTSkA=;
-	b=FuJVpU/PaHwtKTuptJ7fF87u+FsRgELlrK3gSR7Jlu2UlzLlrev/EWARztVqJX7J7fU0
-	 rUxId6QImkGQGYtexN6aT7jvMJ+WdDxi/VkjdLNvg/7qIeG8NOAPRkv4onYrE0xO6dfif
-	 WwgPwzDSfdW2YnSMbwQm1qY8QWaUZhfjNA50QJ5NrylfVlV/k+DSBMDpRGYeLfoJDDeuC
-	 CBauKROvwj4Y2hj7hxXJZmB/dpTODc0gY2fWv1pKma76zRMvXzOkydCympTXZqetURFoH
-	 z6NuL7jkbc8yCUiJU+Ntk7VJOUZUZz7Bh2nB4Uy4cB7bOPkhxHUg/RYTNWMRBSzM8Cw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795106158;
+	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
+	bh=vdpT6LJvyJoZU056rFgJK1cgm13iBFK2/AWVWgyfxl0=;
+	b=sl1krUtugMx+K3e+KTssrtawfI6wexaOVujC+9bxxqRh+2nWDKV3snjcmx/iy28H/+QY
+	 hOz5r1DTdxxixrIf0JjJLYQjigsXZ6MQpm5+KMvCKpMNuoJ3eUNA/uUC/vAqGrtYK4u08
+	 RTB3nWKHo/UuAzkLwiKucoCAa+FdPWu+2YfLD02SndFFRJSlhZNnGFf7v57I1Kakg6Qns
+	 1ybvU92vYxmt33AhOE/2zoUmpdO4T7Sq+xnqWNIbxo4RLCroTRNT5RIilBDUq40BnSO8n
+	 klSCitZbX3+8bSqyIfpH1tlJH7QsrX9PoiwxUv8A1J1LgIr1z/D7od5Zs3/DIcKc3mw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CP6bEuRv;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gQYSVpk8;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30112606A338;
-	Thu, 19 Nov 2026 16:22:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CA86606A324;
+	Thu, 19 Nov 2026 16:35:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CP6bEuRv
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A68DC1F000C4;
-	Thu, 19 Nov 2026 16:22:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gQYSVpk8
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 511101F000C4;
+	Thu, 19 Nov 2026 16:35:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795105362;
-	bh=JYrk4VAUHfTSUyCvYz1otc/07YDf8u+vR6+XMAZTSkA=;
-	h=From:To:Cc:Subject:Date;
-	b=CP6bEuRvSYQPSspsW0MmluMIZyo+y/ms/jYluZWQkLkPMbujdRW4hnrhJzfe8mmAw
-	 BS0YvpyayTL6XDZMbpch6FLurwELbo3k89Z8h5ZYUD2OVcVri7D84Hs9J2pTt39Eof
-	 50vnXSlCt1qPrCKOn0hbGcVH7xYwNDwL7MBbXWkN3RmuckmpTGRmu6aWrAoaSZZkmt
-	 puiivNFo0eSxuqgZQ2Ul955AcSEj+i3tpLfLGDPaROP23+fMPh7EhnFHvO/n98cAGo
-	 O4hbadWQkNs1YimdysqUlQWUwubgDQVE3XKVwyTQRT0NmM+OBBxIZU1hZFWEaWcVNy
-	 ffVEj+bpGfKlA==
-From: Chuck Lever <cel@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jeff Layton <jlayton@kernel.org>,
-	<linux-nfs@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] NFSD fix for v7.4-rc
-Date: Thu, 19 Nov 2026 11:22:42 -0500
-Message-ID: <20261119162242.1467-1-cel@kernel.org>
-X-Mailer: git-send-email 2.56.0
+	s=k20260515; t=1795106158;
+	bh=vdpT6LJvyJoZU056rFgJK1cgm13iBFK2/AWVWgyfxl0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=gQYSVpk8Ti3Dz/c09ltm5E6cnoyLoK3hTNLppD3CmR67E27lg38E+/NCiyJoo762q
+	 1JxZAcpE2jNuyH7arhdRbACTCBIFV5B499W36m5xUxPglxihcgAMnUl6P1qFnWYZ4A
+	 ezd6Xu771igMuOdZ5aggHIRRgwgXfRlWMMFAGf478Zt4qaRiCtizOmkjNT/qvfXO4d
+	 2MjjshcGxxPN+92CMQDEpdEjqWE48UfVSvxylXsMxjVHk0GG+Z3S8S5vdgqPqRWYZV
+	 DCmzsDYax8vY22yr/uMKPF5oDO7+HGcLKgrnNe476l85h2K5RNG1vW5btEEM7rwpZF
+	 YE6t540hluycQ==
+Date: Thu, 19 Nov 2026 16:35:52 +0000
+From: Simon Horman <horms@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: Donald Hunter <donald.hunter@gmail.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	"David S. Miller" <davem@davemloft.net>,
+	Paolo Abeni <pabeni@redhat.com>,
+	John Fastabend <john.fastabend@gmail.com>,
+	Sabrina Dubroca <sd@queasysnail.net>,
+	Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+	Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
+	Chaitanya Kulkarni <kch@nvidia.com>,
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Eric Dumazet <edumazet@kernel.org>,
+	kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
+	linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
+	Hannes Reinecke <hare@kernel.org>
+Subject: Re: [PATCH net-next v3 00/10] Deliver TLS session tags to
+ upper-layer consumers (NFSD)
+Message-ID: <20261119163552.GZ860048@horms.kernel.org>
+References: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -57,30 +71,44 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
 
-The following changes since commit eafb6de800781f0a1be5cdd98d150620041d8b27:
+On Fri, Nov 13, 2026 at 02:21:58PM -0500, Chuck Lever wrote:
+> NFSD controls remote access to its exports today by IP address and
+> hostname. Neither of these are cryptographically secure. For
+> instance, a MitM can replace the response to a server's plaintext
+> DNS query. As a result, a malicious NFS client can pretend to be a
+> client whose hostname matches one that has access to exports it
+> would otherwise be denied access to.
+> 
+> So instead, we want access-control decisions to be based on
+> cryptographically-vetted objects such as TLS peer-certificates.
+> In-kernel x.509 parsing would duplicate work mature userspace
+> libraries already do, so let's make tlshd evaluate peer certificates
+> in user space.
+> 
+> The certificates are evaluated against admin-defined policy, such
+> as whether the certificate's Issuer matches a particular string.
+> tlshd then marks NFS TLS sessions with those policy matches. Admins
+> also provide a set of policy names on each NFSD export (allow_tags).
+> Computing the intersection with these per-export tags is quick and
+> completely separate from the details of parsing x.509 certificates.
+> 
+> A yet-to-be-posted patch series introduces tag set support to the
+> exportfs command in nfs-utils. tlshd 1.5.0, current as of this
+> writing, already implements TLS session tagging.
 
-  SUNRPC: use assign_bit() where applicable (2026-10-11 23:13:07 -0400)
+Hi Chuck, all,
 
-are available in the Git repository at:
+FYI, while looking over this patchset I noticed that CI flags
+shadow len variables in ynl generated C code.
 
-  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-7.4-1
+I believe this is a bug in ynl-gen and have posted a patch to try to
+address it.
 
-for you to fetch changes up to 1ecc5b7c95ae585042ccbf3c587897dd99e2ddb5:
+- [PATCH net-next] tools: ynl-gen: avoid shadow local variable declarations
+  https://lore.kernel.org/netdev/20261119-ynl-scope-v1-1-d3b0c964d4cb@kernel.org/
 
-  nfsd: unlock the locked parent after crossing a mount in CREATE (2026-11-19 11:14:13 -0500)
-
-----------------------------------------------------------------
-nfsd-7.4 fixes:
-
-Issues reported with v7.4-rc:
-- Unlock the correct parent directory after CREATE crosses a mount
-
-----------------------------------------------------------------
-orkunsari (1):
-      nfsd: unlock the locked parent after crossing a mount in CREATE
-
- fs/nfsd/nfs3proc.c | 14 +++++++++++---
- fs/nfsd/nfsproc.c  | 18 ++++++++++++------
- 2 files changed, 23 insertions(+), 9 deletions(-)
+...
