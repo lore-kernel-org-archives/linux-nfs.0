@@ -1,56 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795124084;
-	b=4MCGCmyF9BBCAW8BOQe5SY0nd8n8MeXVAOnybm4kNKA/DfKQw16Ev+uQOVaNoz61oM6i
-	 oLX+j+B15xa8HD3Z1DjT6NWivBBVaS3qhiHavMRvR2H6jBSgXB92QlaHLspkOov3bwQeY
-	 wHIBI/cP1LEpH8qd5SGm4XN5aD87LO/YkkLsfnpv1e7J57P8Dyb1ZlIM6QC6LHR248rRV
-	 WRjpGZBdHLcymDLTZ99zoeIFoI36q9nBrVgQ3ZzmzN1cCk48gx2ScZhURGD+93ytTdTeV
-	 Wu8s6x5RsnqsWnxuZ44oRqFgUnoYtIzv7PF/qcakwxaWLZOxBSMH1iYZn4nqX+aKEzQ==
+	t=1795124247;
+	b=YPdPM2hpgW+/gXkdi9sMlRkhWJiVxQxpd5ku+6DzhxK0F1mq8nTZs2ZDqntFt8vGU21k
+	 Au4WLIwHgHxZXnKtvYVnXM2Mi9s1PcZZWBmHNeHEPMzmBYGb8YvPpqhNpCbKJlKCKMbXx
+	 hxQ7azl8xqOtSKtdZSd76La0bmsxDjnOdol92j0EMuTvjhhoI9KV8YNffO1lU6e5FcE2S
+	 YQqG/4qq5GB4XHPXxDoslsODR0P+zcTKcFVX3pHqZJyRDiVrB558D+DzZkrUKg1YLQQfk
+	 s5WSOLMMjbFrCigtjGbwHIEMe9uFEbHc1MQ6MEveR4IYmXflUbO6fGzPUN0sWTF2MnA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795124084;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795124247;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=ZcFDkkl2eRUpFFDxCO216QLTmznhu5dem4w/XJ5gAwM=;
-	b=BfzNTICeM5N8KfoUv24I37sn/ESW+TxuRs4nIrPns7H8Z2UuaadqpuyGEUBOit0fsPWo
-	 mkw13gJp7+Ror9Xe1RtJ56UNu7megd6YT4UjjqpMdMLjZV+qiE1HiCrpQSNw1RSbJ4bzO
-	 HUaVVyp3h+xNLuezqVt8cFXMZaLSGWIzdJs3wWKY/YQOlCp3dTOMcTdQ47J+F3Et4/xfg
-	 JUr8M2D1ZY+qDKDWKbjju8RC4PL7i1crDIoCbPoVEDn5U9iIxVhyZRuOSC/vxCc+qTSlF
-	 1s8NMaWygJPD0SEirTCM06u6wjQ3B0FS2QYsKMGRpuIP9KXOrkJWba5q1b1kpUztUhQ==
+	bh=UC5ceLuATXBrHh20fIyRjjHLPszglk4DgdVs/thmKis=;
+	b=2Ru8BLcZbUXNANEHugcFdusJ902QleoTGgHs82VjN9gcZYjb86X/iaUKmIhkuIoB2sV6
+	 pV3j1MF/BGb3CS9MIdYB4+80IRvO3+tC7biD7CMAQFChQSqd7EjupXlM/GLdWFjunr/2f
+	 qpKOiuLTHobzH6rza2JgEVhBXSP+NXxTp1jWEgUNl+0Sl/6mSEKLYZNyTxVx6VSD5Luax
+	 zcSBJxZjS0xVBgE1K7g1I4TTYYc5nmRWCC6OPzmCuoO6j7MdqLB4mR+LfeDENB1/LpuAG
+	 z63YrygbC9HKhEyt/fb++dm7DBls3Cy+Q0Jl3ZVqWnnaNe7HG1QXWI9wlZRjuosaQyQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m8gSUnnD;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ivwLpkIi;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 222C9606A320
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:34:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8247B606A324
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:37:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m8gSUnnD
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 75FAD1F000C0;
-	Thu, 19 Nov 2026 21:34:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=ivwLpkIi
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 25A691F000C0;
+	Thu, 19 Nov 2026 21:37:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795124083;
-	bh=ZcFDkkl2eRUpFFDxCO216QLTmznhu5dem4w/XJ5gAwM=;
+	s=k20260515; t=1795124247;
+	bh=UC5ceLuATXBrHh20fIyRjjHLPszglk4DgdVs/thmKis=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=m8gSUnnDbyxYZriTK+8y4mG0jIXqfaBpFNhN8JvJDOQrLu6rRgpxQpQpqkZ64tHQV
-	 db+TLparXgc7g70yLsv/fP4rlZUk5dtcEhvfLYy115IflDyfOBIf5g1hAut1AKgqu3
-	 7+9BhW1sX+L+6MeetN1fjQ609FMBMECCgaQcpzDvEn2TFF07RkLaOvZ6FEq7NyBKN6
-	 T7jtinWyY6rqwxYQQjdmwh36nvxtrF36KC7DoXkuF1HjXwxp8N7Myfk4ggQxhvlRlh
-	 KZOglq78OgFbQL4obNmMzMc9pJELjq2/u8VENYkrIHgoVUw+mUT1nOUqwPQibZuLHQ
-	 hHT4qM5ccS56Q==
-Message-ID: <3c727f131737d29665754cf16c2f72a42f77e616.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: require NFSD_MAY_EXEC when acquiring directory
- delegations
+	b=ivwLpkIiJ0HoSyWPoeEP9ZtloINbooO0iAwmuDSDDwwPBh5sbqBkM2C+Q63eUdErW
+	 s+Q1Tk6oss/HhDuL4gPykrYRiJUV80f/yuR3HoSN/gi7clL1zhNeg38GSRnK8Te7CM
+	 Dnn/ex6xaOBqv38JuOr+33FJwdIaFwbr4lLcXcjaQKXP3noTtJoI1X3/st7Xep5xb2
+	 ML2aY7GRLj/Ps3bh0naCiBwMZY+2ML6s+C3Yxh0bGv8NrhQ3A9s+JziYcfkQmS5S+i
+	 8lf1x2TM08a8kGasqC8jIXGQj+u2VUVWEyAQktdexJfe1Jgvfm9bh4JNgskKXOGw+P
+	 neEZCFMHId1bA==
+Message-ID: <6c8b599714fa35a5f14c1948f8c1d188960e496f.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: only set RD_STATE in nfsd4_setattr() for sole
+ TIME_DELEG_ACCESS
 From: Jeff Layton <jlayton@kernel.org>
 To: Dominik Maier <dmnk@google.com>, Chuck Lever <cel@kernel.org>
 Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
  linux-nfs@vger.kernel.org, 	dmnk+artist@google.com
-Date: Thu, 19 Nov 2026 13:34:43 -0800
-In-Reply-To: <20261119192318.2689409-1-dmnk@google.com>
-References: <20261119192318.2689409-1-dmnk@google.com>
+Date: Thu, 19 Nov 2026 13:37:26 -0800
+In-Reply-To: <20261119192327.2693868-1-dmnk@google.com>
+References: <20261119192327.2693868-1-dmnk@google.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -139,28 +139,26 @@ Precedence: list
 MIME-Version: 1.0
 
 On Thu, 2026-11-19 at 20:23 +0100, Dominik Maier wrote:
-> nfsd_file_acquire_dir() opens a directory on behalf of
-> nfsd4_get_dir_delegation() with NFSD_MAY_READ | NFSD_MAY_64BIT_COOKIE,
-> omitting NFSD_MAY_EXEC, while nfsd_file_do_acquire() unconditionally
-> ORs NFSD_MAY_OWNER_OVERRIDE into may_flags even for S_IFDIR (unlike
-> nfsd_open(), which restricts NFSD_MAY_OWNER_OVERRIDE to S_IFREG).
+> In nfsd4_setattr(), whenever FATTR4_WORD2_TIME_DELEG_ACCESS is set in
+> sa_bmval[2], RD_STATE is unconditionally ORed into flags alongside
+> WR_STATE before calling nfs4_preprocess_stateid_op(), even when other
+> attributes are also requested in the same SETATTR operation.
 >=20
-> On a directory that grants read permission without execute (search)
-> permission (for example mode 0744, where LOOKUP is denied with
-> NFS4ERR_ACCESS), an unprivileged NFSv4.1 client can still acquire a
-> directory delegation requesting NOTIFY4_ADD_ENTRY and
-> FATTR4_WORD0_FILEHANDLE. In addition, NFSD_MAY_OWNER_OVERRIDE causes
-> nfsd_permission() to return early before inode_permission() for the
-> directory owner, bypassing missing execute bits (such as mode 0400 on a
-> read-only or immutable directory) as well as POSIX ACL or LSM search
-> denials. When entries are subsequently created in that directory,
-> setup_notify_fhandle() constructs and signs valid child filehandles in
-> CB_NOTIFY callbacks, allowing the client to open child files without
-> search permission on the parent directory.
+> Because nfs4_check_delegmode() accepts a read delegation whenever
+> RD_STATE is present in flags, an NFSv4.2 client holding only an
+> OPEN_DELEGATE_READ_ATTRS_DELEG delegation (and ordinary UNIX write
+> permission on the file) can combine FATTR4_WORD2_TIME_DELEG_ACCESS with:
 >=20
-> Add NFSD_MAY_EXEC to the access mask in nfsd_file_acquire_dir() and
-> restrict NFSD_MAY_OWNER_OVERRIDE in nfsd_file_do_acquire() to
-> type =3D=3D S_IFREG, matching nfsd_open().
+> - ATTR_SIZE or FATTR4_WORD2_TIME_DELEG_MODIFY to truncate the file or
+>   modify delegated mtime without a write stateid, bypassing another
+>   client's OPEN4_SHARE_DENY_WRITE share reservation; or
+> - non-delegated attributes (such as FATTR4_WORD1_MODE, OWNER,
+>   TIME_MODIFY_SET, ACL, or SECURITY_LABEL), which execute with
+>   ATTR_DELEG set on the shared iattr and cause notify_change() to skip
+>   try_break_deleg() against other clients' concurrent read delegations.
+>=20
+> Only set RD_STATE in nfsd4_setattr() when FATTR4_WORD2_TIME_DELEG_ACCESS
+> is the sole attribute set across sa_bmval[0..2].
 >=20
 > This issue was discovered by an AI-assisted code review tool (ARTIST)
 > and validated in QEMU against an unmodified v7.4-rc3 kernel without
@@ -168,48 +166,34 @@ On Thu, 2026-11-19 at 20:23 +0100, Dominik Maier wrote:
 > available on request. The fix was build-tested with KCFLAGS=3D-Werror and
 > checked with checkpatch.pl --strict.
 >=20
-> Fixes: 544a0ee152f0 ("nfsd: allow filecache to hold S_IFDIR files")
-> Fixes: c10ce74117ad ("nfsd: add the filehandle to returned attributes in =
-CB_NOTIFY")
+> Fixes: 7e13f4f8d27d ("nfsd: handle delegated timestamps in SETATTR")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Dominik Maier <dmnk@google.com>
 > ---
->  fs/nfsd/filecache.c | 10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
+>  fs/nfsd/nfs4proc.c | 10 +++++++++-
+>  1 file changed, 9 insertions(+), 1 deletion(-)
 >=20
-> diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-> index 17a94e6..f9cf0bc 100644
-> --- a/fs/nfsd/filecache.c
-> +++ b/fs/nfsd/filecache.c
-> @@ -1183,13 +1183,14 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, stru=
-ct net *net,
->  	__be32 status;
->  	int ret;
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 3a82af3..9b348bf 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1353,7 +1353,15 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4=
+_compound_state *cstate,
+>  	if (deleg_attrs || (setattr->sa_iattr.ia_valid & ATTR_SIZE)) {
+>  		int flags =3D WR_STATE;
 > =20
-> +	if (type =3D=3D S_IFREG)
-> +		may_flags |=3D NFSD_MAY_OWNER_OVERRIDE;
->  retry:
->  	if (rqstp)
-> -		status =3D fh_verify(rqstp, fhp, type,
-> -				   may_flags|NFSD_MAY_OWNER_OVERRIDE);
-> +		status =3D fh_verify(rqstp, fhp, type, may_flags);
->  	else
->  		status =3D fh_verify_local(net, cred, client, fhp, type,
-> -					 may_flags|NFSD_MAY_OWNER_OVERRIDE);
-> +					 may_flags);
+> -		if (setattr->sa_bmval[2] & FATTR4_WORD2_TIME_DELEG_ACCESS)
+> +		/*
+> +		 * Only allow a read delegation stateid when setting
+> +		 * TIME_DELEG_ACCESS alone. Any other attribute requires
+> +		 * write state (and must not carry ATTR_DELEG under a read
+> +		 * delegation, which would suppress delegation recall in
+> +		 * notify_change()).
+> +		 */
+> +		if (!setattr->sa_bmval[0] && !setattr->sa_bmval[1] &&
+> +		    setattr->sa_bmval[2] =3D=3D FATTR4_WORD2_TIME_DELEG_ACCESS)
+>  			flags |=3D RD_STATE;
 > =20
->  	if (status !=3D nfs_ok)
->  		return status;
-> @@ -1457,7 +1458,8 @@ nfsd_file_acquire_dir(struct svc_rqst *rqstp, struc=
-t svc_fh *fhp,
->  		      struct nfsd_file **pnf)
->  {
->  	return nfsd_file_do_acquire(rqstp, SVC_NET(rqstp), NULL, NULL, fhp,
-> -				    NFSD_MAY_READ|NFSD_MAY_64BIT_COOKIE,
-> +				    NFSD_MAY_READ | NFSD_MAY_EXEC |
-> +				    NFSD_MAY_64BIT_COOKIE,
->  				    NULL, S_IFDIR, false, pnf);
->  }
-> =20
+>  		status =3D nfs4_preprocess_stateid_op(rqstp, cstate,
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
