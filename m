@@ -1,104 +1,104 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795119089;
-	b=1CQH/eWKH0PCAaNtedsMgWI0SLovk6TGyhwVXHdOxc8X2N5yX/aLiPYqxbcQ7yEfwDvI
-	 h6yQF/8vQQBp0rnMvVg755uGCRMKqgW8jhXRo8TrjHxqz0ZzY/BBKEG6CNPqqiP0GVJAc
-	 VC2GBG6bDe6upPNP8NInYwxbl94XXJNt6a7/VXoa/eJCa/m0pTO+KQVKjXfiMA09fdsrL
-	 7/ar+gNWdE9/7LIbSLgDCkLhd3MKOPGPQ+7j/GxITeU5zWxFHXt8xm8OnOf14d9RFx1wy
-	 U6ArZreHza1RpEb6j988Go/Va6VckP0G8rhnN4INunubgvHHK7wWavFWfqhyAwSf/Lw==
+	t=1795119091;
+	b=ZespSNrTOI8Qe5FKISWsVI2h5t3ySym/onbdTqb9tW9hfG4iOSiOssDvvwWbC6WHgsdK
+	 mIKhS0q1gAgDb1btlaj+y7Ya6TBXJLC0E/q83ScbLsmpYd1YnNIdS3lMdKDRR7oH4VXuE
+	 99Ntg0H1+bQhRBYGLIEDpxnd84q+7MVtW3md6KM5QcwHGefgLuOyzh+DJQtyQAyr30PxD
+	 eYT3xhDf/Hk3g/coIMjGguoQrK6LSssYL3KTRxnSvhhi71BPU14bTHCA/wVOYYHth3pXZ
+	 23ZFcAF5/RjuXOAQKt9PijJuzvhJKVFLBAQeHabjyvjAyc9rMVstUXbp+jY9LvUjzRw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795119089;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795119091;
 	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
 	 DKIM-Signature:Received:Received:From:Date:Subject:MIME-Version:
 	 Content-Type:Content-Transfer-Encoding:Message-Id:References:
 	 In-Reply-To:To:Cc:X-Mailer:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:
 	 X-Spam-Score;
-	bh=krDZt2lyQMLpvzP9eRLAozoK+Qau2jyjNPNf8Y6N1eY=;
-	b=1BLkrg94MdxsemGgHyc8JtCr468RpJFHVTs34Q5Bdb18qdJ4/VPLY6G9wewBPGPVHjOF
-	 E+ZKSue7bDliq5feTA9wL2FKeiRLVcugy/ds+1OBrdanoaNPKlSm0pe2kPOTxWyFnKiLm
-	 lGzckqFX+9G/ls6USS3ywNgpvA8FmSTf6I4TX4Efpf5D/QoVJMKa9I7z5Yv2xwSKc7DE+
-	 x5abn1MTPZPM6j7uWh3HGPlISBvHgbBYQHVKZqdVA2TVh6Ukugr8Vl1HdN+MK+E6kdvkg
-	 Q421zROFYXJ0IcM6SEM6CgZ4sKK1udFd8Jk74XhBYr/wljhgqq7rWDDtXD4fNRuyWEg==
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=0PojVmwh6CZJYw9B1X5I/fTUnPC91q3Wq8fD2AaFI9vLmwSw6C4Bl2xARHENQXsrf6Wj
+	 KCHr2qTepXdRLVoAuOQY70qDAsVaCzqZ+P2gmYvbSw4w7UBYO59qcEPq81uNMnF17+tDI
+	 nCD4m+TV/Pe9MHh7jQykAYDZZFBkWzk3WZk71rWHLbGa60rOeyCDjZL8K4nsvckdqOn1H
+	 H6jAZmCPDOt3ArCQE5ZUbVWW2zAJmwsIpWReZiOiYANdn5aHu5iGR1gEmQP+Wke36sjCW
+	 t4rJdZG6jMIMezwmTYjENEvk4WK3HyYD20DQFzHEMeaHECTgwKsAMsyLzYIm08Turxg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=suse.de;
 	spf=pass smtp.mailfrom=suse.de;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=ZbNYpoOa;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=rWB7D58p;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=ZbNYpoOa;
-	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=rWB7D58p;
-	arc=none smtp.remote-ip=195.135.223.131
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B991E606A324;
-	Thu, 19 Nov 2026 20:11:28 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org B991E606A324
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C510E60A2615;
+	Thu, 19 Nov 2026 20:11:30 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C510E60A2615
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=ZbNYpoOa;
-	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=rWB7D58p;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=ZbNYpoOa;
-	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=rWB7D58p
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=eUas+9Ii;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=9uOMWgZ7
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 0CA2F1FCEB;
-	Thu, 19 Nov 2026 20:11:27 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 157D521DE6;
+	Thu, 19 Nov 2026 20:11:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1795119087; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795119089; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=krDZt2lyQMLpvzP9eRLAozoK+Qau2jyjNPNf8Y6N1eY=;
-	b=ZbNYpoOaGHeZLHdhDXsl/zYnjZ/AdQMk7i/SPEMY0Q10yolOExVKqmC4xS+vyK8DszjFQD
-	+wfqfFk0zFqQIPP4rrtwR68RSIviHw868FyVT+LRaikKFObVB0EPO0gkgI5wS5BkL9SSee
-	V2Ykgs4Q5J5Ir7RU6b2thZ7aLwdmJqc=
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=eUas+9Ii0hUYbJmdigy5WcIR6MFLbDG4Q9+MkKg469E/fJUfE5s9LcwEWCZ3ugZSzJbQ5E
+	G227ThVtEgjDER5qFmK1F/+icKCjUX8+0fRswIRqHMGNAHJfdWh4NdyBomb3k1h29ogcpA
+	wLvJ+2nCJSl6+n/ZHpjZrYGuTlwOUM4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1795119087;
+	s=susede2_ed25519; t=1795119089;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=krDZt2lyQMLpvzP9eRLAozoK+Qau2jyjNPNf8Y6N1eY=;
-	b=rWB7D58pv4B4x4q/+Pniaue/ehUunRQRZIy9bTKP+RjVGS0SZswC5zGUcX2yfKsXJqQKXu
-	HOQf9AyUfnS6R/CA==
-Authentication-Results: smtp-out2.suse.de;
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=9uOMWgZ7LG+LRni/R/J6QJ0QU42oZZHseqFgpO9phvi749VDZI6fswGtgIFGlShqu3eqYu
+	vCHCaUFOxZdKZxAg==
+Authentication-Results: smtp-out1.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1795119087; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1795119089; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=krDZt2lyQMLpvzP9eRLAozoK+Qau2jyjNPNf8Y6N1eY=;
-	b=ZbNYpoOaGHeZLHdhDXsl/zYnjZ/AdQMk7i/SPEMY0Q10yolOExVKqmC4xS+vyK8DszjFQD
-	+wfqfFk0zFqQIPP4rrtwR68RSIviHw868FyVT+LRaikKFObVB0EPO0gkgI5wS5BkL9SSee
-	V2Ykgs4Q5J5Ir7RU6b2thZ7aLwdmJqc=
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=eUas+9Ii0hUYbJmdigy5WcIR6MFLbDG4Q9+MkKg469E/fJUfE5s9LcwEWCZ3ugZSzJbQ5E
+	G227ThVtEgjDER5qFmK1F/+icKCjUX8+0fRswIRqHMGNAHJfdWh4NdyBomb3k1h29ogcpA
+	wLvJ+2nCJSl6+n/ZHpjZrYGuTlwOUM4=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1795119087;
+	s=susede2_ed25519; t=1795119089;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=krDZt2lyQMLpvzP9eRLAozoK+Qau2jyjNPNf8Y6N1eY=;
-	b=rWB7D58pv4B4x4q/+Pniaue/ehUunRQRZIy9bTKP+RjVGS0SZswC5zGUcX2yfKsXJqQKXu
-	HOQf9AyUfnS6R/CA==
+	bh=Uo8Olo98zjikgX57G69RkSYYgroY5lrc04l+gH4JzoI=;
+	b=9uOMWgZ7LG+LRni/R/J6QJ0QU42oZZHseqFgpO9phvi749VDZI6fswGtgIFGlShqu3eqYu
+	vCHCaUFOxZdKZxAg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F09A81334C;
-	Thu, 19 Nov 2026 20:11:24 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0B280134F6;
+	Thu, 19 Nov 2026 20:11:26 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id OqV1JuRX/2pPYQAAD6G6ig:T5
-	(envelope-from <pfalcato@suse.de>); Thu, 19 Nov 2026 20:11:24 +0000
+	id OqV1JuRX/2pPYQAAD6G6ig:T6
+	(envelope-from <pfalcato@suse.de>); Thu, 19 Nov 2026 20:11:26 +0000
 From: Pedro Falcato <pfalcato@suse.de>
-Date: Thu, 19 Nov 2026 20:10:47 +0000
-Subject: [PATCH RFC 4/5] mm/vmscan: be more careful when releasing FS
- metadata if buffer_heads_over_limit
+Date: Thu, 19 Nov 2026 20:10:48 +0000
+Subject: [PATCH RFC 5/5] mm/filemap: refuse releasing maybe_dma_pinned
+ folios
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -110,7 +110,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-gup-dirty-what-v1-4-236d69f25c24@suse.de>
+Message-Id: <20261119-gup-dirty-what-v1-5-236d69f25c24@suse.de>
 References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
 In-Reply-To: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
 To: David Hildenbrand <david@kernel.org>, 
@@ -158,36 +158,42 @@ X-Spamd-Result: default: False [-17.30 / 50.00];
 	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,imap1.dmz-prg2.suse.org:helo]
 X-Spam-Score: -17.30
 
-Namely, don't call ->release_folio() for mapped or referenced folios.
-Since this is the active list, there's no actual point in doing
-unmapping. In fact, that would be counterproductive for active folios.
+Some callers, like folio_unmap_invalidate(), call filemap_release_folio()
+without any care for folio refcounts. This is on purpose. As
+folio_unmap_invalidate() states, invalidate_inode_pages2() needs stronger
+guarantees, and "can't afford to leave folios behind because
+shrink_folio_list() has a temp ref on them". Ok.
 
-So, gate on !mapped && may_release_folio.
+Use folio_maybe_dma_pinned() universally, in filemap_release_folio(). This
+has a much lower false positive rate, and should be ok enough for most
+serious cases.
 
-Reported-by: David Hildenbrand <david@kernel.org>
+While here, properly assert that no folio passed to release_folio is
+mapped.
+
 Cc: stable@vger.kernel.org
 Fixes: d824ec2a1546 ("mm: do not reclaim private data from pinned page")
 Signed-off-by: Pedro Falcato <pfalcato@suse.de>
 ---
- mm/vmscan.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ mm/filemap.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index d80bbb607a15..986742d7fb6a 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -2217,7 +2217,10 @@ static void shrink_active_list(unsigned long nr_to_scan,
- 		if (unlikely(buffer_heads_over_limit)) {
- 			if (folio_needs_release(folio) &&
- 			    folio_trylock(folio)) {
--				filemap_release_folio(folio, 0);
-+				if (!folio_mapped(folio) &&
-+				    filemap_may_release_folio(folio, 1)) {
-+					filemap_release_folio(folio, 0);
-+				}
- 				folio_unlock(folio);
- 			}
- 		}
+diff --git a/mm/filemap.c b/mm/filemap.c
+index f9e34144c53c..4fa75663b7f3 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -4571,8 +4571,11 @@ bool filemap_release_folio(struct folio *folio, gfp_t gfp)
+ 	struct address_space * const mapping = folio->mapping;
+ 
+ 	BUG_ON(!folio_test_locked(folio));
++	VM_WARN_ON_FOLIO(folio_mapped(folio), folio);
+ 	if (!folio_needs_release(folio))
+ 		return true;
++	if (folio_maybe_dma_pinned(folio))
++		return false;
+ 	if (folio_test_writeback(folio))
+ 		return false;
+ 
 
 -- 
 2.56.1
