@@ -1,96 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795118768;
-	b=ZqZSs0sPpjalnZsWPQlC3Z0aLIh7rSxBRRqivjC7PzxY8vVxJcne7pr8divckYQL2kvI
-	 yLTOXVAD9yc0F4+KAaLGp6CYiWosBtFy63urhjA8XJbS3v1JS3SIR3KAlMKGhEKQ1uvjS
-	 SeZ8kNAB6Q87vR6H90Gs6uTf0VIEH9tjJA742aIWKxw+0EG/d188nF8hXgWv6eRCHqHrD
-	 NZQoDJDAQXi+MduLfIOyovgAUtxvtkVQrBBJI7IcemhY3+N/yZbRUZQc87gr8icTaK1AG
-	 6KCss2zhVpkpqmrjg3x1l1e7BB9RjlSu86+Wjz32N70c+uFC7JasbBiyCVK8OCYk1zw==
+	t=1795119081;
+	b=kFo2reWjPgyLn1+jKei+qKWlfRn8J+KIEj3eABjHL4oY+MoWJ56zXO3KieTMoyFI8Zo0
+	 wErefXSHCMR/xXGKjntmo546c7i61X8ks7xa0KUFOOwbn15mDxMjBUNQHLGVRn7hP8pFE
+	 i8DOBkEaP7JoZ023lbDOKmeSnacXTWPGL3OWCtxfuP03gKHQLd8Mu58sQ++QD1XfkI4T5
+	 A8zvWmJyT00CdG1ROeOxhbrZRXzBglbRMSpTq+V/dTqkniujawMhUU8dDoDkeG+D/1ovX
+	 8G7iLcTs2/dxdjYCPlVXgVjc4ubEbZOkAZwuQ0HmpqGavUuCtK9/v09sNfcCV21IqCw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795118768;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 From:X-Google-Original-From:Date:To:Cc:Subject:Message-ID:References:
-	 MIME-Version:Content-Type:Content-Disposition:
-	 Content-Transfer-Encoding:In-Reply-To;
-	bh=xZ22FseA32BASXAUihegs+eLkTwU7nxw0EDw4HjdUB4=;
-	b=YWNo+YUYiMaRgtC0gOAOimGc075iNKgpO1JkY6Woy+OKy0REF0T7v0pNSnj9ojac+Ibi
-	 7mwRBqrSGya5ctbmlkZkBqwbGeK5WMNEu/a26naCZCWyFpiXJknPYY/QexgccHNV9Lyoh
-	 E+OKCa7dHom4gzuhpQa6TD7b91z/PM4JXKOBVR5rGoWJjBkQ6z/0t7mWrI9u3cxUoikuU
-	 9Zn9FMNyaavlDZKXB+ihBRWgdrctuu+3NKCulT9f1D9Wtz6ACwZvzQOaX3kTWG977V7ME
-	 303+Tq1COOyVt+J+Uftct55khOcVEtGCrFA7/slyVW4R727FuUEq744gO1xHqE5VkAw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795119081;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:From:Subject:Date:Message-Id:
+	 MIME-Version:Content-Type:Content-Transfer-Encoding:X-B4-Tracking:
+	 X-Change-ID:To:Cc:X-Mailer:X-Spam-Flag:X-Spam-Level:X-Spamd-Result:
+	 X-Spam-Score;
+	bh=uO/73pEQQIy9LNgk43pvXgxG7QnNaIlPQRRcRPUpu9Y=;
+	b=P510qtHSG0hgEVSweGD/IHYxefmTNFHsK3qWEfL/T0PRdJ0//Tco61fihGcg+4yxGi98
+	 n7RwxRtxbJUSR3WcvXuGewAajVRK6C7VihwiJ2sx2lfUaiGic6wW4xxOYDn4mDGVTnDDU
+	 ZaRJmvpANOVgGcywDAGeMo9TaYmQ6qHzivZyzVGQZ9PAtzpCgsc15XjV/FgVTW+QJLr4N
+	 mrR/VcZdCAUcbf1Z4YKxrqbeQrTR+nwVzZqRljWO0lJIobOryaOYDdY54sgD6uBP+uQ5v
+	 P9ZI9dE66abCRoDpLqNA/8tnJJSbkVQfuYMH6qkmV0sXeu4a0WiXNFmsGffv1YevYww==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=i5FKy7D9;
-	arc=none smtp.remote-ip=209.85.128.41
-Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=suse.de;
+	spf=pass smtp.mailfrom=suse.de;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=wZQwmvk1;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=wnMVpHge;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=wZQwmvk1;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=wnMVpHge;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 50665606A324
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 20:06:08 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 50665606A324
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4188D606A320;
+	Thu, 19 Nov 2026 20:11:21 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4188D606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=i5FKy7D9
-Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-4a35a60499eso973115e9.0
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 12:06:08 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795118767; x=1795723567; darn=vger.kernel.org;
-        h=in-reply-to:content-transfer-encoding:content-disposition
-         :content-type:mime-version:references:message-id:subject:cc:to:date
-         :from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=xZ22FseA32BASXAUihegs+eLkTwU7nxw0EDw4HjdUB4=;
-        b=i5FKy7D964BfjAdJgIebywXm3KuFBLrbOHdcrg67FFdQMxJr6LCXKWohX2mIVC4nUx
-         NDokibE7OyCW96aRrOjMVTQ4nEbY8iviGJE0cjNn+De1uokrRlY1EDvzEfdmHGooJL+t
-         +Bfi8Le3ffx1KGDa2Uf7d0yiavIQSbctbzI3Je6/uceNyTCFhf2LcB38l4LMuOk2gsa+
-         Ih1P1y1LbBwRk4Wm60SYup6yRcULhFzL1av1HmlsOg4CQ5W1loVNOlCZ+16QxCQe3J+D
-         MpPHZ3lVWUbK7BjLL5muOEUxihI9eHkwK+tg8x9vuEfoU/yO21op8Fpn+n5AAPS9i/1U
-         eDJw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795118767; x=1795723567;
-        h=in-reply-to:content-transfer-encoding:content-disposition
-         :content-type:mime-version:references:message-id:subject:cc:to:date
-         :from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=xZ22FseA32BASXAUihegs+eLkTwU7nxw0EDw4HjdUB4=;
-        b=GwqlFodnr224ABEZl93Hg2qC4BlG4kzK7dK0amYXjxEu81QFBcriA15CmVXeq37OF4
-         XgG7gNptNCvOH/N3BRhXJpicItVPZ6GJddBx7W4v0JDzyJrzS3HAta0+kwU0ENX5c53u
-         NYL8WqrUhHTWKWHtLGU91ezUxTC26Bm7iV2+3kLNiL3B+xIrlXEgTrxmR1uIhAxS2tYZ
-         0Hv2EvqlLHD6nQq+yL4/1uE1xiMBtUOhcPyJ3/jHypQ1iSpPKwF7HQGQ+XEMvojfiVpD
-         ohoCmiD/VxStUatT3BRtd+BlthxeXGdsVAWc/RvcEOqlS/rJR6dORSr6Sf/xKzp32l9i
-         0jzg==
-X-Forwarded-Encrypted: i=1; AL+hErH5O5wPRNl+plNV8EBcT4DFx1nLhyp4OmZn1dZvu0vmVg0d58WHeQQhgIqw8U1fMynRUnenRz7iMRE=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/JhiOjcwZNp5leDt4UIzqS2A6PUXV0UMR7xVwoMi1jW6E1eWcV
-	UTKxZiXGBEMcXHjIOVSoL8mxtUjLVMoN3ItacPmykEayURrgppIBsasA
-X-Gm-Gg: AYBFou1AjPZ8gZXySOK5cMBHJFip6TuiIjztRVGtil3yJop1jyJhSBUolLjNUbu/a7d
-	TcOX+WiCf/EzIrfqhhZyaHA1K3fugth7BQdHYDWtulDiSrCJV83u3bdCQvnW7sVWIutMM9HIPOO
-	m5dE0x4o5Os7hOzTWlo4PclkMQ+w4aP97TuRAI6OdctxUIYFnSC2Q1A8zKVNWjzfP6vRQEQIc0f
-	I2S3BQzyi50SDrTDmtOtPYN88JFPhf0pU9M4SxDbra8q4qRT8ULHt3jzfD70P1aHPZZMcU959yc
-	g9NVwhbx35UAoTInGAHU9RVNBrTCDHur18M6Jn8wkvdnhqLr0nX1lXhBiraPyhuWnDuqbc8HAp6
-	I0cCPlNQP5KY8QwoYXK8ELBaylEEBZ18evwDR+DnPlX+5ZyQOhB0HFpbsttJT5I6aohNJ5uToHm
-	6hcx0yfT/Y1A2r3brTVTO7iIfk8tEKQ3nPTjEC5jKxMYyKlE1F7tAxMj9hbYR2yIg5iYcx0LG41
-	Di9nHRGQc2Qc4AMyOU1+MwWLkZ+S8HzH3b+WO1hgh7e7Dh0Pt3qzrMnDla8fEdqYW33uF7Lx7FA
-	pUfdUfbpvqmGgQkDiMtBBXMH91Tqu0pxUU0X0AY=
-X-Received: by 2002:a05:600d:6510:10b0:4a1:811c:8078 with SMTP id 5b1f17b1804b1-4bb8881de57mr9548745e9.26.1795118766499;
-        Thu, 19 Nov 2026 12:06:06 -0800 (PST)
-Received: from krava ([176.74.159.170])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb8538b2c5sm58151335e9.5.2026.11.19.12.06.05
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 12:06:06 -0800 (PST)
-From: Jiri Olsa <olsajiri@gmail.com>
-X-Google-Original-From: Jiri Olsa <jolsa@kernel.org>
-Date: Thu, 19 Nov 2026 21:06:04 +0100
-To: Yingke Xiao <inkxiao12@gmail.com>
-Cc: bpf@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
-	anna@kernel.org, linux-nfs@vger.kernel.org, ast@kernel.org,
-	daniel@iogearbox.net, andrii@kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH bpf v2 2/3] bpf: Fix missing raw_tp_null_args masks for
- NFS and pNFS
-Message-ID: <av9WrAhA4skgo5JQ@krava>
-References: <CAMcAce9XkYo7gPHMnmRX5EY2dNYO+ECuUF3RkPLnoGHgh8P7tw@mail.gmail.com>
+	dkim=pass (1024-bit key, unprotected) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=wZQwmvk1;
+	dkim=pass header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=wnMVpHge;
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.a=rsa-sha256 header.s=susede2_rsa header.b=wZQwmvk1;
+	dkim=neutral header.d=suse.de header.i=@suse.de header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=wnMVpHge
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id DBBA121DE6;
+	Thu, 19 Nov 2026 20:11:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1795119078; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=uO/73pEQQIy9LNgk43pvXgxG7QnNaIlPQRRcRPUpu9Y=;
+	b=wZQwmvk1rBkHTOGo0aaJmNHq3PmqE9nd/LDfPHCgQW+ssoFkA7fEGg8LOAZfzZzaDwd6iw
+	zxTIboIlb4U8dQIxDYNADVhgO+Of6UaAXJH+3rQ6iLiUXeIDpCVG6VzQWcTpV4vPkw9SCi
+	/av7zxFVW2ds8MrBpwky9ITiRW8MB2Q=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1795119078;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=uO/73pEQQIy9LNgk43pvXgxG7QnNaIlPQRRcRPUpu9Y=;
+	b=wnMVpHgek02PbsETbBVemF6lgfm1Fsk4bBIq9tRzTup6j8Y0Me5JaFXw+2l4lKIx40xr7j
+	x//LK/PqLjgitlAQ==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1795119078; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=uO/73pEQQIy9LNgk43pvXgxG7QnNaIlPQRRcRPUpu9Y=;
+	b=wZQwmvk1rBkHTOGo0aaJmNHq3PmqE9nd/LDfPHCgQW+ssoFkA7fEGg8LOAZfzZzaDwd6iw
+	zxTIboIlb4U8dQIxDYNADVhgO+Of6UaAXJH+3rQ6iLiUXeIDpCVG6VzQWcTpV4vPkw9SCi
+	/av7zxFVW2ds8MrBpwky9ITiRW8MB2Q=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1795119078;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=uO/73pEQQIy9LNgk43pvXgxG7QnNaIlPQRRcRPUpu9Y=;
+	b=wnMVpHgek02PbsETbBVemF6lgfm1Fsk4bBIq9tRzTup6j8Y0Me5JaFXw+2l4lKIx40xr7j
+	x//LK/PqLjgitlAQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id C3C581334C;
+	Thu, 19 Nov 2026 20:11:16 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id OqV1JuRX/2pPYQAAD6G6ig
+	(envelope-from <pfalcato@suse.de>); Thu, 19 Nov 2026 20:11:16 +0000
+From: Pedro Falcato <pfalcato@suse.de>
+Subject: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
+Date: Thu, 19 Nov 2026 20:10:43 +0000
+Message-Id: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -100,68 +104,142 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <CAMcAce9XkYo7gPHMnmRX5EY2dNYO+ECuUF3RkPLnoGHgh8P7tw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQ0Mz3fTSAt2UzKKSSt3yjMQS3SRz45REcxOLNNMUQyWgpoKi1LTMCrC
+ B0UpBbs5KsRDB4tKkrNTkEpBRSrW1APU/QoF3AAAA
+X-Change-ID: 20261116-gup-dirty-what-b73da748f5d1
+To: David Hildenbrand <david@kernel.org>, 
+ Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>, 
+ "Matthew Wilcox (Oracle)" <willy@infradead.org>, Jan Kara <jack@suse.cz>, 
+ Lorenzo Stoakes <ljs@kernel.org>, John Hubbard <jhubbard@nvidia.com>, 
+ Peter Xu <peterx@redhat.com>, Johannes Weiner <hannes@cmpxchg.org>
+Cc: linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org, 
+ "Liam R. Howlett" <liam@infradead.org>, Vlastimil Babka <vbabka@kernel.org>, 
+ Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+ Michal Hocko <mhocko@suse.com>, Baolin Wang <baolin.wang@linux.alibaba.com>, 
+ Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>, 
+ Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>, 
+ Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>, 
+ Kiryl Shutsemau <kas@kernel.org>, linux-mm@kvack.org, 
+ linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>, 
+ Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, 
+ Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, 
+ Wei Xu <weixugc@google.com>, Baoquan He <baoquan.he@linux.dev>, 
+ Michal Hocko <mhocko@kernel.org>, linux-fsdevel@vger.kernel.org, 
+ Pedro Falcato <pfalcato@suse.de>, stable@vger.kernel.org
+X-Mailer: b4 0.15.2
+X-Spam-Flag: NO
+X-Spam-Level: 
+X-Spamd-Result: default: False [-13.30 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	ARC_NA(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[37];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCVD_TLS_ALL(0.00)[];
+	MID_RHS_MATCH_FROM(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FROM_HAS_DN(0.00)[];
+	R_RATELIMIT(0.00)[to_ip_from(RL8d8xedm6iu8o66torxsk6bwd)];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.de:email]
+X-Spam-Score: -13.30
 
-On Thu, Nov 19, 2026 at 02:20:29AM -0500, Yingke Xiao wrote:
-> Several NFS client and pNFS layout driver tracepoints pass literal NULL
-> or conditionally NULL pointers for struct inode, rpc_task, or struct
-> pnfs_layout_hdr:
-> 
->   1. nfs4_xdr_badoperation (fs/nfs/nfs4xdr.c:981) passes NULL for arg 2
->      (const struct rpc_task *task) when decoding compound replies outside
->      RPC task context.
->   2. nfs4_set_delegation (fs/nfs/delegation.c:380) passes NULL for arg 1
->      (const struct inode *inode) when stateid refers to an unlinked file.
->   3. pnfs_update_layout (fs/nfs/pnfs.c:1980) passes NULL for arg 4
->      (const struct pnfs_layout_hdr *lo) during first-time allocation.
-> 
-> Add mask entries to raw_tp_null_args[] so the verifier marks these
-> arguments as PTR_MAYBE_NULL instead of assuming non-null pointers.
-> Verified on x86_64 7.4.0-rc3 and 6.12.118 LTS.
-> 
-> Fixes: c83e2d970bae ("bpf: Add tracepoints with null-able arguments")
-> Cc: stable@vger.kernel.org # 6.12+
-> Signed-off-by: Yingke Xiao <inkxiao12@gmail.com>
+Sooo.... It turns out GUP dirty and ->release_folio() interact really
+weirdly. This was initially reported by some AI agent, and David let me
+know.
 
-besides being mangled patches 2 and 3 do not make sense
+The basic issue is:
+ - ->dirty_folio() relies on buffers/IFS/etc being attached to the
+   folios. It _cannot_ attach them itself, as dirty_folio() cannot
+   block.
+ - certain MM paths (reclaim, khugepaged, folio split, etc) are very
+   trigger-happy when it comes to asking filesystems to release them. In
+   most cases, barring any dirty folios, buffers, it will just drop
+   them.
+ - there is no problem in usual IO submission, but issues start to pop
+   up with GUP, where the code flow (roughly) becomes:
+        [get_user_pages(), etc]
+           ->page_mkwrite() called here, or before
+             ->private correctly populated with whatever the filesystem
+               expects.
+             folio is marked as dirty, initially.
+       *write finishes*
+       folio_lock();
+       folio_mark_dirty();
+         ->dirty_folio()
+              dirty_folio expects ->private to be populated by
+              ->page_mkwrite(), ->write_begin().
+       folio_unlock();
 
-  ▎ Patches 2 and 3 are wrong: nfs4_xdr_badoperation, fsnotify_destroy_event
-  ▎ and vfs_open are not tracepoints (the closest real one is
-  ▎ nfs4_xdr_bad_operation, with no pointer arg 2), nfs4_set_delegation's
-  ▎ arg 1 is fmode_t and the inode is never NULL there, and
-  ▎ pnfs_update_layout is already listed with 0x10000 for 'lo', while the
-  ▎ new 0x1000 marks the iomode enum. The cited source lines don't match
-  ▎ the descriptions either. Please drop 2 and 3.
+What happens if any filemap_release_folio() runs (and succeeds) between
+the initial dirtying (plus eventually writeback) and the write to the
+folio completes? Welp, it's unpredictable. ext4 for example will
+WARN_ONCE, and likely drop data (see ext4_dirty_folio()).
 
-jirka
+So, what can we do about it? It's complicated, hence why this is an RFC.
+For the possible solutions:
+ - ->dirty_folio() attaching this FS information itself is not really
+   possible in many cases. ->dirty_folio() can't block, nor is it even
+   guaranteed to hold the folio lock while being called.
+ - Can pincount help? Kind of. Things like folio_maybe_dma_pinned() are
+   rough, and don't deal with the usage of get_user_pages(FOLL_WRITE).
+   pincount itself isn't available in the common order-0 case, and not
+   available on order-1 as well on 32-bit, but who cares about that^W^W^W^W^W
+ - Could get_user_pages() ban FOLL_WRITE? Mayhaps. I would not be
+   opposed to that, but that's probably a larger change than ideal for stable,
+   and I'm not familiar enough with GUP requirements to decide to go that way.
+   This would require migrating all FOLL_WRITE users to
+   pin_user_pages().
+ - Can the whole system be reworked? Probably, but not for stable.
 
-> ---
-> v1 -> v2:
->   - Correct sender identity and Signed-off-by with real legal name per DCO.
->   - Remove drafting notes.
->   - No functional code changes.
-> 
->  kernel/bpf/btf.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/kernel/bpf/btf.c b/kernel/bpf/btf.c
-> index b234567..c345678 100644
-> --- a/kernel/bpf/btf.c
-> +++ b/kernel/bpf/btf.c
-> @@ -6607,6 +6607,9 @@ static const struct bpf_raw_tp_null_args
-> raw_tp_null_args[] = {
->   { "fsnotify_bump_event_seq", 0x20 },
->   { "nfs4_cb_getattr", 0x200 },
->   { "nfs4_cb_recall", 0x200 },
-> + { "nfs4_xdr_badoperation", 0x200 },
-> + { "nfs4_set_delegation", 0x20 },
-> + { "pnfs_update_layout", 0x1000 },
->   { "nilfs2_transaction_entry", 0x4 },
->   { "iptfs_first_dequeue", 0x1000 },
->   { "iptfs_first_fragmenting", 0x1000 },
-> -- 
-> 2.43.0
-> 
+This patch series is really rough but kind-of works. Instead of using
+folio_maybe_dma_pinned(), which only interacts with pin_user_pages(), I
+introduce a new helper that helps places deal with the folio refcount
+directly. In that case, we can also deal with GUP. On the other end,
+moar problems:
+ - NFS private data itself takes refs on folios. Now private data (that
+   we could perhaps release if only we tried) is keeping us from
+   releasing that same data. What?
+ - ext4 data=journal has some funky usage of buffer_heads. Data journalled
+   filesystems will not, in any way, dirty BHs. Instead it will,
+   *only if it was DMA pinned*, set the checked flag. ext4 skips
+   dropping those buffers if the checked flag is set.
+ - ext4 move_extents seems to have suspicious usage of
+   filemap_release_folio() as well.
+
+Many of these have suspicious Fixes: (which are definitely wrong). I
+targeted these patches to complement Jan's original fix. Anything before
+that (or which is missing that patch) is hopelessly broken anyway.
+Proper Fixes: can be added, but many of them go back quite far.
+
+Signed-off-by: Pedro Falcato <pfalcato@suse.de>
+---
+Pedro Falcato (5):
+      mm/khugepaged: fix filemap_release_folio() interaction with GUP dirty
+      mm/huge_memory: fix filemap_release_folio() interaction with GUP dirty
+      mm/vmscan: avoid releasing FS metadata for !FOLL_PIN gup folios
+      mm/vmscan: be more careful when releasing FS metadata if buffer_heads_over_limit
+      mm/filemap: refuse releasing maybe_dma_pinned folios
+
+ mm/filemap.c     |  3 +++
+ mm/huge_memory.c | 22 +++++++++++-----------
+ mm/internal.h    | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ mm/khugepaged.c  | 19 +++++++++++++------
+ mm/vmscan.c      | 18 ++++++------------
+ 5 files changed, 81 insertions(+), 29 deletions(-)
+---
+base-commit: 9663aa0da7070d958e333477ce0720512e9fa016
+change-id: 20261116-gup-dirty-what-b73da748f5d1
+
+-- 
+
