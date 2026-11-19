@@ -1,89 +1,93 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.47
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.52
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795124464;
-	b=qRA/dCqzba/xUqJkf1SSirna/MjZiZpqs/rJHQ1/7Wcn3RDIzL7Gw5Wd/tLdhzibpzMS
-	 gCFeyUCu3skLVpcvg1ZuLd/wC1s4uh9BbS4G7ZR56EogMoGikoyX8zp87D51z1Ct872GG
-	 XV7l+RzOyJTIxNMM/ZZLrhUFwfZKoaM0UE5Zl0LJPxTlXVo2QLA4BiV8j16nmjUGr0v6J
-	 YvpFx4OQdhRiJklo/Xfc4sLxtxEMqNGI5ZhjofMWVukMKl4UVdNkQDYqIk3VrQnmEXmCF
-	 f9vkjNJNEZXVVFhEQAZexMwaTrTliAqFmvX2Yp7C7B1YJRr1LL4hIYY70k8i3lFS7Vw==
+	b=N5f2dnjkjRqX+OF8W7gsE6sULdU463o7U2Rf+4ZcEkWeS6u4dJi1NzgIO3c/vb8beENE
+	 Na8JgjvRQYXTBEZYWP7LMyTGjKqMdx4PpJ1u9JCNHYuh+FqeyJ82v4KTn7BQyj83blLys
+	 3/w3/xZ9hvWkIfrwk7mJi6p/HYFmmudA19F+iAiUR5EXQOrbuet8YVd/ZBRRptH4GxLQo
+	 7W4y4coWYXYjZQ6QJVis8L7AAfblFLTOmkiWBoqPm9aA52aCOKQ/gkLpnzrtmukbm2/nn
+	 8bzy+hYj5mxBN6alj8E8wB7HN2RVaNZFtMhVjkEuurX2LbxIFxitKRZPa+8N9eSHnQA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795124464;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
 	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 MIME-Version:Content-Transfer-Encoding;
-	bh=+nVbn6aFsoNbCQ7aCl2HsSZwC2PgFRrT8PduzUC/8EU=;
-	b=tep0AUipiY+BrjriwJTnur+pvNMifez8I3uSk7lRjumn6PnSz3/ALBMb9D1kUY+JXXsJ
-	 Bu+i/fslEATwW5KwoEWx5o5rCoQEeKyVIhD6OEVSMYoBDH1Xl1KkT/h92adu/km67LOTJ
-	 0iHwQ9bbycNHFcVnHK+SKsoj4h9HU/sFFQ91xJospSiP6y2ROCyybIDQwuX+4XkGOQx7a
-	 4OO4oHl9CqaH+uitioc8MYfzNFl9rawS3clXgk7FrEkdw4VvswmhTgqlEWLuD3rFTiUO1
-	 +qChz7as0ob6wcxBsrDxBoZ1KoulDyowfpUBE132Ud8rhDJwspefH2OQ9NyWeA1ROoQ==
+	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
+	bh=elz+w+RWbFgA9INKhpbkrvofnNPhZgGUILnYiWHTL7g=;
+	b=FDObuUCKTvUO/PefInGanC4+7K7UB+B5QdJ0ZgeFj2j9LXC3NsIlIf85gsfGqwLMkOUz
+	 JJ22p38zDsx22T9ynQGHqojLRXTeubaZmwNLFUA8qUXiUs0aHupv1UI0Sj6gYTBfxmbnn
+	 GCfmc7Pi0axjlgro2Dr7JR6NXA+J7CY8yUjuJGbWYLVkJ0eZu/L2+ujVD2iezaS1WoMtc
+	 nuxR75rUpycO2Zdh4pxryg8c7rkbkPwtoh7u+c3PAdzNQfFT4MIo1ZjlS+MUgZhDuuBZn
+	 Ulpuw1okQbm+AIfFNwoFchVuSbXKgPOFn7wHkB7SONSd3vrw17Aa/oImDcX6eUROxGg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b="e/c70FJ1";
-	arc=none smtp.remote-ip=209.85.161.47
-Received: from mail-oo1-f47.google.com (mail-oo1-f47.google.com [209.85.161.47])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=j4oTATMx;
+	arc=none smtp.remote-ip=209.85.210.52
+Received: from mail-ot1-f52.google.com (mail-ot1-f52.google.com [209.85.210.52])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D11B9606A320
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:41:03 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D11B9606A320
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 765CC606A331
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:41:04 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 765CC606A331
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=e/c70FJ1
-Received: by mail-oo1-f47.google.com with SMTP id 006d021491bc7-716b58a4365so134463eaf.3
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 13:41:03 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=j4oTATMx
+Received: by mail-ot1-f52.google.com with SMTP id 46e09a7af769-862b090e3c3so126702a34.2
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 13:41:04 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=hammerspace.com; s=google; t=1795124463; x=1795729263; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=+nVbn6aFsoNbCQ7aCl2HsSZwC2PgFRrT8PduzUC/8EU=;
-        b=e/c70FJ1GUw9QA1Nb/0+Kb2FIQ4DBovP0OzoJENFwebdUNfAvvTiDLbSpEgOz4VF2u
-         /R6SUqOdpi9Bf1xXrPPr+7L5eh2PKP+d/xg6eq3OtWT88RieolyMOfsFS2MbAyfjqIRe
-         f39qBOKAx1fyqXOOstWBXRBm3j9oOVARAwozKK+lrm0Y+/bgezyyRJrhPoIXHcX56DHx
-         7YJFDacMxfCTA/shKzBkdwZe1FrHHoJpzFY+crKLJFItWm16nO1sZdfzGnAVDixAWsY0
-         q1+qSfeEASljSvbihc21w2oFVSEB2WcO4chReKrzUWKpnJ1KRXMmjQ7dm1fVZRbvpR1W
-         5Ahg==
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=elz+w+RWbFgA9INKhpbkrvofnNPhZgGUILnYiWHTL7g=;
+        b=j4oTATMxcESb6gvIR3gtr2b6zzVbd+x73JiBLyhnfL2RofproLU+H6uVo2GrInDpXe
+         43x3/7jabGnxnmBAvujrRgMZppkAHMeE/W55nvQJZgltyODD5aDbt8LJPQVRUgVbTumz
+         90VrWydmhhryoOM3J7sMdPidrDhUdRbH+edhhm8qybUVtUEaawu+yCWM4JwQ6mQJgTPC
+         VQQpJoLjdVSRuGJSUaX276TyTCxrcb+06tBpQB6Kih6ZABDMTQh/tN3EjTp4bmg54C6a
+         P7LycO02BENRVvEEnzdUnzSZQari6IFlEEWRugmxEJiUMCZlMAx03s9GIAKuZ4ZqjBgA
+         aztg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20260707; t=1795124463; x=1795729263;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=+nVbn6aFsoNbCQ7aCl2HsSZwC2PgFRrT8PduzUC/8EU=;
-        b=GYOysf/ExWGnkuxcYkSFb9Y3xjRWpXgn6b1R5aBlZFw5xw47s6j0/xpusGi62XEDjP
-         suRPpQ60Fy15CFUgp/VZfzDknv3JdlMYU1Erll4KexHL8bS2q/zG/6E9OOZ3sj+fiiw0
-         GS6SYC8vqUzmp26CFFnnOkCCSwEnVB980Sx8gnZPbptjAI2xFlwWV3bWvHgwKzHWnCDc
-         5nhWw2QtaLJASQ3PKHVuOzhBBX1Xxzg4EIXhQrHoFKB9rRkSSMDtDyghK3lgG53wHCeA
-         HLwEh+/cMui3rtIDbmFlrHH2dPBqX+xNxXoU3r+QeiohOLM7ceOd00vQWKENDB7Uqx/g
-         07JQ==
-X-Gm-Message-State: APuU4Z9jEQ4bkSEwPW1W+s4mYDNwp2aiTGYqF0utW4DuYj3hfEkN9OQm
-	AlYMDKIKP+2r1d6kNndcEodvMa9zySoyVEFeIIYGrRxNGZeoiTTVAaytShUhZ+PiRL4=
-X-Gm-Gg: AYBFou2lr3uZAmYt5wrWHxRHPbgSs2MYjnbh+d68Ht+SptspVBzuBmU4qTPPtDplZC1
-	h7dquW5hAq7NY2ZFXkwdOLQHk2wTngRZDQDSlhC5K6lMediKWNvQ2kQTGNgVyN506Qc/aBksKdb
-	66pHjU0+9h3XIolvoeNLjhb0WGsYJu0cnZsNb+bSuyeXW+keb0Y5fxJTnGjKwxNzvRw9vJIuQ78
-	RTlbWVVG//tuG72m+WIx92tKTE7OpA9ReIMoxp0XTCWpaYBouEqWCLmu60lrugBi+QooDUm6TFp
-	T4gfDa4pTMoKnJdYAsX14YLYT3Rqvtr74FIR1O3sdrtyqt0r0RqXt7XKQAsExY4NjtS2YG9FCqU
-	240yAo1xQLaBtPkPt4k52mK5JO/vQpQCQZFGtTI3pYl1z6F1wV/es069fh0kcCU9Ce0dV0Anx2f
-	YvV68tyy76vSVhNtHiOgcJMNcCnqtUx1/ZCDElo4dF3lLpn/a2yK+fQF5Tc60DpfABwtGAuR6/y
-	E9EY6E5yD7lLJ7DzmqFrDcH5kLRuVUw4f+YTvM99EEmerO84zF/e7yA4wThKPI4bScCohH5+ymu
-	NFae0/eC95TqauuC+N+BSDtZlI+43JVBBSwW8y1fWMuloEruMl3XTQmsnLr89GVxaRtf
-X-Received: by 2002:a05:6820:a29c:10b0:71a:f8c9:c6a1 with SMTP id 006d021491bc7-71b394c8c6cmr815490eaf.48.1795124462498;
-        Thu, 19 Nov 2026 13:41:02 -0800 (PST)
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=elz+w+RWbFgA9INKhpbkrvofnNPhZgGUILnYiWHTL7g=;
+        b=y22qIzhhSV1mr/H7PbYcB5g4tLR1qaAxoD+KqtfMUAVUNua9AIwD0FSSPUfGNFIeCJ
+         rCoxc+OtrXE42FspXNipE+NvKS10WP0bXTP8WSeSpVwNjAtbfGnLkwrsJLoE8NWgA4U1
+         heNSaSH5kzTWmZc6yt6WQ3per+kaAIGo1POsdViC0wCV/kXVVRtOX4voe8RuhdeAviVY
+         h21EkN3uU9Ixo134a5i3Usz1gS8vpyrB+kSg3rFPxBmfZ0j2TV1oDGiXFvSrReqs+UjE
+         Hi4FhVODAgOiL36fz0hobGGNCC5nHulJxDLwf7Gmfb2IRz2rzYMh1qSjiYFCzs4gd3zS
+         GMug==
+X-Gm-Message-State: APuU4Z9sxdXYRS/2BYXlef9ptNaf5QOCSkTnVoZA/avSZJotwl0EfoJ0
+	ox8T13sexKtDkqitY7snNHxbpWttTDIQUD6EyIGxGzZQkcZpbu5G9CUbPkVPFFvomA5SL2kifBH
+	XUWPH
+X-Gm-Gg: AYBFou2vfZ4c8C5VhNk3Zrm3h8k+H2GfdCVozf0jYf5KG1eurTxQws7p8oRVJ3o9SMu
+	dvC5U3T8sLuk4hAaWY3L4GmBxONIedzhjMReMrgJIqAUWLgvYUXG4sv0K2f3sxKoz66p2L36iru
+	hoeoBXz7fkdcgtnHVOp0DycOQ4oiHLMkRVb/Lfh+ddnJR5idT/TCaTH6iIQNEDL+8hzqYVs40Mk
+	CRjHu21bzApiaeNe9YrJAqGXU94Bz+eSN60XJLE01Nh3qGBlWh1KHpGxQlkB29kcZVqT2Cx6T3T
+	ux2kFuMs69UIJtuch89GWcDIZzwTE22v6Y/7qQcpPbD5vF7aG4rYp/GECjSRR8Jfv/hfXkMNgNc
+	WkSchcqKycrQODUvtTFWTOavNG43bDff4t4GEeXewKK6EOHvDv4r0C1N3xa0GYWEYoH7bOnKv1Y
+	6wLAxZLdZ9vlxafotdY5y8ZWbF6NbNUhY+liUhz/dn+9xdNpFe7XyuhrDThmhwHMJMWoVJpOR1L
+	gy5lkt+UdFJB2/TPKHtXzWr7XbDBjdlM5HMFPcK1rA5VGAE5R+8vKp6gu1NnCBrsQfCyO8d+Wc5
+	TC8Vyv8BwYP7HUBIkZnrmYhc/hOlM5ZAA66lCV5Iass60//PbV2tQIgxj4AASGYeWP7r
+X-Received: by 2002:a05:6830:2306:b0:862:c685:849a with SMTP id 46e09a7af769-8631507f9a4mr1685509a34.0.1795124463228;
+        Thu, 19 Nov 2026 13:41:03 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-8631670c44dsm642217a34.0.2026.11.19.13.41.01
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-8631670c44dsm642217a34.0.2026.11.19.13.41.02
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 13:41:02 -0800 (PST)
+        Thu, 19 Nov 2026 13:41:03 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: calum.mackay@oracle.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH pynfs 0/2] rpc: fix two client connection failures
-Date: Thu, 19 Nov 2026 16:40:58 -0500
-Message-ID: <cover.1795124374.git.bcodding@hammerspace.com>
+Subject: [PATCH pynfs 1/2] rpc: skip secure ports in TIME_WAIT and report connect errors
+Date: Thu, 19 Nov 2026 16:40:59 -0500
+Message-ID: <1976e7eb2330cc82401ec47b57e6fca1bc8498e7.1795124374.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
+In-Reply-To: <cover.1795124374.git.bcodding@hammerspace.com>
+References: <cover.1795124374.git.bcodding@hammerspace.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -95,28 +99,95 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-These fix two bugs in the pynfs RPC client, both seen while running the
-4.1 server tests.
+connect() set SO_REUSEADDR on client sockets, so bindsocket() could
+bind a secure port whose previous connection to the same server was
+still in TIME_WAIT. connect() then failed with EADDRNOTAVAIL, and the
+bare except closed the socket and fell through to setblocking() on it,
+replacing the real error with EBADF.
 
-The first breaks --secure on a back-to-back run: the client rebinds the
-reserved port left in TIME_WAIT by the previous run, connect() fails
-with EADDRNOTAVAIL, and the error is replaced by EBADF, so the run ends
-with "Initialization failed".
+Drop SO_REUSEADDR. Linux lets bind() take a port held by a TIME_WAIT
+socket only when both sockets set SO_REUSEADDR, so without it bind()
+fails with EADDRINUSE and bindsocket() moves on to the next port. If
+connect() still fails with EADDRNOTAVAIL on a secure port, retry from
+the next port. Raise the last connect error when no attempt succeeds.
 
-The second hangs a test when the server closes the connection: waiting
-calls are never woken, and the polling thread dies in select() on the
-closed socket's fd of -1.  With the fix those calls fail with an RPC
-error and the test is reported as a FAILURE.
+Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+---
+ rpc/rpc.py | 38 ++++++++++++++++++++++++--------------
+ 1 file changed, 24 insertions(+), 14 deletions(-)
 
-Benjamin Coddington (2):
-  rpc: skip secure ports in TIME_WAIT and report connect errors
-  rpc: fail pending calls when a connection closes
-
- rpc/rpc.py | 80 ++++++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 59 insertions(+), 21 deletions(-)
-
-
-base-commit: cd4701827a8261fedbfb4c6e39029fb9671321a6
+diff --git a/rpc/rpc.py b/rpc/rpc.py
+index 84088f6651a6..4d0cc2d01a20 100644
+--- a/rpc/rpc.py
++++ b/rpc/rpc.py
+@@ -6,7 +6,7 @@ import struct
+ import threading
+ import logging
+ from collections import deque as Deque
+-from errno import EINPROGRESS, EWOULDBLOCK, EADDRINUSE
++from errno import EINPROGRESS, EWOULDBLOCK, EADDRINUSE, EADDRNOTAVAIL
+ 
+ from . import rpc_pack
+ from .rpc_const import *
+@@ -812,21 +812,31 @@ class ConnectionHandler(object):
+         """
+         log_t.info("Called connect(%r)" % (address,))
+         host, port = address
++        s = None
+         err = None
+         for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+             af, socktype, proto, cannonname, sa = res
+-            sock = None
+-            try:
+-                s = socket.socket(af, socktype, proto)
+-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+-                if secure:
+-                    self.bindsocket(s)
+-                s.connect(sa)
+-                err = None
++            lport = 1
++            while s is None:
++                try:
++                    s = socket.socket(af, socktype, proto)
++                    if secure:
++                        lport = self.bindsocket(s, lport)
++                    s.connect(sa)
++                except OSError as e:
++                    err = e
++                    if s is not None:
++                        s.close()
++                        s = None
++                    # A local port in TIME_WAIT with this peer can still bind
++                    if secure and e.errno == EADDRNOTAVAIL and lport < 1023:
++                        lport += 1
++                        continue
++                    break
++            if s is not None:
+                 break
+-            except:
+-                if s is not None:
+-                    s.close()
++        if s is None:
++            raise err or OSError("no addresses for %r" % (host,))
+ 
+         s.setblocking(0)
+         pipe = RpcPipe(s, self._alarm)
+@@ -838,13 +848,13 @@ class ConnectionHandler(object):
+         return pipe
+ 
+     def bindsocket(self, s, port=1):
+-        """Scan up through ports, looking for one we can bind to"""
++        """Scan up through ports, returning the first one we can bind to"""
+         # This is necessary when we need to use a 'secure' port
+         using = port
+         while 1:
+             try:
+                 s.bind(('', using))
+-                return
++                return using
+             except OSError as why:
+                 if why.errno == EADDRINUSE:
+                     using += 1
 -- 
 2.53.0
 
