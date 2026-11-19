@@ -1,94 +1,136 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.47
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795120056;
-	b=ZjAJksk7/nvRjPijjoSoQkPY1bGs/Svz7XT0mE386OuyMm3CzCWd90+1XYjcGIlgNTZJ
-	 dLm6fRuajqp94drGMWw8p0a4yMUHqd+QlDPtCkVuJ5xujwUi/vVMhVIBOmdBU7fRh11SC
-	 0qEDX351mNqxsDLzP8mR7NLYJhz7iCStd9eQIIWjdMJGuUkMH3ogk6vMTtmYk2BW9Tkf6
-	 FMaKCTDpqSSDJ3u6eopydtboxFpca932CWypq8G1cSmUrzb6z6wJ0t9dTA6tMvHzkCy7R
-	 +FdazBvlzGvLPhnz0B9NyBtHUHo/cOsNT5bzCiKs9Y6TEljfePK43LALM2yWq2Dr5qg==
+	t=1795124001;
+	b=kyBKVSjaW0FpIvQHktjETnOKduGjLzQpnk9clVYW0Zk5lJMFsZcKQeq57gMGvZijfkm8
+	 HEQ4t6TRSdsrduY+8Sw+CgzI2XHjw1UFZ8M98PStPTfsjd5CIO5ZGirJO5YXD7fX/wTPE
+	 ktRbd0ddPUisiQkEVQFU2xPQlwxPmhhDyLm2nhk+Xhx3r9oavtCVXv/3+aye53gRjvqbv
+	 qEh5kDfutni2HTtMuMYu0PcFOhv0N5IDCz5n3v9/WbpS1Vkvlw5e96ysJJ0d1cOCylovc
+	 ZlH1QzRrz8qHKEUgrMvTYcvQYenLvs6CeCBtEQznT4V3d0U0kmtXI7a1KOFYdlGmfUg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795120056;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding;
-	bh=E2LetXhQvfbCCkGU3P0BXIRfFcIFGuDjezfVP4BBhvo=;
-	b=gUUIX6raYZlJQHg4wlFYbFfeMODZp5oY0k/EcffcBbWqipOv6pqiodzoXb+x1iuykfFC
-	 wo32k1gf7S7VqTVfOehdi0rb2H4+nai5/IHjzIVRD79mjXdCCfwcau4aVmEXXOrxm9JCQ
-	 eBe4dO6TpFTFU2V6v/jQLC3blYR2wSDymRf9We3u1aPXbWWy8gPmKB8jQW7cwhnIi1hJO
-	 W0r6VYJ+pG2nrx1S+qK05DX8Wr5YX7yNaRtVjMXUTF4M5SRZP3A7jCy7B+6Jy0KadoDbe
-	 t5xxvCQbaVuC+v95IAvA13UfkVEJJKIQfpr1rMbhb2bSlfCOQfG8WNuQ6/6WyKBFBRw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795124001;
+	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
+	 In-Reply-To:References:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=GntRI6tOBrAhacb25HAQl+V7JQYtYMfqRJJMvNkCZ00=;
+	b=hEbPi9uD00JIriPSRH4yliCtf3ExTDB94G4yVFa6fJREQVcf4C40P2CRslqwycv8FZuU
+	 lR8smvnEDA6i3b3mXLnISUOok7Tm8SFhzWd/PFLcBI8Ecp/Xg20NKE+A7kyDTPN4Sj2Jt
+	 1/0kjcrPyL50WgGyliECNc8QNJCCL+cVo/0fwCx3XXMWoUhSYG9d8A9iw9tLbf0zFt5Dx
+	 opNE0ejxV/VQjF1JUttxiDU6wY8yOQrtDykymbzYZNjVcMV3g9/f6ZLaBwT55l2B9pTeN
+	 O9FcNSlu0v2xqQS9E+EyleBAOCyKMHe4xFYhZL2YvfxRKzcYW3Ikgy4Dtzt/Y1mOdNA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=PNUKJvBb;
-	arc=none smtp.remote-ip=209.85.210.47
-Received: from mail-ot1-f47.google.com (mail-ot1-f47.google.com [209.85.210.47])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hORGslzE;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81D1C606A333
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 20:27:36 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 81D1C606A333
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61131606A324;
+	Thu, 19 Nov 2026 21:33:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=PNUKJvBb
-Received: by mail-ot1-f47.google.com with SMTP id 46e09a7af769-86156cf8a7eso1017490a34.1
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 12:27:36 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1795120055; x=1795724855; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=E2LetXhQvfbCCkGU3P0BXIRfFcIFGuDjezfVP4BBhvo=;
-        b=PNUKJvBb+GRt+1f8M8iBI0WGCojSsZ5BcRhybCTC4y2Xa0lPZCKSgeiJFUBHcMA+8Z
-         52LuC7qZPh2aJhRjyiI4Of201p/gLvP+EGiHGfei0mFyCOYkKZ31tFW2A1tquzo99i7+
-         MVJM/HVnen5HOev+fyxE9zWsNG7VKWkecU1WyCTDa4jWbsWwCBT5nkuXn5zK63bfjAmu
-         JoEcE+LVKidPQ2YmNUdAK2+9wbPwXgF4DRhsnxQgsga6OQCrhrnCL1yP+ssuMfXgSQ2+
-         Win4NDSg3Bj6vful4MvBWofeVY2+bWFarnzXIVM+5m/QhtM+/yTy6XaD1xj16CbFolke
-         3VZQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795120055; x=1795724855;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=E2LetXhQvfbCCkGU3P0BXIRfFcIFGuDjezfVP4BBhvo=;
-        b=XM3SzZHFVxRCbrHRyT8uJGh78/SuVIpNo7zZxaOWu9gV8ZnF/eTtpnwYHsGm8qpbxU
-         Bcew/lRWi/ufgY9iSJDKT/xuzJMcKdJNdFFUUXLdx/9ouLENQXbjEp+uxxTKY6LGKXLl
-         nxqAv+H70KefPE3q8mIeudAlwhdTFwkqVmHPauAd/ZP2KWNIeU+xiv1j5khpIsllQFM2
-         cYf/SwhArOe4xM6imqDjx5Uor3lKnyK3xI0ISWwixP/C8MDXxEdsLogNtZhTRLACLJzw
-         70GWXIHaE0fPy/XIda+/y63EnCt87WQI/dcICBA1VQIonTGB/PmvfdsIlSxwRZddnKFG
-         9lOQ==
-X-Gm-Message-State: APuU4Z+XNY0dNU4arZ+N5SmtpFNwbKaliDtRaw4HT1fojs08h+ZzSk+t
-	jrSJOdIoIFwvghoD//5GD+m/LYdAiQpPhXW3D6yjJyLhfaOsBn0HBTApVN476bF7/j4=
-X-Gm-Gg: AYBFou3JocVSBKUEwbsRNX/K7snxPf+lkM2ApzVUcI0PA9AoLaRSQ9CnSK+CCdkJZ7x
-	pa7IzDXgug//k0s6GD6yIVjy9j7a/Ha13KVzHnr+7DDuAds5We7alAkTIcEEz5x6mysiXQlO/a8
-	WnC/Wt74Iy3QyAC0B8aC6cXHssYbMC3jhccxXwM88wXNpyCbW5+G7SoT/1XVLTjyY1VxcNkSjZp
-	24RUAeyxd/CtjdLAwrVvBD35kfV7Z+HSGg0AqJctlK96VXT3Z3EVqh67NdwLZniMvULrI0quZfX
-	S53PejOiOZCB7tmdAe7vrhHgoLz0doQ0Sk2KTBtLzZjWVOi2Y8kC25k3qqH46YWcPMTNl0scQXe
-	ST8SA9VEWx2j8qzipwEBA6kqsROQ9kSH7uxc6Y/0gY01nt/V1c6P1RilKdNiRquExtYEpFETzHy
-	M3TMTVhXsd8jfbr4Z437dEUMl6XAXhcsGxhYalf5XDXBlQyl+YJ04CeseAGZtt5C1rh8Me8LnDO
-	asCMIqFcweIKNkF17Vea+eujYWsYD2h1+D1jrbDr54pp+x6AgQdfCkF3crBsgNpyAyhUBuUouGR
-	NADqjSZOXs9XWuJSFVKT2HlnLdYgTauAWg/wNMKHsMKrOlGqaij5/ghiZlEVhTTeipJnBjrfnLL
-	5
-X-Received: by 2002:a05:6830:914:b0:862:bc91:d23d with SMTP id 46e09a7af769-863092af562mr2068586a34.30.1795120055284;
-        Thu, 19 Nov 2026 12:27:35 -0800 (PST)
-Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-863168dde05sm506933a34.13.2026.11.19.12.27.34
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 12:27:35 -0800 (PST)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Mike Snitzer <snitzer@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/5] pNFS/flexfiles: use the MDS when the server has no layout to give
-Date: Thu, 19 Nov 2026 15:27:28 -0500
-Message-ID: <352a4bb64288e5ec624b6c06692f5de009f8cda8.1795117974.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1795117974.git.bcodding@hammerspace.com>
-References: <cover.1795117974.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hORGslzE
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 99A711F000C4;
+	Thu, 19 Nov 2026 21:33:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795124001;
+	bh=GntRI6tOBrAhacb25HAQl+V7JQYtYMfqRJJMvNkCZ00=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=hORGslzEfPnglEGYTeGwNMSOmJXFI4vnJPKl7LTQIu6U3OAB+1BJ8zyz54/2JFWHW
+	 8IzcYvIIspyPXWuuG+FVSxX2IKDKG3jeviaS8r1G59Tdpf2dwEh7dHkp4C0VTKzPSp
+	 xU39D1sTcGVRDUoasAYN2hvatrOuWn96/gCU/42hT1Buhv7/slwmOxJnShLEKvlM7T
+	 CR50NyB7flx0PVno5QiHLbPOSICq+5CqndPCX9A4MQ9hjHCY85q1TH1iMymhLUIfEu
+	 ic2rwg1eefJHL/yIOoMC3TgbyajVZsyb9WmJpYFEP68IBaq9Xax9q173rS+QAZjUNw
+	 AmTrz8Xdrv+Rg==
+Message-ID: <b4c8f20fd76086323f20ce2095d6aa116bbf1d3e.camel@kernel.org>
+Subject: Re: [PATCH 2/2] nfsd: enforce cross-export and may_linkat() checks
+ in nfsd_link()
+From: Jeff Layton <jlayton@kernel.org>
+To: Dominik Maier <dmnk@google.com>, Chuck Lever <cel@kernel.org>, Christian
+ Brauner <brauner@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Jan Kara <jack@suse.cz>, NeilBrown <neil@brown.name>, Olga Kornievskaia	
+ <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
+ <tom@talpey.com>, 	linux-nfs@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, dmnk+artist@google.com
+Date: Thu, 19 Nov 2026 13:33:20 -0800
+In-Reply-To: <20261119192311.2684978-2-dmnk@google.com>
+References: <20261119192311.2684978-1-dmnk@google.com>
+	 <20261119192311.2684978-2-dmnk@google.com>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-3.fc44) 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,219 +140,129 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-From: Benjamin Coddington <bcodding@hammerspace.com>
+On Thu, 2026-11-19 at 20:23 +0100, Dominik Maier wrote:
+> nfsd_link() verifies NFSD_MAY_CREATE on the destination directory
+> filehandle (ffhp) and NFSD_MAY_NOP on the source filehandle (tfhp)
+> before calling vfs_link() directly, omitting two checks enforced
+> elsewhere:
+>=20
+> 1. Unlike nfsd_rename(), nfsd_link() does not verify that the source and
+>    destination filehandles belong to the same export path. In addition,
+>    because tfhp is verified second with NFSD_MAY_NOP, if two distinct
+>    svc_export entries share ex_path with different read-only or UID
+>    squashing options, fh_verify(tfhp, NFSD_MAY_NOP) skips exp_rdonly()
+>    and leaves current_cred() set to tfhp->fh_export's credentials.
+> 2. Unlike filename_linkat(), nfsd_link() does not call may_linkat()
+>    before vfs_link(), allowing remote NFSv3 and NFSv4 clients to bypass
+>    fs.protected_hardlinks restrictions and hardlink non-owned restricted
+>    files.
+>=20
+> Require ffhp->fh_export->ex_path and tfhp->fh_export->ex_path to match
+> (returning nfserr_xdev on mismatch, matching nfsd_rename()). When
+> ffhp->fh_export and tfhp->fh_export differ on the same ex_path, reject
+> read-only source exports via exp_rdonly() with nfserr_rofs and restore
+> ffhp->fh_export credentials via nfsd_setuser(). Finally, check
+> may_linkat() before proceeding with the link, mapping -EOVERFLOW on
+> unmapped inode IDs to nfserr_perm to match vfs_link().
+>=20
+> This issue was discovered by an AI-assisted code review tool (ARTIST)
+> and validated in QEMU against an unmodified v7.4-rc3 kernel without
+> kernel modifications or error injection. A standalone reproducer is
+> available on request. The fix was build-tested with KCFLAGS=3D-Werror and
+> checked with checkpatch.pl --strict.
+>=20
+> Fixes: 800179c9b8a1 ("fs: add link restrictions")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Dominik Maier <dmnk@google.com>
+> ---
+>  fs/nfsd/vfs.c | 34 +++++++++++++++++++++++++++++-----
+>  1 file changed, 29 insertions(+), 5 deletions(-)
+>=20
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 56c49b5..0c4e052 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -45,6 +45,7 @@
+>  #include "netns.h"
+>  #include "stats.h"
+>  #include "vfs.h"
+> +#include "auth.h"
+>  #include "filecache.h"
+>  #include "trace.h"
+> =20
+> @@ -1993,6 +1994,11 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh=
+ *fhp,
+>  	return err;
+>  }
+> =20
+> +static int exp_rdonly(struct svc_cred *cred, struct svc_export *exp)
+> +{
+> +	return nfsexp_flags(cred, exp) & NFSEXP_READONLY;
+> +}
+> +
+>  /**
+>   * nfsd_link - create a link
+>   * @rqstp: RPC transaction context
+> @@ -2011,6 +2017,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ff=
+hp,
+>  {
+>  	struct dentry	*ddir, *dnew, *dold;
+>  	struct inode	*dirp;
+> +	struct path	old_path;
+>  	int		type;
+>  	__be32		err;
+>  	int		host_err;
+> @@ -2032,6 +2039,28 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *f=
+fhp,
+>  	err =3D nfserr_exist;
+>  	if (name_is_dot_dotdot(name, len))
+>  		goto out;
+> +	err =3D nfserr_xdev;
+> +	if (!path_equal(&ffhp->fh_export->ex_path, &tfhp->fh_export->ex_path))
+> +		goto out;
+> +	if (ffhp->fh_export !=3D tfhp->fh_export) {
+> +		if (exp_rdonly(&rqstp->rq_cred, tfhp->fh_export)) {
+> +			err =3D nfserr_rofs;
+> +			goto out;
+> +		}
+> +		host_err =3D nfsd_setuser(&rqstp->rq_cred, ffhp->fh_export);
+> +		if (host_err) {
+> +			err =3D nfserrno(host_err);
+> +			goto out;
+> +		}
+> +	}
+> +
+> +	old_path.mnt =3D tfhp->fh_export->ex_path.mnt;
+> +	old_path.dentry =3D tfhp->fh_dentry;
+> +	host_err =3D may_linkat(&nop_mnt_idmap, &old_path);
+> +	if (host_err) {
+> +		err =3D host_err =3D=3D -EOVERFLOW ? nfserr_perm : nfserrno(host_err);
+> +		goto out;
+> +	}
+> =20
+>  	err =3D nfs_ok;
+>  	type =3D d_inode(tfhp->fh_dentry)->i_mode & S_IFMT;
+> @@ -2592,11 +2621,6 @@ nfsd_statfs(struct svc_rqst *rqstp, struct svc_fh =
+*fhp, struct kstatfs *stat, in
+>  	return err;
+>  }
+> =20
+> -static int exp_rdonly(struct svc_cred *cred, struct svc_export *exp)
+> -{
+> -	return nfsexp_flags(cred, exp) & NFSEXP_READONLY;
+> -}
+> -
+>  #ifdef CONFIG_NFSD_V4
+>  /*
+>   * Helper function to translate error numbers. In the case of xattr oper=
+ations,
 
-When LAYOUTGET fails with NFS4ERR_LAYOUTUNAVAILABLE, or with
-NFS4ERR_TOOSMALL after the retry at the session's maximum reply size,
-pnfs_update_layout() sets the layout's fail bit for that iomode and
-returns no layout without sending another LAYOUTGET for the next 120
-seconds.  If the file's layouts carried FF_FLAGS_NO_IO_THRU_MDS, reads
-and writes wait for a layout the whole time, and then send a LAYOUTGET
-that can fail the same way.  On a hard mount that repeats for as long
-as the server keeps answering that way.
+Looks sane, but sashiko has a comment on this about the credentials
+being used:
 
-RFC 8435 says that after NFS4ERR_LAYOUTUNAVAILABLE "the I/O is to go to
-the metadata server" (section 5.1.1), and that FF_FLAGS_NO_IO_THRU_MDS
-is a hint (section 5.1.2).  Send the I/O through the MDS while the fail
-bit is set, in ff_layout_inode_no_fallback_to_mds(), which reads,
-writes and the resend after a data server error share.  This also lets
-a server deal with a data server the client can't use: the client
-reports the failure with LAYOUTERROR (or in LAYOUTRETURN) and returns
-the layout, and the server can answer the next LAYOUTGET with
-NFS4ERR_LAYOUTUNAVAILABLE.
+https://sashiko.dev/#/patchset/20261119192311.2684978-1-dmnk%40google.com
 
-Fixes: 2f007ba074ad ("pNFS/flexfiles: don't read through MDS when previous layout forbid it")
-Fixes: 1d62e659c0bf ("NFSv4/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS in pg_get_mirror_count_write")
-Fixes: ec906cf7bee6 ("pNFS/flexfiles: don't reset to MDS for v4 error when previous layout forbid it")
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 40 +++++++++++++++-----------
- fs/nfs/internal.h                      |  6 ++--
- fs/nfs/pnfs.c                          | 22 ++++++++++++++
- fs/nfs/pnfs.h                          |  1 +
- 4 files changed, 50 insertions(+), 19 deletions(-)
-
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 784070cd5a84..85ee1b8aac3f 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -980,10 +980,14 @@ static bool ff_layout_pg_retry_wait(struct nfs_pageio_descriptor *pgio)
- 
- /*
-  * Returns true if the inode's layouts forbid I/O through the MDS.
-+ * FF_FLAGS_NO_IO_THRU_MDS is a hint (RFC 8435, section 5.1.2), so set it
-+ * aside while a failed LAYOUTGET for @iomode (NFS4ERR_LAYOUTUNAVAILABLE or
-+ * NFS4ERR_TOOSMALL) keeps pnfs_update_layout() from sending another.
-  */
- static bool ff_layout_inode_no_fallback_to_mds(struct inode *inode, u32 iomode)
- {
--	return nfs_no_io_thru_mds(inode);
-+	return nfs_no_io_thru_mds(inode) &&
-+	       !pnfs_layout_get_failed(inode, iomode);
- }
- 
- /*
-@@ -1141,13 +1145,12 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 	}
- 	/*
- 	 * No segment, and no error to report either: pnfs_update_layout()
--	 * simply has nothing to give (NFS_LAYOUT_BULK_RECALL, a failed
--	 * pnfs_layout_io_test, blocked LAYOUTGETs, a layout being
--	 * returned).  If the server forbids reading this file through the
--	 * MDS there is no fallback to take, so wait for a layout on the
--	 * same terms as the -EAGAIN above.  The layout hdr that carried
--	 * FF_FLAGS_NO_IO_THRU_MDS may itself be gone by now, which is why
--	 * the flag is kept on the inode.
-+	 * simply has nothing to give (NFS_LAYOUT_BULK_RECALL, blocked
-+	 * LAYOUTGETs, a layout being returned).  If the server forbids
-+	 * reading this file through the MDS there is no fallback to take,
-+	 * so wait for a layout on the same terms as the -EAGAIN above.  The
-+	 * layout hdr that carried FF_FLAGS_NO_IO_THRU_MDS may itself be
-+	 * gone by now, which is why the flag is kept on the inode.
- 	 */
- 	if (!ff_layout_inode_no_fallback_to_mds(pgio->pg_inode, IOMODE_READ))
- 		goto out_mds;
-@@ -1412,7 +1415,8 @@ static int ff_layout_async_handle_error_v4(struct rpc_task *task,
- 					   struct nfs4_state *state,
- 					   struct nfs_client *clp,
- 					   struct pnfs_layout_segment *lseg,
--					   struct nfs4_deviceid_node *devid)
-+					   struct nfs4_deviceid_node *devid,
-+					   u32 iomode)
- {
- 	struct pnfs_layout_hdr *lo = lseg->pls_layout;
- 	struct inode *inode = lo->plh_inode;
-@@ -1501,8 +1505,9 @@ static int ff_layout_async_handle_error_v4(struct rpc_task *task,
- 		return -NFS4ERR_RESET_TO_PNFS;
- reset:
- 	/*
--	 * FF_FLAGS_NO_IO_THRU_MDS: never resend through the MDS.  The
--	 * caller would do so with force_mds set (ff_layout_reset_read(),
-+	 * FF_FLAGS_NO_IO_THRU_MDS: don't resend through the MDS (see
-+	 * ff_layout_inode_no_fallback_to_mds()).  The caller would do so
-+	 * with force_mds set (ff_layout_reset_read(),
- 	 * ff_layout_reset_write(hdr, false) -> pnfs_*_done_resend_to_mds()),
- 	 * which builds a descriptor out of the plain MDS page ops and so
- 	 * consults no layout at all -- this is the last point at which the
-@@ -1512,7 +1517,7 @@ static int ff_layout_async_handle_error_v4(struct rpc_task *task,
- 	 * pnfs_destroy_layout().  Having done so they can no longer ask the
- 	 * layout hdr about the flag, hence the inode.
- 	 */
--	if (nfs_no_io_thru_mds(inode)) {
-+	if (ff_layout_inode_no_fallback_to_mds(inode, iomode)) {
- 		dprintk("%s Retry through pNFS, no MDS fallback. Error %d\n",
- 			__func__, task->tk_status);
- 		return -NFS4ERR_RESET_TO_PNFS;
-@@ -1597,7 +1602,8 @@ static int ff_layout_async_handle_error(struct rpc_task *task,
- 					struct nfs4_state *state,
- 					struct nfs_client *clp,
- 					struct pnfs_layout_segment *lseg,
--					struct nfs4_deviceid_node *devid)
-+					struct nfs4_deviceid_node *devid,
-+					u32 iomode)
- {
- 	int vers = clp->cl_nfs_mod->rpc_vers->number;
- 
-@@ -1617,7 +1623,7 @@ static int ff_layout_async_handle_error(struct rpc_task *task,
- 						       lseg, devid);
- 	case 4:
- 		return ff_layout_async_handle_error_v4(task, op_status, state,
--						       clp, lseg, devid);
-+						       clp, lseg, devid, iomode);
- 	default:
- 		/* should never happen */
- 		WARN_ON_ONCE(1);
-@@ -1751,7 +1757,7 @@ static int ff_layout_read_done_cb(struct rpc_task *task,
- 	err = ff_layout_async_handle_error(task, hdr->res.op_status,
- 					   hdr->args.context->state,
- 					   hdr->ds_clp, hdr->lseg,
--					   hdr->ds_dev);
-+					   hdr->ds_dev, IOMODE_READ);
- 
- 	trace_nfs4_pnfs_read(hdr, err);
- 	clear_bit(NFS_IOHDR_RESEND_PNFS, &hdr->flags);
-@@ -1961,7 +1967,7 @@ static int ff_layout_write_done_cb(struct rpc_task *task,
- 	err = ff_layout_async_handle_error(task, hdr->res.op_status,
- 					   hdr->args.context->state,
- 					   hdr->ds_clp, hdr->lseg,
--					   hdr->ds_dev);
-+					   hdr->ds_dev, IOMODE_RW);
- 
- 	trace_nfs4_pnfs_write(hdr, err);
- 	clear_bit(NFS_IOHDR_RESEND_PNFS, &hdr->flags);
-@@ -2013,7 +2019,7 @@ static int ff_layout_commit_done_cb(struct rpc_task *task,
- 
- 	err = ff_layout_async_handle_error(task, data->res.op_status,
- 					   NULL, data->ds_clp, data->lseg,
--					   data->ds_dev);
-+					   data->ds_dev, IOMODE_RW);
- 
- 	trace_nfs4_pnfs_commit_ds(data, err);
- 	switch (err) {
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9819c4db3d85..bcbb5996c55c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -558,8 +558,10 @@ static inline bool nfs_file_io_is_buffered(struct nfs_inode *nfsi)
-  * thing pnfs_within_mdsthreshold() can ask for is the one thing the
-  * layout forbids.  Flexfiles also retries reads and writes that have no
-  * layout segment instead of sending them through the MDS, except
-- * writeback of a single locked folio (pg_allow_mds).  Servers are
-- * assumed to be consistent in their no-fallback policy per file.
-+ * writeback of a single locked folio (pg_allow_mds), and unless a
-+ * LAYOUTGET for that iomode has failed with NFS4ERR_LAYOUTUNAVAILABLE or
-+ * NFS4ERR_TOOSMALL.  Servers are assumed to be consistent in their
-+ * no-fallback policy per file.
-  */
- #define NFS_INO_NO_IO_THRU_MDS	(30)
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 14f4a4b12ffd..582fe81fc2d1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -551,6 +551,28 @@ pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
- 	return true;
- }
- 
-+/*
-+ * Returns true if a LAYOUTGET for @iomode failed with an error, such as
-+ * NFS4ERR_LAYOUTUNAVAILABLE, in the last PNFS_LAYOUTGET_RETRY_TIMEOUT.
-+ * pnfs_layout_io_test_failed() clears an expired fail bit only when
-+ * pnfs_update_layout() gets that far, so check the time here too.
-+ */
-+bool pnfs_layout_get_failed(struct inode *inode, u32 iomode)
-+{
-+	struct pnfs_layout_hdr *lo;
-+	unsigned long now = jiffies;
-+	bool ret = false;
-+
-+	spin_lock(&inode->i_lock);
-+	lo = NFS_I(inode)->layout;
-+	if (lo && test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags))
-+		ret = time_in_range(lo->plh_retry_timestamp,
-+				    now - PNFS_LAYOUTGET_RETRY_TIMEOUT, now);
-+	spin_unlock(&inode->i_lock);
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(pnfs_layout_get_failed);
-+
- static void
- pnfs_init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg,
- 		const struct pnfs_layout_range *range,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2774d4adf4c3..0007a4ca3da9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -296,6 +296,7 @@ int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
- size_t pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio,
- 			    struct nfs_page *prev, struct nfs_page *req);
- void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
-+bool pnfs_layout_get_failed(struct inode *inode, u32 iomode);
- struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_layoutget_free(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
--- 
-2.53.0
-
+Sounds like this may require 2 may_linkat() checks?
+--=20
+Jeff Layton <jlayton@kernel.org>
