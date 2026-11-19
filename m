@@ -1,93 +1,133 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.42
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795124465;
-	b=4Owx48C22IGB1lBjc15GBI8zbiOROP2G325ZWDKzTwkG0lNH9C9h2uXQNsV0NDJ5/Wv4
-	 Pen+jkgIHrRHA6nqcFR/n6Lewzy5Dif5zB46Bybvg/ZAyegx9BcWU0ndi7P3ckf75gv+3
-	 UdTGA5RVmcokt12WSemknD8a+2Ywlb77kZzgfzkC08fI7BpjJ2dnyCbyBIy2T2fY43HXH
-	 KwkGvam59uUAfaqlqdmfZhgSk09YfPBpumTQRXPASoKK3SCroxaepmZ5yR5IBPMLcaDnB
-	 p0HvvRYEzbD9tZ0ROTwUf3W36OK75wnKxoEmifR2wnRrhKSzoJoLsCO42bCbMNa1Tfg==
+	t=1795124540;
+	b=F0hBh4HCk500mnzq1FRV3CjpJrjakdRQj7jtkTtM4VbqV3k4qDcsT02OE2/Izi6J/Pmh
+	 bnljDPBU69qGPYQAI1tRQ8gD73Im0KkRY9hliinTdfVy/HmLWXh65A83FcA4F8EFb3uWq
+	 XNobdeoDgfzC8RUNPdQDpAeAX50pIK3HG9JGqBsAM7d9qpe+cELCX5RHLJL/iUTv8krT9
+	 6Sl6OxVKo+DWPTsxtEtbmuXB8DkycO93iGaI3ItDN0vrvnLsVDwhlJZYVyahu8ZrOHzH+
+	 rNRWAfDb3i09zDyWipr6LhJnkkEREJlvIoaYiveyby1ttPhWnj+IcS27EogKmaxWfJg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795124465;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:
-	 X-Google-Original-From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Transfer-Encoding;
-	bh=GfhNxDcLM+wiYA5mIHDmmk4xPrxriBFxLTmRavpWgMI=;
-	b=St0rH3nNOnyKSP/sI0nl8jFPHpK/jMD7VsvVarywY3L7BL0DRdFumCzzAIO7m1DOh4LS
-	 +j0MI0KNFfeu1PYMAH2Eb5cu8z6ChuV7F9VdgXlEe4143S9YzeGfXfPNKnPsW2LMnw870
-	 F+gWzZFM9D64qOnS7t0WxlfMVf5fnzNPVxsJE2skfZ1zLBqOZ98pbeDww6DaSnJchw6Yj
-	 0mhKagKF4CXn5LJCl27FDTNu4WSaaJalsnfxZJy4ABHfS2agBzwi0e+8FTlg0ZvwKqbld
-	 aDbV+Eue/WJ6ZFkQPWQU+tBfroOYL5XGrfJa2+LAIawAS8/z2Q8iv3iOoF+ly2Nq9yA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795124540;
+	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
+	 In-Reply-To:References:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=CDCf9TfG+CaO/g2AR70iueskKVq+2RjIoYyrci6cuFo=;
+	b=3CTHNdhPVfUIniDd5PHu06qTNOFRtK87/5fPaGO4uEhA8+xVtHCvpg3D8Z2Jya7YS7y/
+	 f9HYUQz+3HE7vDp7A9lKdoPbyJ/5FAn6kbGF8jyoy351g6JsIO0i9ZUuVsG80Zu7R7Rht
+	 RBH5g6wBIF6VRcvLE2a9k84I28EJBVo934purvLHt4o7qosiSy7UlzxixYFOD/WHYyO/L
+	 cZlgAG6jIIT096P5t/9rb9aDJz8KV40baMg0Qy/6zEZQ7dGcFUeZQL19T3pCyFnwrjmgM
+	 5+IUjAttowCxO3Lix0Ks3uL5P/QaEDSBTLNCqK9DcyuOXp6FN+7kWyFZFKmKpnEBHOA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=hammerspace.com;
-	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=bS5ioln5;
-	arc=none smtp.remote-ip=209.85.161.42
-Received: from mail-oo1-f42.google.com (mail-oo1-f42.google.com [209.85.161.42])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RuGdXP1a;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56A05606A332
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:41:05 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 56A05606A332
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5CEEA606A32A
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:42:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=bS5ioln5
-Received: by mail-oo1-f42.google.com with SMTP id 006d021491bc7-71acdd32a53so91432eaf.3
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 13:41:05 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1795124464; x=1795729264; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=GfhNxDcLM+wiYA5mIHDmmk4xPrxriBFxLTmRavpWgMI=;
-        b=bS5ioln5jMR3Mml4B741R7PNgDkJn/NqxZjM8v1MBKmrp20fQZUiNI1Jpy13UnG2TH
-         TfxjceReQ9rXRPSBDmtn1GoncKDhVF5bI5JgK9FWSb7ez9BKTHL3fAQRSi9T6T8+CLNR
-         UzstoUWJEntxNBoc3c8s0w4lMpluNKa08pUIC7CBfwfvUI1StHASi5BI8y5l/KxSJkNG
-         /a8ZZ5xUiSqAO+VyH958KPNTDGGkIGLtClAX7AKSq9gGf0qdWrD3B5z1/ZXZheQjhvl/
-         JUsPwUbEN83+u6mKUZH5/ADzWCX8N3c32CXULuP4ma8ZSbFznZR9vxyHt0XLIxU6sM9K
-         WD8w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795124464; x=1795729264;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=GfhNxDcLM+wiYA5mIHDmmk4xPrxriBFxLTmRavpWgMI=;
-        b=pO/RzWbJNA5p6FkT7Hcf91LeHjRIBeJuAUSbMZ+713peZbsjiCj3Jcxgfc23HZRFmD
-         p0NaTxABAtlAEW4N0SfEm2mRmQ9BhOUTdmujrfD3pzNmMYwEczGJp4aqDudVXxErdAYR
-         p3V8VujY4AFzBGBYc0NDfF0gks08rJ7sRwImvU2pXRhICrYYKwmeJaRX/xkiCBhAIf8e
-         Z9f8YqZ4muJZd1i/68aC8bPEToGXGkE+ejfDiNb7mcV/TGn8NVMqpJyj+D/Uobw6qDVR
-         Evdn7XfvfkvN8Y3bCfaLOB4qTsVa6vrm3PQSwaEUpkGNJR7w7wvzvYTvggKjONr64zxd
-         w59g==
-X-Gm-Message-State: APuU4Z9H3JHiHOG1qUHvdSTFa7Fd94/OZ/u9zgkFlRWg3BMCbwY5UwC7
-	vtTHmY5pSsQrnsXxtSingrdb3GHh5BpR2VSJSzJ5LUYWNE+Gq9QthgJj6/v72azp5txv+2tmUDS
-	hZf6r
-X-Gm-Gg: AYBFou0WaAILUMw9to+DsA2oy+A3U6gsK6x5aOjEmgoaDcZBlcLpqrw3fJfbFGk7VGJ
-	2eRvXV5+BozJk4lm3xGzWZ0U8m1ZQ45nNRIQN7YcOLBEnGiOKjid9/FT4J2Mb49SYdwFl9HQaHv
-	FIVP+hzx/DTIT6noMpcazafBvRL5NFAtg+XrEzTqmEpyIOrMmRzpgAvGUbPjA2sVw4QAK/b1vZW
-	id5Tur+pmSyPNeEj0qkzJeQtlEyuqbnY/FUeCZDPLSXsfDrlFTZt0t6sPc5tcrPZGB+fAUN8sBW
-	xJZAQaUPpkXEZ6in+VxkgXO2DPjPkRLrNiXK4fyfmmRt0b9H9xowqvtrTRj39shrg2XTdqBkQ7P
-	6pB8g87PupnUbVibdiUwRiLL44TFheiloD/RIOtG/d1wq8Ahutbzhqcp7EWR7yE2gCbHKHhIOPD
-	xQGqXg0+zIwJYGXsR5Cp6S724EpQ2EU6ISQY7Qbi3XcCsatVPDtRzPszatvAH2O6KoMrudqCesy
-	zToXO6OQMAVYazXpMzawE4whM9fK/7iz48MBv36aBkRiwFThKyplZBNT4w5w8gPr734OMsh2E9T
-	JhHvP9vB9nmTLTvZBKAYtL5bwZE6scd9TeEcaZjcL/NpWlcZPW0SiBitM2Gy4PRPDHXS
-X-Received: by 2002:a05:6820:a788:b0:6d9:8a4a:7114 with SMTP id 006d021491bc7-71b394b85femr802260eaf.48.1795124464038;
-        Thu, 19 Nov 2026 13:41:04 -0800 (PST)
-Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-8631670c44dsm642217a34.0.2026.11.19.13.41.03
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 13:41:03 -0800 (PST)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: calum.mackay@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH pynfs 2/2] rpc: fail pending calls when a connection closes
-Date: Thu, 19 Nov 2026 16:41:00 -0500
-Message-ID: <321bafdaeb10b06827a352043556600197b49ad6.1795124374.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1795124374.git.bcodding@hammerspace.com>
-References: <cover.1795124374.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RuGdXP1a
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A66A71F000C6;
+	Thu, 19 Nov 2026 21:42:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795124539;
+	bh=CDCf9TfG+CaO/g2AR70iueskKVq+2RjIoYyrci6cuFo=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=RuGdXP1aF+6ROs9hCvAOChI4VSiEt4a3ebd5Ns0rIXUogXQaJbRIgcavLjTXekExB
+	 zniBpvRkzek9mjWsSyyt5J33YinDo/L/bQzwsdVGfJchQ3V67uhXV+Jdwec2qJerL9
+	 hOGziX40gkldTtFM6cMV0m90jyHkwq8yQ331RuR2aKsogPDKLBFSLw/xu7D/q4xBTx
+	 CH+cLY8fgK1E1e/ao/NFcywhG5u0AKp4BqCPkUzrMdledI6PayhnCquLss4HnovfbR
+	 sUKuNwuqLA8VtXKUSgFTDeEVlqu3fhdnK300432lehVlh4eaNZImExoiRF4A+s2Vzr
+	 39xtED2k8SvLg==
+Message-ID: <5039f48347ea0f9e3aee411604c6f9cf95c29481.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: enforce export checks in nfsd4_restorefh() and
+ nfs4_check_file()
+From: Jeff Layton <jlayton@kernel.org>
+To: Dominik Maier <dmnk@google.com>, Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org, 	dmnk+artist@google.com
+Date: Thu, 19 Nov 2026 13:42:19 -0800
+In-Reply-To: <20261119192331.2695154-1-dmnk@google.com>
+References: <20261119192331.2695154-1-dmnk@google.com>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-3.fc44) 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -97,143 +137,96 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-When the server closed a connection, _event_close() closed the pipe
-but left callers waiting on replies until their timeout. A later call
-on that pipe made _buzz_write_ready() add the closed socket's fileno()
-of -1 to the write list, and select() raised ValueError, killing the
-polling thread. Every call and connect after that hung until timeout.
+On Thu, 2026-11-19 at 20:23 +0100, Dominik Maier wrote:
+> When an NFSv4 compound saves a filehandle from a UID-squashed export
+> (all_squash or root_squash), switches current_fh to an unsquashed export
+> via PUTFH, and then restores the saved filehandle via RESTOREFH,
+> nfsd4_restorefh() duplicates save_fh back into current_fh without
+> recomputing the worker thread's subjective credentials via
+> nfsd_setuser().
+>=20
+> In addition, when nfs4_check_file() finds a cached nfsd_file on a
+> stateid, it calls nfsd_permission() directly instead of running
+> fh_verify() for fhp (unlike the uncached nfsd_file_acquire() path).
+> Because PUTFH and SAVEFH defer security-flavor checks via
+> OP_HANDLES_WRONGSEC, both post-RESTOREFH operations and cross-export
+> COPY/CLONE operations (via nfsd4_verify_copy()) can skip nfsd_setuser(),
+> check_xprtsec_policy(), check_security_flavor(), and originating-port
+> checks on the cached-file fast path. While nfsd4_restorefh() has omitted
+> credential restoration since early NFSv4 compound support,
+> nfs4_check_file() and commit b7342204253a ("NFSD check stateids against
+> copy stateids") expanded cached-stateid checks that bypass fh_verify().
+>=20
+> Call nfsd_setuser() when restoring save_fh in nfsd4_restorefh()
+> (preserving deferred OP_IS_PUTFH_LIKE WRONGSEC handling) and call
+> fh_verify() on the cached-file branch in nfs4_check_file() to match the
+> uncached branch.
+>=20
+> This issue was discovered by an AI-assisted code review tool (ARTIST)
+> and validated in QEMU against an unmodified v7.4-rc3 kernel without
+> kernel modifications or error injection. A standalone reproducer is
+> available on request. The fix was build-tested with KCFLAGS=3D-Werror and
+> checked with checkpatch.pl --strict.
+>=20
+> Fixes: b7342204253a ("NFSD check stateids against copy stateids")
 
-Add RPCConnectionClosed. On close, mark the pipe inactive and fail its
-pending calls with it. send_call() raises it on an inactive pipe, and
-_buzz_write_ready() drops records for one. DeferredData.fill() now
-ignores fills after the first, so a reply that arrives during close is
-not overwritten.
+nit: Sashiko says the Fixes: tag may be wrong.
 
-In the polling loop, skip fds closed earlier in the same pass, and log
-alarm command errors instead of closing the alarm socket.
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Dominik Maier <dmnk@google.com>
+> ---
+>  fs/nfsd/nfs4proc.c  | 9 +++++++++
+>  fs/nfsd/nfs4state.c | 4 +---
+>  2 files changed, 10 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 3a82af3..1e7abe5 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -49,6 +49,7 @@
+>  #include "xdr4.h"
+>  #include "nfs4ctl.h"
+>  #include "vfs.h"
+> +#include "auth.h"
+>  #include "current_stateid.h"
+>  #include "netns.h"
+>  #include "acl.h"
+> @@ -847,9 +848,17 @@ static __be32
+>  nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cst=
+ate,
+>  		union nfsd4_op_u *u)
+>  {
+> +	int err;
+> +
+>  	if (!cstate->save_fh.fh_dentry)
+>  		return nfserr_restorefh;
+> =20
+> +	if (cstate->save_fh.fh_export) {
+> +		err =3D nfsd_setuser(&rqstp->rq_cred, cstate->save_fh.fh_export);
+> +		if (err)
+> +			return nfserrno(err);
+> +	}
+> +
+>  	fh_dup2(&cstate->current_fh, &cstate->save_fh);
+>  	if (HAS_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG)) {
+>  		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid=
+_t));
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 567a856..8e5c3ca 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -8434,9 +8434,7 @@ nfs4_check_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp, struct nfs4_stid *s,
+> =20
+>  	nf =3D nfs4_find_file(s, flags);
+>  	if (nf) {
+> -		status =3D nfsd_permission(&rqstp->rq_cred,
+> -					 fhp->fh_export, fhp->fh_dentry,
+> -				acc | NFSD_MAY_OWNER_OVERRIDE);
+> +		status =3D fh_verify(rqstp, fhp, 0, acc | NFSD_MAY_OWNER_OVERRIDE);
+>  		if (status) {
+>  			nfsd_file_put(nf);
+>  			goto out;
 
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
----
- rpc/rpc.py | 42 +++++++++++++++++++++++++++++++++++-------
- 1 file changed, 35 insertions(+), 7 deletions(-)
-
-diff --git a/rpc/rpc.py b/rpc/rpc.py
-index 4d0cc2d01a20..a7a053262d06 100644
---- a/rpc/rpc.py
-+++ b/rpc/rpc.py
-@@ -34,6 +34,9 @@ class RPCError(Exception):
- class RPCTimeout(RPCError):
-     pass
- 
-+class RPCConnectionClosed(RPCError):
-+    pass
-+
- class RPCAcceptError(RPCError):
-     def __init__(self, a):
-         self.verf = a.verf
-@@ -141,6 +144,7 @@ class DeferredData(object):
-     """
-     def __init__(self, msg=None):
-         self._filled = threading.Event()
-+        self._lock = threading.Lock()
-         self.data = None
-         self._exception = None
-         self.msg = msg # Data that thread calling fill might need
-@@ -157,10 +161,14 @@ class DeferredData(object):
-         """Fill with data, and flag that this has been done.
- 
-         Caller should no longer reference the object afterwards.
-+        Only the first fill takes effect.
-         """
--        self._exception = exception
--        self.data = data
--        self._filled.set()
-+        with self._lock:
-+            if self._filled.is_set():
-+                return
-+            self._exception = exception
-+            self.data = data
-+            self._filled.set()
- 
- class Alarm(object):
-     """A method of notifying select loop that there is data waiting"""
-@@ -370,6 +378,14 @@ class RpcPipe(Pipe):
-     def is_active(self):
-         return self._active
- 
-+    def fail_pending(self, exc):
-+        """Mark pipe closed and fail every call still waiting on a reply."""
-+        with self._lock:
-+            self._active = False
-+            pending = list(self._pending.values())
-+        for defer in pending:
-+            defer.fill(exception=exc)
-+
-     def listen(self, xid, timeout=None):
-         """Wait for a reply to a CALL."""
-         self._pending[xid].wait(timeout)
-@@ -400,7 +416,10 @@ class RpcPipe(Pipe):
-         msg = rpc_msg(xid, rpc_msg_body(CALL, body))
-         data = sec.secure_data(cred, data)
-         # Store info needed be receiving thread to match and verify reply
--        self._pending[xid] = DeferredData((cred, sec))
-+        with self._lock:
-+            if not self._active:
-+                raise RPCConnectionClosed("connection closed")
-+            self._pending[xid] = DeferredData((cred, sec))
-         self.rpc_send(msg, data)
-         return xid
- 
-@@ -477,6 +496,9 @@ class ConnectionHandler(object):
- 
-     def _buzz_write_ready(self, pipe):
-         """Pipe has data ready to be sent out"""
-+        if not pipe.is_active():
-+            # Closed by _event_close(); its fileno() is now -1
-+            return
-         pipe.pop_record(self.wsize)
-         self.writelist.add(pipe.fileno())
- 
-@@ -512,11 +534,16 @@ class ConnectionHandler(object):
-                 log_p.warn(1, "polling error from %i" % fd)
-                 # STUB - now what?
-             for fd in w:
-+                if fd not in self.sockets:
-+                    continue
-                 try:
-                     self._event_write(fd)
-                 except socket.error as e:
-                     self._event_close(fd)
-             for fd in r:
-+                if fd not in self.sockets:
-+                    # Closed earlier in this pass
-+                    continue
-                 if fd in self.listeners:
-                     try:
-                         self._event_connect_incoming(fd)
-@@ -529,7 +556,7 @@ class ConnectionHandler(object):
-                         try:
-                             switch[c](data)
-                         except socket.error as e:
--                            self._event_close(fd)
-+                            log_p.error("alarm command %i failed: %s" % (c, e))
-                 else:
-                     try:
-                         data = self.sockets[fd].recv_records(self.rsize)
-@@ -578,8 +605,9 @@ class ConnectionHandler(object):
-         self.writelist -= temp
-         self.readlist -= temp
-         self.errlist -= temp
--        self.sockets[fd].clear_active()
--        self.sockets[fd].close()
-+        pipe = self.sockets[fd]
-+        pipe.fail_pending(RPCConnectionClosed("connection closed"))
-+        pipe.close()
-         del self.sockets[fd]
- 
-     def _event_write(self, fd):
--- 
-2.53.0
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
