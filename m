@@ -1,121 +1,106 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795090693;
-	b=24ncxs2JVIKCOFS2yquuWe+p5es+YoYs2DeyEAoo7Kgo0N/VKq/uSgUcWRV093zavR0I
-	 o+u3LWfbsosbZynXAahvshIO3+db3KyKIXaOJvq6Akq8j/jXV3d6XLL67Vi9+//ZQ+Tmy
-	 asutVRM1Gi/VqQUQAUGGs1jLa381gxN2XlckxJU0kJBzXcJ6d3aWXhXOtsvB3zn9hmeP8
-	 V3UQrS2JzjYE5XNx+9Nf+UHdZTRxI/GSVC/7YG526B0f9C4Qnhv0NrKlOnYWFnJreV520
-	 Mna3n/Sr7f+93vlOYG5ayKIiOlYO+6O0In1tIM67X3q5Lyl0zBFwPKX26PGfgW8COmA==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795090693;
-	h=DMARC-Filter:DKIM-Signature:Received:X-MC-Unique:
-	 X-Mimecast-MFC-AGG-ID:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 X-Received:MIME-Version:References:In-Reply-To:From:Date:
-	 X-Gm-Features:Message-ID:Subject:To:Cc:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=gqZVLpTgCP2ySw8awFBFsKWriU/az/ZtPImm1nmYhzQ=;
-	b=xQFMIGjdHKqpBW/W9KCw+WZJs8LDsw8jdNsQ2N67jCZAmLuDCXCA5y8Iop4QsnNhmbyw
-	 3XUWKqVQQ/Z64Go1u/O6LTjPu6fAnqJ8zqfNLSaZYTRMx3Y/e7g36OBncyG8pApoAf/oZ
-	 s+WIprwb3E6fnGrNQACRYrwLnozEcsx1plYshe3SRUfaWpPkMZg2+jMkNWe4WqA6UpSNM
-	 Eg3/GEcUXbr7BA+kmskx7+V5y4KFeEvjHamPuKQY8b1Mn86FAnsxCNDP/FoP+OEGuIg0q
-	 1Sp/C/982XTWTAGNtlJumTNtrXwAOMGSDWXkqkRC8W0pDOwoLnTYMPosLkPkXuyo9JA==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=redhat.com;
-	spf=pass smtp.mailfrom=redhat.com;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=VVOWvP24;
-	dkim=pass header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=W8hMqnqB;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=170.10.133.124
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.208.170
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795102357;
+	b=rogjxT3lId7IQWrDgVm/zdcAyeMuNVaaWyGsXi0+19qPFsnuVnUypzSJHrQiR1fYjCqF
+	 5hzN3gSTQ++SLbRQ9UvU+zI1QOhmEd9M8CeZqLb4u/XqFxusGx9kjYS+5QMldZUNGcbBM
+	 b5sHaR9OoNuXY3jt3GXblFseEe7r6IlHSXGFzt/W3eYv8L5Bh3nN++PfAE94++jacw9SE
+	 kWWGtV7kzlteJl+6OQEuxxAwc8Riz0ZlxM2z8nBuZYiEYr3aLQvI7dXoi1/LKe7oM9Vf+
+	 rcG6G13UtFzpDFS/SlWj2ruQiITW02eGfk35wcBMJTn0Iv/riyEOBiLBhW46+jOoSqQ==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795102357;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
+	 MIME-Version:Content-Transfer-Encoding;
+	bh=f7T2TmAinoSSVrUkDLWCSHpGLO0VMoU6RTqJIGDHf8c=;
+	b=vZ0rO6ubrZvOfzcAbfX+OYAMH6kt6oAAAgoPAiSKkRFkP4xRaPg7Ohz0nTTT30Ubvcid
+	 b/e+tTo+O4TBaPJiH7Brbh2eWfcmcnNZWdAAd3pvn9Kt6fy7UU38TGnDctXkqZKW9geMZ
+	 trahiDczlcGCDtxMNZhWzUJO1x1LpEYnNDZCEltbBiT2W0J/1vhqzKswli5bOSRMHhL4Q
+	 vCs6qbk+TvX7oaXdzpDjTizJKNB079jpPEBmEL3SbooFk5kQfXsn4+y8KsuoMKz6vr3lS
+	 DkH+t0uranVKOk1lhHcqIjQyjJ9VOsT6e8eq49WIDJ0o/NnqxNX4/pK21+XUBJiqC9w==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=EriZpb1V;
+	arc=none smtp.remote-ip=209.85.208.170
+Received: from mail-lj1-f170.google.com (mail-lj1-f170.google.com [209.85.208.170])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20166606A32F
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 12:18:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 20166606A32F
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 529BF606A336
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 15:32:37 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 529BF606A336
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=mimecast20190719 header.b=VVOWvP24;
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.a=rsa-sha256 header.s=google header.b=W8hMqnqB
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1795090691;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=gqZVLpTgCP2ySw8awFBFsKWriU/az/ZtPImm1nmYhzQ=;
-	b=VVOWvP249gQbGhATtzKUMg0j6A/tChNgM6jO1Wzx/AIp5s1eeCFdIDmMi18SOLWYhJ7m9Q
-	rNIwphULxYcsY2zcibeAN2PgqHM5Qtp28R//iOmuShffADY/CVLIqnSe3r7UUPwPkLmGtC
-	V+TK597djrbR/oLLHzUarUCTnIB8KPE=
-Received: from mail-yx1-f70.google.com (mail-yx1-f70.google.com
- [74.125.224.70]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-346-d-oiMjYTPAiKzzcgeWWPcg-1; Thu, 19 Nov 2026 07:18:09 -0500
-X-MC-Unique: d-oiMjYTPAiKzzcgeWWPcg-1
-X-Mimecast-MFC-AGG-ID: d-oiMjYTPAiKzzcgeWWPcg_1795090689
-Received: by mail-yx1-f70.google.com with SMTP id 956f58d0204a3-67994567a44so2821091d50.0
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 04:18:09 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795090689; cv=none;
-        d=google.com; s=arc-20260327;
-        b=nTELgtVRchju5Auq1t4HtV28KP79X35+M/of50+dvYVC29bRbga46X5t+YmL2etSvy
-         pBVGPEWDkS8XSmOarlCIvExxx8SX2grfqZRHJATw4kn782m2fBf8ANgC1E9v2IedwXUR
-         w5io7Vegb8IEciJWm00fcKGgE3Hlf2qorOK4yBLKdYNPvOT6abjnZcT1bZ/NkI6RjqH/
-         O8aRxmFx/ju4fOHA14dhNJ8fAmXShytqYN+sd8KDZRK0E80+2jLJbtpvzs+5KrRigN02
-         iSuikn+3NmlCR/5R26uxos9JnA3ejc21rYH6YSP4Fm1GOURATZl+kPwJ9Z0AAW7q0VBF
-         2HZw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=gqZVLpTgCP2ySw8awFBFsKWriU/az/ZtPImm1nmYhzQ=;
-        fh=FYLOBfY30eJUAGByEDWn/WQ73mVq38Ss2lS0OcKrt/c=;
-        b=Bw4tBSQflXCffz03MJYQPONs7r1mn4metajCK06/u6h9JvZzloeUL52d7GGdr7JKlU
-         eikTQ0yMQF8KtwltHCLiUoX3WdQcP7RuGlc/rO2w0iZEvLn9KkfYo9cmcZpomjZYyZ8+
-         Xt3RlcltQ48YZjjyjsUKRQHjhkeTYADqpK3RIt180dOe5SnpmhMnWDilpvw9tXvfPZyS
-         yNgpg7Wh4NpoJYniluJS3hct37/2u2IVsgtNemst0uVljykYg7ItFnCxXkZD2v+opugE
-         y7TNo5EdKQXLBOQ7xCuR3dYrlprovBxxC/WgIc3SWLEkN8oT1hxWSWh+fs+tzizeVOfL
-         o0EQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=EriZpb1V
+Received: by mail-lj1-f170.google.com with SMTP id 38308e7fff4ca-3ae25c9f857so24095881fa.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 07:32:37 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1795090689; x=1795695489; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=gqZVLpTgCP2ySw8awFBFsKWriU/az/ZtPImm1nmYhzQ=;
-        b=W8hMqnqBRGair6EoKrRvZxO77dqdj+YfYgkTq7D/3LAyjuaoOoDi6CBjJj2/uTyIN/
-         fDpxDop4wdBIhC4E/qClwWzfxDsRKlC+fQO3UGaRGo+wxRGTZreAoLQjwFDN+CvKuSdK
-         Xfn4nra5rpcDvAioHGKENKEPM3Q9kGHAhtzrGoyfmonoJyWGpgd9XJyQO6Ah/a7T2Ppn
-         zsB9YEoDNUbUZ+k9HrlxOWcwAWQDOlDoV3XTlJHvYLtC3OS9sGUDCz3KiS2aQ5OT+IOK
-         ip3K9h84fcgxMAozSavkACkeLTUU+AZnecsWcPbDZVD/GsrbNUaLtT+6HgqlfHiMchXd
-         tWww==
+        d=gmail.com; s=20260707; t=1795102355; x=1795707155; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=f7T2TmAinoSSVrUkDLWCSHpGLO0VMoU6RTqJIGDHf8c=;
+        b=EriZpb1V/2zno0fmMO54HL34Ty+nBUS/4UO0C6MvrvxZFEYE5Wk3AXr9C+UsTd1EKu
+         e7VRl67WTxEo3VDt+hkZtLmFiEHnR1zJiLfC/Bq9BJKAFBDFohxqHF5Q1gg0wFZRWOaP
+         GGmxEOrPJV8MRv3PkF03h/86SpZPKw+8KkyhjjjSRymeueMiKP4mQ8rtd0qNdqm/fzoE
+         MNeg/d90yqGf1ngIGXcTcG1X2LenLIoGjIMBxdm9LKyp4bnMI848kU3NoOJqH9CbrAin
+         fitPeVcUyIY+ve4q72M8iKNlPUyICj34RV6qW8QMN0CuPmRvl1c9rcr7e4C4EfPjdOm/
+         0D9A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795090689; x=1795695489;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=gqZVLpTgCP2ySw8awFBFsKWriU/az/ZtPImm1nmYhzQ=;
-        b=rtftA4i9mVBGZSAaUJrGwhZnNjdtrTAEZgt5WQ877dFgMZ5CYXqg5RjDKQHH/iTYLn
-         BNKEg2dIGLFXjn/FWUvohMlta6EDPsV41T9Q+qFohPXXWw88dyAHNHObdtHzShUNEsz7
-         9FqvxSZoGObjmKKSM6K+vFR9RRfw+Ps7kGTU6u8rpctvs6tVCOXq46xKFa7VWoJd70yT
-         EuqoaTU+WAL41z+svHzPBpYPIK6UgDGyX2i1o0eYwICYYkHz9gfsisTQOiRKSKNEchku
-         fT5SK2m8W5b/sp1yIMRqYSwzo1T6FPXahhjVU9w1Kl+JegEpx45Z93V0b02jeezz9+/4
-         G4tQ==
-X-Forwarded-Encrypted: i=1; AL+hErEYoM9m+Q3Un+weHQIWjXJjcVf7UgipSoA4W8R/iGmacX4FMve6uir9lZjqdUxStwk3fAvegUz2+NI=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8ZmlTt2gJr/KK0reENgMxH6cLz8OE/fEjfYuy+caFSd1VnmvGa
-	Y4P34mTmXjPNLPEfbc332Y0iOmR1XlQzRv0r4Cu6G0CT7RU86x7yq3cOix7wHH6eYhDyHwBkMg/
-	+2Y8ecSHBHhT9vLeoAqx2tH0bbMyqN3BnQUtJWYI+gWrXrjO0pQou56cgIvWwUxQbgX9WJoU6Wu
-	q+7JSv0JMk7NlgHrHWrbcbsPtzagSd4/lzTuXK
-X-Gm-Gg: AZFdTZeEmS+e2VhyyafnKKK4Bdx7/ZJhz2a9g0XZwRXm/S+XJ28GEGBwz3D0IpTO0i7
-	k4l5O9WkIx4wqLx3S+xGINyKmFYK+9ZKhGGATSVzJlqMdPiHQjD4KM5TmufqSBbfdKmurna0SE3
-	gtj2w0uNjROSwFdILzMsBgtbfIbx9TMH3pGeJ09FRxAuWXQdjFB4eJyA4cfu5GINyrDmkyYoeID
-	/4sGKDQldJSphFV4FA0LTKHhewjYOI2W8pELm6oh1WaAw==
-X-Received: by 2002:a05:690e:806:10b0:67d:a6fb:ceaa with SMTP id 956f58d0204a3-67dd3f193f3mr1716882d50.19.1795090688852;
-        Thu, 19 Nov 2026 04:18:08 -0800 (PST)
-X-Received: by 2002:a05:690e:806:10b0:67d:a6fb:ceaa with SMTP id
- 956f58d0204a3-67dd3f193f3mr1716866d50.19.1795090688232; Thu, 19 Nov 2026
- 04:18:08 -0800 (PST)
+        d=1e100.net; s=20260707; t=1795102355; x=1795707155;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=f7T2TmAinoSSVrUkDLWCSHpGLO0VMoU6RTqJIGDHf8c=;
+        b=u8350Ch41cKYj2RHufJQgdX1niMIB1sr5ZNm/MavbYv2Y9r59/3Owz6Y+OV7caVkvD
+         we30tZw5XVuOYUhOCHqJ6eHrTHekFHvgLezpgM7L0HqIoecSpGc8BKleRRmL2fbkq2BH
+         Dj7h18Fe8JZBrfBForwB3+UW21t8NT1HODSpUIYZk70Ze0dfkvIh8qzswx+m1uCgen2m
+         S43+i1aW9bLIC77ROgUO6Uht37oBXqOxv/CjJkYWGXqNrTWUu/cop5iLYimGBTWw4gtS
+         LKvQMcHZrlpPgadlMA/tRRISVuo7OZMlvvp/DIFmWT6QgoSHLT+BN9yNbm0r73Z7BayF
+         vD6w==
+X-Forwarded-Encrypted: i=1; AL+hErFQAaWqqppFyxQDSm4InAiN70axiXvaSUqS2yLnU9+74EhxLkmT6LhhxvGnudEk1Gmkq2plqMJlc60=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+7g0/E21REPRBLoqoqlyhMVoP1QGFb75c/IH94noy/jaHzsIBj
+	wgaarDlcTsoxdhkAW9xbVB0WqqmIBKLgq1NcHim2c+S6Knz3fjYuD9mr
+X-Gm-Gg: AZFdTZdUI9N88yDlIJQpkr29OGs5vXehpbeORL2fpo56przzpJKhlnOyqCWYqD0FFAZ
+	p9dZK3rjGpR+X28d7ZAjKGcyx8SbZcSibVy/0/FTQ1S/XGu3PUCZIKH2LDEQn5aCYw72krRqgp4
+	3DQN6m59DeFXIJCfZf99jXSTfMSg15JcxSmGw3ep8Ffk4yX0k7hhapUOQXsVYXKfH/DJ0DhOjDB
+	r7JgUtcS1u+E1kb1MKJ5E8Lu8PINS/cWCmpxlhKUKp8v+0cZpvtNQXA8Oq49FaFXfDllfk22Lk1
+	QmDdIqvkzY0rjPY0cmog0j7MhsWDs2Ev5mUktzBXPw0JMBvICq0ni8nQeTAQkQj4Y+U/0kn98nT
+	DTlqrWSA5QJKt9Q0bRC8AS7uX5XmHnLizivgpKVf8j89lYXBREpPQxikS3IOYFwqi1eJ2cAUiw1
+	E+oeT0huwP3fbMDUdPzC+bqF75r0DmJehHBv2KwOTGfChYt3Bzji5vuQJKBl3WMWWBjk9Rv809v
+	Fd4VJppbZTCCRQ6Brorkf66xldoYLOQLj2p8WMRBuyFkhDz3jWpZDNog8MGd3Ek9pvQ0XgH8+3v
+	Kxbos6uLUHrPLBMJeynbEBAB65xKU0KswL0+HqiERlCsnF0IC6jV+96T5XXLh6VvfwVZSfN/ps2
+	IktgdK2AWBlu5wDD+UygcWMv5NDl0sd6toHsoX7wT2HNGv76HXvS5v4KAPsw=
+X-Received: by 2002:a05:651c:a149:b0:3aa:ef31:e51e with SMTP id 38308e7fff4ca-3ae7fa644d5mr1204161fa.19.1795102355312;
+        Thu, 19 Nov 2026 07:32:35 -0800 (PST)
+Received: from Lauri-G-Pro-14-M4.intra.lakuz.com (n2vuxegwnwppvr5uhf9-1.v6.elisa-laajakaista.fi. [2001:99a:2ab:bb00:c16c:a39e:e605:54b5])
+        by smtp.gmail.com with ESMTPSA id 38308e7fff4ca-3ae6ebe67e2sm11532121fa.33.2026.11.19.07.32.33
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Thu, 19 Nov 2026 07:32:33 -0800 (PST)
+From: Lauri Gates <lauri.gates@gmail.com>
+To: koraynilay <koray.fra@gmail.com>
+Cc: Dave Chinner <dgc@kernel.org>,
+	Christian Brauner <brauner@kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-xfs@vger.kernel.org,
+	Carlos Maiolino <cem@kernel.org>,
+	Christian Brauner <christian@brauner.io>,
+	"Darrick J. Wong" <djwong@kernel.org>,
+	linux-api@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	ocfs2-devel@lists.linux.dev,
+	linux-nfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org,
+	Amir Goldstein <amir73il@gmail.com>
+Subject: Re: Concurrent FIEMAP on reflinked files serialises on the AGF buffer lock
+Date: Thu, 19 Nov 2026 17:32:22 +0200
+Message-ID: <20261119153222.65195-1-lauri.gates@gmail.com>
+X-Mailer: git-send-email 2.56.1
+In-Reply-To: <DMZ4VQ7SZ07T.29WMPQ0BQZGSS@gmail.com>
+References: <DMZ4VQ7SZ07T.29WMPQ0BQZGSS@gmail.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -125,77 +110,41 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261116171044.6938-1-jack@suse.cz> <20261118145941.1063127-19-jack@suse.cz>
- <CAHc6FU7NoZua98SGP9Kuga58gAcco6X__u=kOPfsUqbefAKLFQ@mail.gmail.com> <wo5723b7wrmu35q5qffzs7zzqwnojk3ireel2jkit2kxgv6bra@yd3gbigdmmdk>
-In-Reply-To: <wo5723b7wrmu35q5qffzs7zzqwnojk3ireel2jkit2kxgv6bra@yd3gbigdmmdk>
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Date: Thu, 19 Nov 2026 13:17:57 +0100
-X-Gm-Features: AclHuK-GbM7XVFxqU3dJAQePNml2N4MUSkkmDt3mktzVCdVYt3Td22WOXOu6yXM
-Message-ID: <CAHc6FU5HY9x5ntTOz_xk36T0XTzjNc8R4jy2zzpQKo=19HNMog@mail.gmail.com>
-Subject: Re: [PATCH 06/13] gfs2: Avoid racy dirtiness check in gfs2_fsync()
-To: Jan Kara <jack@suse.cz>
-Cc: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev, 
-	Mike Marshall <hubcap@omnibond.com>, Martin Brandenburg <martin@omnibond.com>, devel@lists.orangefs.org, 
-	Dave Kleikamp <shaggy@kernel.org>, jfs-discussion@lists.sourceforge.net, 
-	Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
-	David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
-	linux-afs@lists.infradead.org, Miklos Szeredi <miklos@szeredi.hu>, 
-	fuse-devel@lists.linux.dev, linux-block@vger.kernel.org, 
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org, 
-	Eric Biggers <ebiggers@kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>, linux-fscrypt@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Thu, Nov 19, 2026 at 1:05=E2=80=AFPM Jan Kara <jack@suse.cz> wrote:
-> On Thu 19-11-26 00:35:42, Andreas Gruenbacher wrote:
-> > On Wed, Nov 18, 2026 at 4:00=E2=80=AFPM Jan Kara <jack@suse.cz> wrote:
-> > > Check for I_DIRTY_PAGES state in gfs2_fsync() is racy because
-> > > __writeback_single_inode() unconditionally clears the flag and
-> > > reinstates it only later based on PAGECACHE_TAG_DIRTY tag. If
-> > > gfs2_fsync() unlocked read of i_state hits in between, it will not se=
-e
-> > > I_DIRTY_PAGES although there may be dirty folios in the mapping. Chec=
-k
-> > > for PAGECACHE_TAG_DIRTY instead and use inode_is_dirty() helper for
-> > > inode metadata dirtiness check.
-> > >
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> ...
-> > > @@ -760,12 +760,8 @@ static int gfs2_fsync(struct file *file, loff_t =
-start, loff_t end,
-> > >                         return ret1;
-> > >         }
-> > >
-> > > -       if (!gfs2_is_jdata(ip))
-> > > -               sync_state &=3D ~I_DIRTY_PAGES;
-> > > -       if (datasync)
-> > > -               sync_state &=3D ~I_DIRTY_SYNC;
-> > > -
-> > > -       if (sync_state) {
-> > > +       if (inode_is_dirty(inode, datasync) ||
-> > > +           (gfs2_is_jdata(ip) && dirty_data)) {
-> >
-> > this adds back the I_DIRTY_TIME check explicitly removed in commit:
-> >
-> > 3aac630b5ce1 ("gfs2: don't worry about I_DIRTY_TIME in gfs2_fsync()")
-> >
-> > Could you please clarify what's going on?
->
-> I wonder how you remember this after five years :). Anyway, the truth is =
-I
-> forgot fsync path is calling sync_lazytime() as well before calling into
-> ->fsync and even if I remembered that, then it would be fragile for the
-> helper to rely on that (and there are already users of inode_is_dirty() a=
-nd
-> inode_or_mapping_dirty() which want it). So to summarize you are correct
-> that the added I_DIRTY_TIME check is unnecessary for gfs2_fsync() as it
-> should never trigger just for that but it is also harmless and the helper
-> is more robust that way.
+On Thu, Nov 19, 2026 at 01:00PM +0200, koraynilay wrote:
+> It doesn't seem like an FS_XFLAG_NOSHARED flag would touch this new
+> change, but I thought it was worth pointing out, especially because this
+> patch would also add FS_XFLAG_PROJID and a new FS_FILE_ATTR_XFLAGS_MASK
+> to have a way to include both legacy and newly added xflags, so
+> FS_XFLAG_NOSHARED would maybe also go there (correct me if I'm wrong).
 
-Alright. Could you please include that in the commit message?
+Thanks, that is useful. I agree it would go there, whichever meaning
+it ends up with: as a newly added flag its bit would be added to
+FS_FILE_ATTR_XFLAGS_MASK next to FS_XFLAG_PROJID, since your
+fileattr_to_file_attr() masks the value with it as well as the mask
+bit.
 
-Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
+Your mask also changes the question I asked Christian. With it, a
+plain "may share" flag works the way stx_attributes_mask does: a
+filesystem that sets the bit in fsx_xflags_mask answers, and one that
+does not (btrfs today) reads as "not reported" rather than "not
+shared". The inverted meaning was only there because file_attr had no
+such mask.
+
+One constraint for that case: the flag has to stay out of
+FS_XFLAGS_MASK. As I read your fileattr_to_file_attr(), every bit in
+FS_XFLAGS_MASK is reported as supported on every filesystem, so a
+plain flag there would read as "supported, not shared" on btrfs.
+Outside FS_XFLAGS_MASK the flag is also never seen through the legacy
+FS_IOC_FSGETXATTR, which masks with FS_XFLAGS_MASK. That is fine,
+since only file_getattr() needs to report it.
+
+Christian, with this mask on the way, would you take a plain flag
+(say FS_XFLAG_MAYSHARE, "may have extents shared with another file")
+that filesystems advertise through fsx_xflags_mask? If so, I'll build
+the RFC on top of koraynilay's series instead of using the inverted
+FS_XFLAG_NOSHARED.
 
 Thanks,
-Andreas
-
+Lauri
