@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795113242;
-	b=vO/T8Vh/tUcWddhODeTKh/i8OOnlc5yz6fgK7UVAmZFev5S0kM9df+Z9OVWbt77qSBuL
-	 dwMu6P8TxDDYtV5TQhKwLp2JJj02sTPqk6T7rGTjGzvu7aVPEe+ho6aBPfPSbTsASZgKb
-	 SX5Gc2IUWJg85ujblbsUQJ2jtrXJ2EjME1HFXYZd4sy39ZJCrimCUoNFaZ4gZeM3wKkiT
-	 lNUkF4gDo1n1jGolnOnm7hx35tw2ZK69Yu7AdZpIGrQACYQWYW8MY8mB57yFUAJhCvtD3
-	 aI60hG3Czm7UxRQ147oIO61TA0hGLAPeIta5eZl+U+XE7C4aKpqOFvll5CTiTZD+GTg==
+	t=1795113241;
+	b=5fwU+YkzryYyA9dQu2MT21wjb3r8T+uhLpxdjyWf16vdyXroys3i4Pe/PRnldMHZq0CM
+	 9OXvDNmZbzeIZYwDnca91DzXIOqHMb+JsbKaW1ORhmTgZoSPrFLTquGzwUv7PlV5C63OG
+	 +/kpcNtacEm3mhouCrH6z/z/T00eUNKxc2h/c7aLpNo3Ft1+jaY1KiBTkRAZLSSFhZsgu
+	 nUeJR2ZKbsQhsL1Ho6ijkXdy7dNvofe7AdrCXWeAKtoRYkdGFyjCLbd50xHyL+Vq99SZP
+	 tzToTqMFC5nrrHEV/0OcQDeTV3opNcTxhoOpE4HrX19HGjiOf8z2c7rKzqrvfXlEg3w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795113242;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=VMsYh+cFWAaf9TlbvGPzbJ644hZHGiTMaPoUd31Ceyk=;
-	b=u267r/ELDUEB9RnajdljOkgbQI2gxgXq65Kb5zV15es+sjobFBejjXiJJUTwGDlItDus
-	 B6yMhBiAw97JzEYypkVs8VT5Qn3iMNmkV+pEpxCdGnWl3dAJy/hvTGD2t1YybOrmpLuYY
-	 fh0KPWEUoCI39H/VXuVS4s36IrI42updGAb7sG6A9C/uF9cqxwG8VwoyfIXp0nD5BERTg
-	 rWmQA75XiRxDxGmqf/mpFvzFoJ8BPtf89H7E94AaCd8jUJl9uzCJuwItzOUSzrIkpiBFc
-	 8qfdeK7tMYmh/LIA/3ZJHL0PQPTg4EZ2/xCcCJuWfMcuM6jP9qKgZk5LnmPnK31vdkw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795113241;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=+hFEpdZqzup7+W07GQKsfWv3rE/RCMhmGsqoxnEoAOg=;
+	b=MpzmwxTwWs5Q6/t9HugRpvqIGy1U48fe6EZJZlmpJecG8xuUQ0FQKHDZCn131Vth/BkD
+	 ng/IxpJUKp3EAyiGmrGcVjHMo48jfa1m2AmmWj3b70cLd8glO7K9sxIJB+chpEwKJEuEx
+	 WuBLsyDVj7cJUB4XPWVI4mEq3mwDAU30WtmUhOCmh8sn58LSYrxSHQr2GlGptNfo7edi9
+	 1GItqhqiIg7dboB6XjOHFTl+1RzNsEkWcHsdOc/xHL2+A+43jsDgS8Md47vSdAOPxGiuR
+	 hwhbwz2Pa0CsJuiiEsg+MJJ9EK/pnAWsG8TUKhYO1B3SRvLHRrsCo+tWEt/pv77FdHQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WrupZ94E;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=S6qTmt9a;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 850CF606A337
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 18:34:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03EA1606A324
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 18:34:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=WrupZ94E
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 10A441F000CA;
-	Thu, 19 Nov 2026 18:34:02 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=S6qTmt9a
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 49EB21F000C6;
+	Thu, 19 Nov 2026 18:34:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795113242;
-	bh=VMsYh+cFWAaf9TlbvGPzbJ644hZHGiTMaPoUd31Ceyk=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=WrupZ94EvHn9fd8iAJligqk0q6TyUwtC+iP5wwqnAauVeGnL3JgLJVNakIfafcrBs
-	 V08cOJaSeFm0qs2j99mP6+3qAKXW8HAxxXxhdODihoGc+XibHNBjmIcXzy90SCZO+U
-	 jjxEEDWIuFfiPP1reWDgQhSYRNl7AcSWxVBQ+NPURggbUuyxk+S4hhn3jgrg9sLXcc
-	 KuQJYfYny2WD++CfMiNZBaXNLhMYruXX5OFevpGn/JEN+dRqAAUR3mV+EFiCG6UAdg
-	 7cXKdOC9Hv/CYKv0o91//j1cHHR2qWSziBiU5c1PUlgxKFVZB+4kZGwQGudtF32QNs
-	 EhNNCVGMefgYw==
+	s=k20260515; t=1795113240;
+	bh=+hFEpdZqzup7+W07GQKsfWv3rE/RCMhmGsqoxnEoAOg=;
+	h=From:Subject:Date:To:Cc;
+	b=S6qTmt9aYkyk4sIZkiRtFG7kl3U2EgWJokNmRnHwvBAmv+/Jea6McmchIFHNcBLOY
+	 LNyMdAUnWgyJL3UFqH+3DoTHNTZjLAtfuXfCPcMG6XBoEjmaUWI0Jy1+DfiyNJIgsJ
+	 gkJ6/sGY/0DfXSQzt1QjHnwR2eJMSeVmk36hy5ve0hC8ZE+rcux/9jXdsnnn0pGzke
+	 hqi4jRRqo4t1GIB4XBDl8vJYo1sxbK9cO3g43JqJ8phc+QZJ7tqyDNqJRkEPavhSt+
+	 7k90m3gPAODOr45M7lEg8BDwkOjP7O+RMhso9U4EkTwUULjHH+8NhB79AyBZOwhpKE
+	 xYKUMHJDlLovg==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 19 Nov 2026 13:33:54 -0500
-Subject: [PATCH 4/4] NFSD: Remove the svc_rqst argument from
- proc_layoutcommit
+Subject: [PATCH 0/4] NFSD: More minor XDR restructuring
+Date: Thu, 19 Nov 2026 13:33:50 -0500
+Message-Id: <20261119-blocklayout-decode-stream-v1-0-d71322f42c28@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,9 +55,10 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261119-blocklayout-decode-stream-v1-4-d71322f42c28@kernel.org>
-References: <20261119-blocklayout-decode-stream-v1-0-d71322f42c28@kernel.org>
-In-Reply-To: <20261119-blocklayout-decode-stream-v1-0-d71322f42c28@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMSw7CMBBDr4JmzYimfARcBbHIx2kDJUGZFIGq3
+ p0UvHuW/SYS5ACh82qijFeQkGIFtV6R7XXswMFVprZpD0qpE5sh2fugP2ks7GCTA0vJ0A/226P
+ foVH7Gqr/Z4YP75/7cv2zjOYGWxbhsjBawCbraPulshg20YvjAikhdjTPX72KW86gAAAA
+X-Change-ID: 20261119-blocklayout-decode-stream-f38f4e015555
 To: Chuck Lever <cel@kernel.org>, Christoph Hellwig <hch@lst.de>, 
  Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
@@ -65,111 +66,46 @@ To: Chuck Lever <cel@kernel.org>, Christoph Hellwig <hch@lst.de>,
  Konstantin Evtushenko <koevtushenko@yandex.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3219; i=cel@kernel.org;
- h=from:subject:message-id; bh=d0LAXiTTXiErMKIieXWelhfte7YjWBVshjj+gA6yitQ=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq/0EX2I8Y+SR5hUTlA6WageZfdhYJ1lVWqNxLJ
- xNyNLIlm/aJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCav9BFwAKCRAzarMzb2Z/
- l+jND/9eliHOZWtbn6/eiSHbE5yOmftXh3rXsxEItdOjWSZ22RZWKFqX0rkhueP06CPvez4qoOx
- gctmFC1JKmrTjbE6ndfh+OW6lLRl81Eakdi13USy6N9VCJZb7/Pg2xcwa6tbbM8FkluUZsKSYBd
- Hd/7IOxb40QhjdyWHgjzB3tQoSs9guK88ZvhvOyUHP3wyk3skLkCon4tYMAILrwFiI4HlSy2y+y
- rkhuZUdHtoso9pZw5cY+AmfmzT5Qck6nIca02O5VTYjEZkDVQMKQxdl046Y3XsmDuAzd2j3POE3
- oACRvYDpa7qafD3HytV4M1tM3yQyaleu2rwLXtdH+aEl9DHD4ASN2r5VtYhXJ4GQxrUlFBRn1U6
- Z+xDoeU3XR1iVCH1x8R6LjTG9PT4rQGB+05LOx+Hfv5HLqXZQe+Zzp/WuBrnjKVWheWbmzQQt4y
- hDw38deZSRo8VRqTAyMp3w3YWvdjeV+XeRIJx37IrgieFYBOSCEd+YdsR/n45Cq0aOn+zlPoBMN
- Pz+wN3s8lHW9PQgvs0N13S/oOrGmcK5cBZ80ZXB7UwaqastyW5Zo4+Jgj1RK3lI7s+dVl5NokvJ
- lOepwFTJNexHHr+N30M5qSqxzDVkQ90V3pySLZBU51pwne0/QezLRzN6hgfjE58coa2rNxfqfNZ
- 9e0653VYM9DeMUQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1006; i=cel@kernel.org;
+ h=from:subject:message-id; bh=wfOgA3jpGzEkmgXjRvIHqTgh8i8LfSGaEggaV70fSf0=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBq/0ESvWOLZJ4delpRFRjnsV/TjCNWEhu3tOM+o
+ Aqik5V3/LaJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCav9BEgAKCRAzarMzb2Z/
+ lw+WEACBAZvaIvPd2S4At3QRM0Vn/96DuZ1aUOmJYsJCcfZbg32CCgIDd7I+TCzS/IlzROwI+20
+ NI6QGe/B7TZAhtkxZNlxf1zgz+GwTWST30yYOn+YnFQgyLy1tb8BN5pGRNqUzZjeEPseHUrDRmG
+ z7ROu7cdHOwOd3kHVMnpriFLQusRQbpXY5ixCVF4rmvO6J4DS609MkEOq4102rIi9aP6h9im4oz
+ P4N2uRSzW0JrbEi5oCYRLhPYEwG31YDlIOLfpSQJJM+v6dIf+D3O1ywH9mCtVhAm1/L+RHm7rAC
+ NVm///OXjOb96tsRKOjr/aC78Qd98hUDOB4ezf7clLxjdAGcFjBWEjvPbtJg7g/OzeF7Nm10t+m
+ tILnNzA5LS67Ei96y5RoN3HkwNW6CbVX5JF3NWi2/1GrJLwEM1RliDr0Mx8ABsRsC2xiSZ6+Kdl
+ BoWkZNRJ45G3b7RxRS6m9cuYE8077PEHbwhImu2JKO+9LkdWeqwe6vneba7Pe6zxrQCl+EMIPHL
+ uHfPZtSqb9l8jl6x7tVZk2XP2o6dCPagKp5aC2wa1SDEdy+o7NLvW4wdnRiYjE71fNDDls1uxQh
+ tmEUwj4QhjrbAuJj9BNrVP5KQjqsGzpyx2mCzw6/MPLM9IqM866klo0vm63Ply5HwJNijHUek/n
+ DLYG2A6NU8mOsLw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Commit f963cf2b91a3 ("NFSD: Implement large extent array support in
-pNFS") added an svc_rqst argument to the proc_layoutcommit layout
-operation so the block and SCSI layout drivers could decode the
-layoutupdate4 body with rq_arg_stream. Those drivers decode from a
-local xdr_stream, and no proc_layoutcommit implementation reads the
-svc_rqst. Leaving the argument in place invites a layout driver to
-borrow rq_arg again.
+The main change in this series replaces the use of the svc_rqst's
+rq_arg and rq_arg_stream fields with local stack variables, but
+as usual, agentic review discovered a number of pre-existing issues
+in this area that needed attention.
 
-Remove the svc_rqst argument from the operation and from its three
-implementations.
-
-Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/blocklayout.c    | 8 ++++----
- fs/nfsd/flexfilelayout.c | 4 ++--
- fs/nfsd/nfs4proc.c       | 2 +-
- fs/nfsd/pnfs.h           | 3 +--
- 4 files changed, 8 insertions(+), 9 deletions(-)
+Chuck Lever (4):
+      NFSD: Reject layoutupdate extent counts that wrap the length check
+      NFSD: Allocate the layoutupdate extent array with kvzalloc_objs()
+      NFSD: Decode block and SCSI layoutupdates from a local xdr_stream
+      NFSD: Remove the svc_rqst argument from proc_layoutcommit
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index c3b614b25278..23f2365787eb 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -266,8 +266,8 @@ nfsd4_block_proc_getdeviceinfo(struct super_block *sb,
- }
- 
- static __be32
--nfsd4_block_proc_layoutcommit(struct inode *inode, struct svc_rqst *rqstp,
--		struct nfsd4_layoutcommit *lcp)
-+nfsd4_block_proc_layoutcommit(struct inode *inode,
-+			      struct nfsd4_layoutcommit *lcp)
- {
- 	__be32 scratch[XDR_QUADLEN(NFS4_DEVICEID4_SIZE)];
- 	struct xdr_stream xdr;
-@@ -461,8 +461,8 @@ nfsd4_scsi_proc_getdeviceinfo(struct super_block *sb,
- 	return nfserrno(nfsd4_block_get_device_info_scsi(sb, clp, gdp));
- }
- static __be32
--nfsd4_scsi_proc_layoutcommit(struct inode *inode, struct svc_rqst *rqstp,
--		struct nfsd4_layoutcommit *lcp)
-+nfsd4_scsi_proc_layoutcommit(struct inode *inode,
-+			     struct nfsd4_layoutcommit *lcp)
- {
- 	__be32 scratch[XDR_QUADLEN(NFS4_DEVICEID4_SIZE)];
- 	struct xdr_stream xdr;
-diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
-index 0deb913493a3..c97caeec4024 100644
---- a/fs/nfsd/flexfilelayout.c
-+++ b/fs/nfsd/flexfilelayout.c
-@@ -130,8 +130,8 @@ nfsd4_ff_proc_getdeviceinfo(struct super_block *sb, struct svc_rqst *rqstp,
- }
- 
- static __be32
--nfsd4_ff_proc_layoutcommit(struct inode *inode, struct svc_rqst *rqstp,
--		struct nfsd4_layoutcommit *lcp)
-+nfsd4_ff_proc_layoutcommit(struct inode *inode,
-+			   struct nfsd4_layoutcommit *lcp)
- {
- 	return nfs_ok;
- }
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 71d6a473c1bc..2f25acb1ac92 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -3119,7 +3119,7 @@ nfsd4_layoutcommit(struct svc_rqst *rqstp,
- 		mutex_unlock(&ls->ls_mutex);
- 	}
- 
--	nfserr = ops->proc_layoutcommit(inode, rqstp, lcp);
-+	nfserr = ops->proc_layoutcommit(inode, lcp);
- 
- 	if (!lcp->lc_reclaim) {
- 		nfsd4_file_mark_deleg_written(ls->ls_stid.sc_file);
-diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-index e5f2e11c880a..a3d558ccdbdf 100644
---- a/fs/nfsd/pnfs.h
-+++ b/fs/nfsd/pnfs.h
-@@ -38,8 +38,7 @@ struct nfsd4_layout_ops {
- 			const struct nfsd4_layoutget *lgp);
- 
- 	__be32 (*proc_layoutcommit)(struct inode *inode,
--			struct svc_rqst *rqstp,
--			struct nfsd4_layoutcommit *lcp);
-+				    struct nfsd4_layoutcommit *lcp);
- 
- 	bool (*fence_client)(struct nfs4_layout_stateid *ls,
- 			     struct nfsd_file *file);
+ fs/nfsd/blocklayout.c    | 32 +++++++++++++++++++-------------
+ fs/nfsd/blocklayoutxdr.c | 24 ++++++++++++------------
+ fs/nfsd/flexfilelayout.c |  4 ++--
+ fs/nfsd/nfs4proc.c       |  2 +-
+ fs/nfsd/pnfs.h           |  3 +--
+ 5 files changed, 35 insertions(+), 30 deletions(-)
+---
+base-commit: 8489270d1cb9568fc88f3cda4626a19807300d77
+change-id: 20261119-blocklayout-decode-stream-f38f4e015555
 
--- 
-2.56.0
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
 
