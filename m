@@ -1,104 +1,58 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=178.63.21.144
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.224
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795056470;
-	b=WEDo9iw39KiHkl0mJcb6Frwuzh5GX7PNSeXwCrw7nR7CmI9Z3lcKiDgY/gyJHNCx30IT
-	 3d30xlKcz2gr0dcsN4jC5XMaLvglufQGGe2JnZ92e+p2ThLBNYiPfhrx3qC/SXs3nz4Dp
-	 ezEtrIETcp1KeUYdKjy3cBwFn6xZTB1/m2O5zDg2krErWnT4jHF/4M8rJbvXA5gpCroqw
-	 T9UAHT6MnbbZdsDqKzOJ1uPgVPYpIBXCK+YtoXBKBf21Uact7TVTrJ/nCHkYLwBCp4t/R
-	 hGQUhbTlPNVNnSQTVx3eXzpyLxoirmOZojvHNNGHtCTz2++nRHJ8WTBO2sDkNPlp84w==
+	t=1795059983;
+	b=QYt4A8VEMNU2nDiWBjzUQ7PEbKtbfaSd2D4AekzpAzCU4GvL+3+YoXkX6+g0vEvwzx9+
+	 Gf6lw0N0abtxb2Sid24/YKLVoBglkGEbv2POOON+Q7aAVGSfKg9ipmcJmRbOpm3XJ2CtY
+	 t++GrXGtHF4cXHxc0FSsPR+SYj1HwhQ9QbTjrgYGKPh4UOOADFtTAxrvZ3u0Rb9QqfgkB
+	 PfGCHwT1lM5PNwto0BLkoJcmgRqw9v4/4dgdihNEnKQlnpVfInOiyXrfzhDgCMhbWGDkC
+	 AUG0icYznYOT6p0xUdjrgX3PLZmeYtfAHEC8bVZkqoTmtiItMDEItwmMfXs2Bz9Xj0Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795056470;
-	h=DMARC-Filter:DKIM-Signature:Received:Received:Received:X-ME-Sender:
-	 X-ME-Received:X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:From:
-	 To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
-	 MIME-Version:Content-Transfer-Encoding:X-Greylist;
-	bh=C2oTDrUAloUPLb9R3L1FV5EoIyNwUSlSwZoggaW6Y5s=;
-	b=GM1nLNmyp13yk5+knYB8E173nIBY3GzD5uQdIWT6hjzufIR5xTkjUKnW/ZWVncJqSASn
-	 DhTELXuJ74qm0KC0tY0lCa8lBLi/kste6B2/JHOp0R9vDGuwo9tGaeLaUeTCR3jsFpVqP
-	 Lii7XfjFeeFhNd9zlCF8OLFavEaeZzMwnIHsIkK9AVNizqYrA8moRtwdbLGK65zNo2JDA
-	 k1twwIEAIBLDS+SjEteU5MAssiVlNRZuihHQ6+yfNAS3i4hNKNL5E09dIhwAoM0Da0OGc
-	 k27pZsCagINPM+uVMrUF0P6tT71rFotnTfskB26pGKJinrbfnDKcOKEExas18Dd+rDw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795059983;
+	h=DMARC-Filter:dkim-signature:Received:Received:Received:Message-ID:
+	 Date:MIME-Version:User-Agent:Subject:To:CC:References:
+	 Content-Language:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding:X-Originating-IP:X-ClientProxiedBy;
+	bh=OAbbp57riKGI1fZlq88CcOSg3koPqPRG3juTd/UX3uo=;
+	b=QaeNr5+xsg9u+Rf7J/e/9IDeo3uOfhzzOj8w1nwr4kfUk9+lX7pcWpnvwf4ki60o2Vxp
+	 waauT8pMaEmjFG6oMJwkIKgMuSK4SEPEIM8f5tBySDtSu/BZkC8dN9tQKto/F2a/WhWkQ
+	 puw01L5uYn+S3+hb4TM5Teq86DtGgKLpSqcsSIYtXIBD5Q+qNJAHTIUqiDB4DSXkfuKyu
+	 5xn8Z8hc3h6miOabyk83/zB8L5KNR1CbXYBK28HyMVCaAazkHH4TkK7kTzGv9MwsvfIMh
+	 o4flW/mnYDnxoiEyKn+x5Hu2XrwY2rwjlIabDzSvd5ZVIdlZDgBmE6N2ArXhodyDHeA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=sericyb.com.au;
-	spf=pass smtp.mailfrom=shining.glasswings.com.au;
-	dkim=pass header.d=sericyb.com.au header.i=@sericyb.com.au header.a=rsa-sha256 header.s=shining header.b=cxxvUuXU;
-	arc=none smtp.remote-ip=178.63.21.144
-Received: from shining.glasswings.com.au (shining.glasswings.com.au [178.63.21.144])
+	dmarc=pass header.from=huawei.com;
+	spf=pass smtp.mailfrom=huawei.com;
+	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b="V/52GJjf";
+	arc=none smtp.remote-ip=113.46.200.224
+Received: from canpmsgout09.his.huawei.com (canpmsgout09.his.huawei.com [113.46.200.224])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F493606A325;
-	Thu, 19 Nov 2026 02:47:50 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4F493606A325
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=sericyb.com.au
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=shining.glasswings.com.au
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CA36606A325;
+	Thu, 19 Nov 2026 03:46:20 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3CA36606A325
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=sericyb.com.au header.i=@sericyb.com.au header.a=rsa-sha256 header.s=shining header.b=cxxvUuXU
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=sericyb.com.au;
-	s=shining; t=1795056468;
-	bh=C8FYOrq1/N2X6ndUQiRxC8Lu0JM0VQ3FC8k8ab2MGrA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=cxxvUuXUweCPtmcsvbROVekq0nddHOk1RVUthN90r538qz8aBeCjCrBxoUvXVQT94
-	 MCp2uFFQEBzHIzcrAEh/uFbr/i4guGRASpHz4cXUo75mpYcdFRz31n/FH52h4ZvwR9
-	 t6KGOqORNN8vUP6B+x+yexXa6/XRtEPBXl9ifJnxfU9YUT2UaFV5Cd0X7yZlQgblIZ
-	 Y6OQ3vGyBg7UvOyJD+HtpK68GBYGiPpy6swb6vbdRy6SfuTrRK4SW5KlSNCmCYxDU/
-	 W9fIazSKnhOBFfKZn/9CEAtAJL1zsK0YbHkYv5t5jviIafiNodgMt5CsOmZksVmnkS
-	 UmsSLjhCfmKmQ==
-Received: from fauth-a2-smtp.messagingengine.com (fauth-a2-smtp.messagingengine.com [103.168.172.201])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by shining.glasswings.com.au (Postfix) with ESMTPSA id 2ACF810A47D28;
-	Thu, 19 Nov 2026 02:47:47 +0000 (UTC)
-Received: from phl-compute-11.internal (phl-compute-11.internal [10.202.2.51])
-	by mailfauth.phl.internal (Postfix) with ESMTP id D6C7FF40066;
-	Wed, 18 Nov 2026 21:47:45 -0500 (EST)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-11.internal (MEProxy); Wed, 18 Nov 2026 21:47:45 -0500
-X-ME-Sender: <xms:UWP-alB1BrDOxn5i_rh2Sz9O9vgAhzrp7PG-CCNvGVW8zI1D79yC0g>
-    <xme:UWP-arGid5weEz3rUFF6EakJlLDGfixGQ2w_9MeYzjpyuTXKYk8QIjLGP6tY3hdRt
-    zEKfRi1KzVH_w2aNipGHdeqTDarPHT4ahCx6zXwP3Z6K36fw8VvvisU>
-X-ME-Received: <xmr:UWP-agNW8q695JX80FEkV9jnwlDcbeXhYfWvCjMyDNgevIauNkwxlnUBTjVYPMT3sGUhJcsHPFmE_9VQr4NU5p9khEWaAhTMjQya52_nCnEWfHS3qBD8DP1EEG-1>
-X-ME-Proxy-Cause: dmFkZTEwpsQHC9Tj7Tz09TkJGL7qYNNHrIq0C5ACydSwY+TvPVL6v5ayL12XNqrkxqXTG+
-    /bG6qVSvFmLAm6e8L3ktA8BXWVbs398GKZF6//9vw7ujDbG+VaUWRuCR1Tb/51WdEqNw0q
-    Ocdncv6gRQKblwe7OMQ6c+lNAYCsA/pubayqAUUpYF2RbLJI2eH3tn5aa22WAnBGC6qKjk
-    VSs7Zhox35Ta58Q2TiNoGabmPtjiX3etHwBQIsVoP6z+XQFhIBvZ4QZfHUFt184A3GPUGi
-    pnJxf41TPiIJssg5WvrdjlpLxdXSRz/rhoe5U0KN/3HazjQCEO614gp8q7Qy0KZ9CeMIRj
-    EVRanag64aMLeCA63It9NMBN5ri5tsecXVns9S+CNoKSyv75JQ71Eb+EFXwJRHoU1rhHAH
-    TNnNfG5L9AGQIQgQBsfEuuiXSFVisXs6JkT4nLCRQXEV3zVy+kZpJaSlIpsivCHIK8y+Pn
-    DEDb7WtcoUYTn5IxyM/enCZUo0tlRohk/5rh4kfnl25HoGnwswuofZmemA4cUHtwvjo1M4
-    phxWw+5p7wvbrlWEquSSTevFtgTCfuHtu4EmPUDjWuji2FqzqWiKsTsqcbwT1m1Du83yo1
-    Bz28DWe/V3QtMea50HQ+OIEXg/s8BUJTOEwSdaLEMaCJwx6bJ42mlggvEWbg
-X-ME-Proxy: <xmx:UWP-asiw7M6vfBb4FtEollw8SVLUzpGso1VCkMv3eSc4kWLifghjuA>
-    <xmx:UWP-ag19TD6yflF7cL6yR_bFJ0l5l5CP_z61l7RBArBaMvPEb0kCWA>
-    <xmx:UWP-apkqbazigEcVAc9ek0QDCZedma5lkFicNaj3feOtt2t-jSLPQA>
-    <xmx:UWP-avu0yOckxpe6pBfXHBM_Aa4J8sIG23lKAXIgNJ-keZHlPGTcGA>
-    <xmx:UWP-ap3c2FUwHGjGDGEALzfjwWEzFRJVEVhSRrrVhr_LmVZzsfcjKZlf>
-Feedback-ID: i558e4b61:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 18 Nov 2026 21:47:41 -0500 (EST)
-From: Andrew Pam <andrew@sericyb.com.au>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: Andrew Pam <andrew@sericyb.com.au>,
-	Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	"Rafael J. Wysocki" <rafael@kernel.org>,
-	Mike Snitzer <snitzer@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	linux-pm@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 3/3] SUNRPC: reconnect client transports after resuming from hibernation
-Date: Thu, 19 Nov 2026 13:47:18 +1100
-Message-ID: <20261119024719.311474-4-andrew@sericyb.com.au>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20261119024719.311474-1-andrew@sericyb.com.au>
-References: <20261119024719.311474-1-andrew@sericyb.com.au>
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=V/52GJjf
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=OAbbp57riKGI1fZlq88CcOSg3koPqPRG3juTd/UX3uo=;
+	b=V/52GJjfwvVK8DnDIvM5IQVRHWD6bWwP9aQgdIQW3zyiANrSaj0DY2j7nFjPaV7CdoJkRPEs9
+	j5P3307aBbCQKc9UtkmeUFvURRjxT+IUgrgDq+974N8dU9cb6StPqSQAXioAda0lAeeDVSXW/cF
+	zoa53Mrhki2F1QPx2mEV1j0=
+Received: from mail.maildlp.com (unknown [172.19.163.15])
+	by canpmsgout09.his.huawei.com (SkyGuard) with ESMTPS id 4jVPWm3pc4z1cyPH;
+	Thu, 19 Nov 2026 11:45:56 +0800 (CST)
+Received: from whupemk100010.china.huawei.com (unknown [7.152.184.41])
+	by mail.maildlp.com (Postfix) with ESMTPS id C65134058E;
+	Thu, 19 Nov 2026 11:46:16 +0800 (CST)
+Received: from [10.67.110.140] (10.67.110.140) by
+ whupemk100010.china.huawei.com (7.152.184.41) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.2562.45; Thu, 19 Nov 2026 11:46:09 +0800
+Message-ID: <9787bc85-5b1c-4f13-9b0c-cd027548efa0@huawei.com>
+Date: Thu, 19 Nov 2026 11:46:07 +0800
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -108,164 +62,78 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Greylist: Sender succeeded SMTP AUTH, not delayed by milter-greylist-4.6.2 (shining.glasswings.com.au [178.63.21.144]); Thu, 19 Nov 2026 02:47:48 +0000 (UTC)
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH -next -v4 02/17] LSM: pass struct path to the
+ inode_setsecctx hook
+To: Christian Brauner <brauner@kernel.org>
+CC: Al Viro <viro@zeniv.linux.org.uk>, <mic@digikod.net>, <gnoack@google.com>,
+	<paul@paul-moore.com>, <jack@suse.cz>, <amir73il@gmail.com>,
+	<andrii@kernel.org>, <apparmor@lists.ubuntu.com>, <ast@kernel.org>,
+	<axboe@kernel.dk>, <bpf@vger.kernel.org>, <casey@schaufler-ca.com>,
+	<cel@kernel.org>, <cem@kernel.org>, <chenxiaosong@chenxiaosong.com>,
+	<code@tyhicks.com>, <corbet@lwn.net>, <Dai.Ngo@oracle.com>,
+	<dakr@kernel.org>, <daniel@iogearbox.net>, <dhowells@redhat.com>,
+	<dlemoal@kernel.org>, <dmitry.kasatkin@gmail.com>,
+	<driver-core@lists.linux.dev>, <dsterba@suse.com>,
+	<ecryptfs@vger.kernel.org>, <eddyz87@gmail.com>, <emil@etsalapatis.com>,
+	<eric.snowberg@oracle.com>, <exfat@lists.linux.dev>,
+	<georgia.garcia@canonical.com>, <gregkh@linuxfoundation.org>, <hch@lst.de>,
+	<hirofumi@mail.parknet.co.jp>, <hyc.lee@gmail.com>,
+	<ihor.solodrai@linux.dev>, <jlayton@kernel.org>, <jmorris@namei.org>,
+	<johan@kernel.org>, <john.fastabend@gmail.com>,
+	<john.johansen@canonical.com>, <jolsa@kernel.org>, <kpsingh@kernel.org>,
+	<linkinjeon@kernel.org>, <linux-api@vger.kernel.org>,
+	<linux-block@vger.kernel.org>, <linux-btrfs@vger.kernel.org>,
+	<linux-cifs@vger.kernel.org>, <linux-doc@vger.kernel.org>,
+	<linux-fsdevel@vger.kernel.org>, <linux-integrity@vger.kernel.org>,
+	<linux-kernel@vger.kernel.org>, <linux-kselftest@vger.kernel.org>,
+	<linux-nfs@vger.kernel.org>, <linux-security-module@vger.kernel.org>,
+	<linux-trace-kernel@vger.kernel.org>, <linux-unionfs@vger.kernel.org>,
+	<linux-xfs@vger.kernel.org>, <liubaolin12138@163.com>,
+	<martin.lau@linux.dev>, <mason@kernel.org>, <mathieu.desnoyers@efficios.com>,
+	<matt@bobrowski.net>, <memxor@gmail.com>, <mhiramat@kernel.org>,
+	<miklos@szeredi.hu>, <neil@brown.name>, <netfs@lists.linux.dev>,
+	<ntfs@lists.linux.dev>, <okorniev@redhat.com>, <omosnacek@gmail.com>,
+	<penguin-kernel@i-love.sakura.ne.jp>, <rafael@kernel.org>,
+	<rdunlap@infradead.org>, <roberto.sassu@huawei.com>, <rostedt@goodmis.org>,
+	<selinux@vger.kernel.org>, <senozhatsky@chromium.org>, <serge@hallyn.com>,
+	<sj1557.seo@samsung.com>, <skhan@linuxfoundation.org>, <song@kernel.org>,
+	<stephen.smalley.work@gmail.com>, <takedakn@nttdata.co.jp>, <tom@talpey.com>,
+	<yonghong.song@linux.dev>, <yuezhang.mo@sony.com>, <zohar@linux.ibm.com>,
+	<utilityemal77@gmail.com>, <lujialin4@huawei.com>
+References: <20261117150542.1169451-1-caixinchen1@huawei.com>
+ <20261117150542.1169451-3-caixinchen1@huawei.com>
+ <20261117184342.GR989762@ZenIV> <20261118001641.GA1669148@ZenIV>
+ <bdc22808-9f22-46f7-b42d-e6bd8e1eeaca@huawei.com>
+ <20261118-nordlicht-badeort-daumen-813a1e9fd0b3@brauner>
+Content-Language: en-US
+From: Cai Xinchen <caixinchen1@huawei.com>
+In-Reply-To: <20261118-nordlicht-badeort-daumen-813a1e9fd0b3@brauner>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: kwepems500002.china.huawei.com (7.221.188.17) To
+ whupemk100010.china.huawei.com (7.152.184.41)
 
-With rpciod and xprtiod frozen across hibernation, no RPC is sent after
-the snapshot. TCP can still acknowledge data the server sends then,
-though: typically a reply that was in flight when the snapshot was
-taken. The restored image has not seen that data, and the server, which
-saw it acknowledged, will not send it again. The client then waits
-indefinitely for replies that never arrive.
+o, you are right, dentry is borned *self-parented*, and 
+d_alloc()/d_alloc_parallel allocate
+from parent->d_sb, __d_move only re-parent withon on sb. So 
+dget_parent() cannot
+leave the sb.
 
-After resuming, disconnect every client transport. Requests in flight
-are retransmitted on the new connection, and the server answers any it
-has already executed from its reply cache. Because nothing was sent
-after the snapshot, NFSv4.1 session slot sequence ids still agree on
-both sides.
-
-The disconnect is done from a PM notifier at PM_POST_HIBERNATION, which
-runs in the restored kernel once everything has thawed. It is also sent
-when hibernation fails, where the reconnect is unnecessary but harmless.
-The notifier walks each client's transport switch under its xps_lock.
-Every transport on the switch's list holds a reference that is dropped
-only after it has been removed under that lock, so the transports stay
-valid while it is held. xprt_force_disconnect() does not sleep, so no
-references need to be taken and nothing is allocated.
-
-Drafted with an AI coding assistant (Claude).
-
-Signed-off-by: Andrew Pam <andrew@sericyb.com.au>
----
- net/sunrpc/clnt.c        | 61 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/sunrpc.h      |  2 ++
- net/sunrpc/sunrpc_syms.c |  7 +++++
- 3 files changed, 70 insertions(+)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 2f076b4bfd54..89afd2d0a47e 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -32,6 +32,8 @@
- #include <linux/in.h>
- #include <linux/in6.h>
- #include <linux/un.h>
-+#include <linux/suspend.h>
-+#include <net/net_namespace.h>
- 
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/addr.h>
-@@ -881,6 +883,65 @@ int rpc_clnt_iterate_for_each_xprt(struct rpc_clnt *clnt,
- }
- EXPORT_SYMBOL_GPL(rpc_clnt_iterate_for_each_xprt);
- 
-+/*
-+ * TCP may have acknowledged data from the server after the hibernation
-+ * snapshot was taken, which the restored kernel has never seen. Disconnect
-+ * every client transport after resume, so that outstanding requests are
-+ * retransmitted on a new connection.
-+ *
-+ * Each transport on a switch's list holds a reference that is dropped only
-+ * after it is removed under xps_lock, and xprt_force_disconnect() does not
-+ * sleep.
-+ */
-+static int rpc_pm_notify(struct notifier_block *nb, unsigned long action,
-+			 void *data)
-+{
-+	struct net *net;
-+
-+	if (action != PM_POST_HIBERNATION)
-+		return NOTIFY_DONE;
-+
-+	down_read(&net_rwsem);
-+	for_each_net(net) {
-+		struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+		struct rpc_clnt *clnt;
-+
-+		spin_lock(&sn->rpc_client_lock);
-+		rcu_read_lock();
-+		list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
-+			struct rpc_xprt_switch *xps;
-+			struct rpc_xprt *xprt;
-+
-+			xps = rcu_dereference(clnt->cl_xpi.xpi_xpswitch);
-+			if (!xps)
-+				continue;
-+			spin_lock(&xps->xps_lock);
-+			list_for_each_entry(xprt, &xps->xps_xprt_list,
-+					    xprt_switch)
-+				xprt_force_disconnect(xprt);
-+			spin_unlock(&xps->xps_lock);
-+		}
-+		rcu_read_unlock();
-+		spin_unlock(&sn->rpc_client_lock);
-+	}
-+	up_read(&net_rwsem);
-+	return NOTIFY_DONE;
-+}
-+
-+static struct notifier_block rpc_pm_nb = {
-+	.notifier_call = rpc_pm_notify,
-+};
-+
-+int rpc_pm_notifier_register(void)
-+{
-+	return register_pm_notifier(&rpc_pm_nb);
-+}
-+
-+void rpc_pm_notifier_unregister(void)
-+{
-+	unregister_pm_notifier(&rpc_pm_nb);
-+}
-+
- /*
-  * Kill all tasks for the given client.
-  * XXX: kill their descendants as well?
-diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-index 11b9e5cead8e..1833b167616c 100644
---- a/net/sunrpc/sunrpc.h
-+++ b/net/sunrpc/sunrpc.h
-@@ -43,6 +43,8 @@ struct rpc_task;
- struct rpc_xprt;
- int rpc_clients_notifier_register(void);
- void rpc_clients_notifier_unregister(void);
-+int rpc_pm_notifier_register(void);
-+void rpc_pm_notifier_unregister(void);
- void auth_domain_cleanup(void);
- void svc_sock_update_bufs(struct svc_serv *serv);
- enum svc_auth_status svc_authenticate(struct svc_rqst *rqstp);
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 1a3884a0376a..d32786f51ae5 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -116,6 +116,10 @@ init_sunrpc(void)
- 	if (err)
- 		goto out6;
- 
-+	err = rpc_pm_notifier_register();
-+	if (err)
-+		goto out7;
-+
- 	sunrpc_debugfs_init();
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	rpc_register_sysctl();
-@@ -124,6 +128,8 @@ init_sunrpc(void)
- 	init_socket_xprt();	/* clnt sock transport */
- 	return 0;
- 
-+out7:
-+	genl_unregister_family(&sunrpc_nl_family);
- out6:
- 	rpc_sysfs_exit();
- out5:
-@@ -141,6 +147,7 @@ init_sunrpc(void)
- static void __exit
- cleanup_sunrpc(void)
- {
-+	rpc_pm_notifier_unregister();
- 	genl_unregister_family(&sunrpc_nl_family);
- 	rpc_sysfs_exit();
- 	rpc_cleanup_clids();
--- 
-2.53.0
-
+On 11/18/2026 5:35 PM, Christian Brauner wrote:
+> On Wed, Nov 18, 2026 at 04:59:29PM +0800, Cai Xinchen wrote:
+>> There are two places that violate (1), both introduced by this series of
+>> patches in ksmbd:
+>>
+>> smb2_parent_compressed() and smb_inherit_dacl() pair the directory entry
+>> returned by dget_parent()
+>>
+>> with path->mnt, and problems arise once that directory entry becomes the
+>> root of its mount point.
+> No, (1) holds there. dget_parent() never leaves the superblock so the
+> parent has the same ->d_sb as path->dentry.
+>
+> What happens at the root of a mount is that the parent isn't below
+> path->mnt->mnt_root anymore. That's a different property and struct path
+> doesn't guarantee that (open_by_handle_at(), nfsd with
+> no_subtree_check). So there's nothing to fix for (1) in those two.
