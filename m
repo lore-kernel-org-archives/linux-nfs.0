@@ -1,98 +1,98 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.219.51
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.219.50
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795069201;
-	b=wLBiOXvtZHPXpZQyTOfkIu/3YZrrH6O14wByW44HINpT5yVH33BsIUnMilcEMIhTDbL5
-	 7lbxE3iGmXt9VN4FStwozdJlyp9+yRVJvO9Mb5n0V1wzxl4p7gY0/2GAzDohpqg7qt40+
-	 1vn5FCf8yRaf4ijId7gNupwalN0tbVwUy/ZZvx/xjIPfGMUw7yxkjcUzrrEgVYqIYquSJ
-	 YcSFRrSfZTpcYHRSd+I/jT6mZ3jxVkAAGPe3R8Zu2SH10he9bUwl7v/0OzK7aUjPJCV/4
-	 iVXyDQlmTB8evnH2GDT9JZf8aZef1/cc34F7mvRI1rUywgPEXPCVvMGwWxngAIcqMuA==
+	t=1795069247;
+	b=g85Go007OUA8l/Q5rRMl18ew3S2JWXiR5o9c/YWGSslwJpq9jiPuCHynwEk7qcnoX6uX
+	 SLDGyb+bWKSFv3w27pLjZP5OKMqyBXGeDkmRXngodWyGxn4DorN5uCi6+md/Or7wpDX2k
+	 dOFg9A6O72j7OzaZSL8ix/WAuGUx+mVnmSV8jWhixggdlVvdd3QJPPTRktqkF7wJNBQbZ
+	 iCtpzCPoQzO9kbpUExFnNkDapqCcg+OshcnmMUEXXLdqeXOHeXjMg3aUML5+8y2qSWPPg
+	 JcBG3cl+kE6J9yVhDIhOhsccPTe634SGjp9CFJeob5DqlQxP8v08rqZGs5lBgr3SdVQ==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795069201;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795069247;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
 	 MIME-Version:From:Date:X-Gm-Features:Message-ID:Subject:To:Cc:
 	 Content-Type;
-	bh=xoCndVwrvCSfCd0BaHKCqL9ELaacWGRyWSDCytAWBDI=;
-	b=gqFrw5YEJfu7xZncVA0Diq7duWrMf2/aS1/8jsJU9qq6MjswWEAsJczgFe25j7OppIlm
-	 nUbqywYcSyNQjfKdfSckHOXff4knrj1HlEKQobxMC5TkdUnbgU/uhrXwuy74LJ2DeHxbg
-	 jZxJwPWrBKRlI2avLF2cENlihxyQPJg3ZplWbU4IwQiBxenEXs7I7T62WOia2v7VCNdc5
-	 sx8Tp1CKW4uVmp4/tMo2bZzwedXCb1hfh4h5hLQEYCCEIKTIlePCTWM2ai2y8mKMW6CEt
-	 EhbglHC1bSs7aZxwX4KIf49Zki2zdsiZIMaXJnU5OhiCKKisxshv82X56gclDu7GQsg==
+	bh=R72tSyuvoCt5/QGm7uguOsGtVeCA2C72cLraw6uBskI=;
+	b=eOZGTKL0qs5hvGeEosdWyFtVd3vddykQcUEA4PYvbWMV6QUW7fHtmsY6QXKO0aOFs4lu
+	 nQHSFXlEtTveqRao8XtKg+vB15qSzMpWscifa9sq4Fw0s8h699b548RogGQ76v3HRc0Mh
+	 KcA7R8JWh9zC6/GQ3znET5+FM5hboLKSr96j/XCOZqnoMBlXCehx18AROqr2IFIwmu+5Y
+	 yBigT/B2ucAeUSDKVbtCPdTJHV+CX4rIdTwWmq/HsQVpMppAkd2JzWKxrcRZVNReG5sas
+	 fFD76Y161tuD6lIYJ25Kbmt3fm9IzQwfmBgpPFZFEoz6NuzkAA4A9z+qVRKN5RpMCtw==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=UT7r6HIM;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.219.51
-Received: from mail-qv1-f51.google.com (mail-qv1-f51.google.com [209.85.219.51])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=K3oxpHUL;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.219.50
+Received: from mail-qv1-f50.google.com (mail-qv1-f50.google.com [209.85.219.50])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 17679606A326
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 06:19:59 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 17679606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A48A8606A325
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 06:20:46 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A48A8606A325
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=UT7r6HIM
-Received: by mail-qv1-f51.google.com with SMTP id 6a1803df08f44-91ccfb88e4dso19677696d6.0
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 22:19:59 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795069199; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=K3oxpHUL
+Received: by mail-qv1-f50.google.com with SMTP id 6a1803df08f44-921276742e3so4308786d6.2
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Nov 2026 22:20:46 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795069246; cv=none;
         d=google.com; s=arc-20260327;
-        b=OPIeXUY2//NTqExvcUccMgSfIDLCocD0NRrZ9CiC9OfIOKLpjMIxJRnbZXWqNUoZUC
-         itHeKCy9unJW+P/m3WTV62WDbhzcFdDK35+pJFvgBq+84voR/PfBNc1kzOruEHfvvzC1
-         S/pNQ+BEH1cW1RTSpZB020XLEsRWGE9FcZX9wjxel0yxfAXJrWE0uU08F5Jc3apUEmXe
-         XHPO5+mHVH5XrB4r/7hmUNZcOwxj8bqgFzhslVywc2siBgHWBpKtJ1Dh/h5SmC4ivPDW
-         VrivUH31oOPun78AMCJsSZFJA/7+yXv+KFB29oa448ap8t8hU1DZrrAhPPX3k73+Xnb8
-         s93Q==
+        b=WLJyxX5+b1+JUafUON0IL8n/jRO0gevA2ucvMwD8cFHLUXPdmmyhWUU+tymmaasuZY
+         po07l7qztjvztU0p1YPzk7nxU4n/UduJadOO0l9mwVYdU7JBagUPPJAf9CTl5luU3iDc
+         wb2FhMjWWlxGeBxuFupldjhPvcfIo5khHMzEaWubApIKMP0F5z3rheZ5XbNQQ92A8isX
+         gUU2mroWYwMBmtfVSp18adA+T8wESdfgyWY16FRRRcusS8LHDmSgeuRokMe8a8AaR/J6
+         ZElK/0TKnTpcEei0FjrhckVFFe8bbDCCKrDngmT/kVSXuJiw1oyITyz35nn2MdBi45la
+         QXXg==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=xoCndVwrvCSfCd0BaHKCqL9ELaacWGRyWSDCytAWBDI=;
-        fh=l6p7kQlZkypuJNiqOoxy77jrHom7fkQxgsKkclavoF4=;
-        b=sjaknO0+aBmloPo2uMjcZ+pDbriqbbZ4ZjAiTM0HOggj7Vj/ul2PxHIn9J46Yudsr6
-         pqcv0/j26BDy7kT2793PIwh37Vx0tWwtQRI3QcN5jaf6wMWvLK29uLpLmmz+bLAJftMf
-         ZNVNCf8itVcaig0+41SD8oOx1HEsgwn1fuYDAt4/jzzyI2PUVIDEgbTFK9mGOMkJiw/M
-         rfYNaHObEexQq9zI78XcGajd9RkD2MXZsyM0m1ifYcsVffKjdSFinjstnJljO+M5RkDo
-         QpM2UbcHTokD3yZ1QgKjkj82QY6YRBC4vWS1NJZ5MIsQWaurrM7cwHfcCvbavpCO/d1K
-         VXvw==;
+        bh=R72tSyuvoCt5/QGm7uguOsGtVeCA2C72cLraw6uBskI=;
+        fh=lVyEV1Sr0WF3UiuiSO29iVD42H3od/olcUnrz34ZyXs=;
+        b=a0CxnFQCBmSCeeOefpNeFFj6+u5znf7xeFq3PqTf3QMqUSZUUXgfTbTaj5AjdNAnMY
+         YF7umk/6EkGHPMw1P0dmJop63EzLJJ05pPmJWvR5L/XLYF9v0sBaKpBnbfH/gG5C1N1A
+         voG8PUFsQsjus+sg9VTHGOCuVvcFbxOmR5comCbXJpk1w+0RVHWyaMb5JhuVHqriY6xi
+         QfJPON7oFH02ui5XhoEg1GT3lzqKO3AhW8sSq5cm1TN9MGpkI2XPB6SYO1bQnumnirr+
+         7IVUNLuk/tAF4Du5oCBZo01HFtP3KnoniFCSmYohEPXN59H/rP+G99HcWjduNbZTjViC
+         k4Dw==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795069199; x=1795673999; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795069246; x=1795674046; darn=vger.kernel.org;
         h=content-type:cc:to:subject:message-id:date:from:mime-version:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=xoCndVwrvCSfCd0BaHKCqL9ELaacWGRyWSDCytAWBDI=;
-        b=UT7r6HIMP8x6DmYZaQezLkvtfE9jNe8QAZNjoZ+BDLGzqxB4OhFh83dq2c2fciCrs0
-         7fuwCWV8wQqIvxi9O3MUE0IR/oZMWHzvUTGYfc1aN+Z//8i+lhbV8PKSw89euW0ZQk+H
-         8q5pGCTpngISoL3G/Cb+omZLqqhIVPdvAFuv6b2+g7FV5AWky6L+uVa71XJbPqKri9I1
-         dZXoe+f8xzF4CDQJKfgEocHcqWxhEpQOfdD3u1P1GtLbiAv6i41ol3ck/rANGAfP9rnU
-         Gug2I0Kyk+h0n1UkYk86LPFEZ1RNs0GugUbSr7SGaIIAhH6643rg0QYLZACAQp2am9Bp
-         BvdA==
+        bh=R72tSyuvoCt5/QGm7uguOsGtVeCA2C72cLraw6uBskI=;
+        b=K3oxpHULF4L+vV1q+0GdTBv3uOvLHlttlMr7OApOglNWVl+Zu9hnmsfBh8ArpL5nos
+         0Cp5+2skbP0ZCKEDEDLtPxweHy1c/1NSt6N68MGuiUtoCU/ddPCHUsx5Pcx+AJ5lx3l/
+         4f7UJPrMJgYaPHi3y5ZzjqrX8tNmwRvhBoc5WTpy4NoLLVMEo0FHTyqgMPrqR/R0J9XI
+         fJRVS6H1aLtMQwDm4aahimGeHRiCYiipcu0FD0Ll6DtrvUvcqhq9gim+3Y0YzSNYYenN
+         Xh0uaI5/fA8UB01kXzaOOTmXD9Bc97UfjMZ5RrjNmn9ReLJHBkhF4ykhtWf4pNu6tD6c
+         MtDQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795069199; x=1795673999;
+        d=1e100.net; s=20260707; t=1795069246; x=1795674046;
         h=content-type:cc:to:subject:message-id:date:from:mime-version
          :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
          :reply-to:content-type;
-        bh=xoCndVwrvCSfCd0BaHKCqL9ELaacWGRyWSDCytAWBDI=;
-        b=XUPNcwN6IqNlH/ZihAoEVIVh/Dj/hV5/cBgXnC0tnTQtSrW9g9wIhXyCEigiATyMDF
-         smoRlGoe7lYiWTe4wt1TKbN3QO8wIHaNiKzvNXrezHGNXGzj59h20jhDymrM+GlQyxjp
-         AHybx1q8wJ8mPrRpzq8uWdx4fcYTjt7u5d+cPC3PU9jb4okzveJUDmP6+c4d9/YOvLfz
-         C9dk78DDSfQfcKSLSkXD3Jk04iwuWqiYjfnXg3rPpS4rpz7BjcbvJmYUeT6VnI+qwyor
-         8zMxYncnzmXRPhHYBfTbxL01Q9BtShtkABu4mnsKzjlwP4vdd6Rd/Hqk8Q8Rb3uRnLvS
-         EmJg==
-X-Forwarded-Encrypted: i=1; AL+hErGQSQ4vx1d5qLY02alnSI9PPJspBRD/utZpIkCizg/4SXV6pRFJV/fTxYEWvl1fyyo5wtG//xGsSBo=@vger.kernel.org
-X-Gm-Message-State: APuU4Z9vBFAZ0eStgwMvyBmUT7NYsl5Jpr99hjg4ebhGDETleuZY2mBv
-	yNJcUW9fMGnbUc4AdomRjlR24MgkOQ6d00RgA+IqjyKAC7D1kVenfyRgWqSi+XCjtmnLwq+JAto
-	MioMxpQaKVOHGP8XoOtHXxyGEd1IFNZs=
-X-Gm-Gg: AZFdTZeoZdlXZHSFkvb8Ot5pyoxo9ImB0qivOIxwNKsip3NwryR0YvxZepIOU2yCyg6
-	G+SoN+rypp9tnstThj/QoAAQhKvUj2I9Pk8vX7GrkC8JaTp2vcJGTTwUbuYuftcNYoi4hSvjQb5
-	9AUC2uBBF1b9KcooIA7JPL18GXQGuWJ//AcI312CEIzWALr1EN0j4Z6e+ITjSKxZm1uCFTqlHq2
-	SQu844z4nTqsuLMn4tVI8fzN/xwQLWtJDqM/gXhLjylUz7sZYAPiO/PxzKkAe6WZFpDORqmK/OX
-	P8bWMU/SpxJ72bdRV4ka0FucXUg96bL3eb25CZuDmKdKmyKSW5EsZEA5gO8jUO/GAOFQQJRUPXl
-	senZge83ppIjnLVGcKwcx4vyaZJ+iZpHRNenEuA0J0Ht8PGjcVDKeFUWQft5P5skThkygRZ44rU
-	2xTiWYMdrJndXloaYfbQ==
-X-Received: by 2002:a05:6214:21e3:b0:91c:7a3f:f548 with SMTP id
- 6a1803df08f44-92114f7d496mr80145356d6.49.1795069198906; Wed, 18 Nov 2026
- 22:19:58 -0800 (PST)
+        bh=R72tSyuvoCt5/QGm7uguOsGtVeCA2C72cLraw6uBskI=;
+        b=YTCy6FeHyZdS3ahgKd/1FSKYdq+v3Z6TBWSZt7yLgTKPODQj5WY2JgWpcX17L3hEqx
+         M/mIyL3A38HunxXyAPCAQiKxAdYbcgt4defrS5gofkHk0mt2RX4BbKqTSRZY1Cf30uOW
+         FVBlc0GerRrcqqmtwGvcqux4BC/dy0uDKi0l4IxGX5YPKZh01DZnqrpfZqcdF0ZAEFp1
+         arFUzEQi42uOfCbaF94Wi94qSbhc7FTcNwNqjrVMUBjEpBl0lR4HnEUtYz6tmFOKhJYE
+         1IvziZSlFL49u521DflPrWREgIkxgZbsLUgcoDMq0RbxkLOmt7t7zAHVPc1VGIUYQmzm
+         +qIA==
+X-Forwarded-Encrypted: i=1; AL+hErF0CjbInXWi6LUn4EYX9Rog0ZKh/IZ10bACA5xwNZQPjRfJ1Yz9+yPxJFWKYr0Uu8Gwd0rvqvoYxhw=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/wA3eW3DgHvh/qECwoei+74FimDQlhRTjMDglaFololIIceRAO
+	qb75ySjYAeSyJq/y8H6G8DL0ZZWzfJyTND/TSZQWAUHfVF3rFUP+MTuCfioGdUWw8A60V2LL8pu
+	nxhRuBnEjyq55OKvVDY0Vd6W8nrdfghk=
+X-Gm-Gg: AZFdTZd8fcN/PPEuPQZ4Dn/xZRVVHhrWCNTJGQ0i2p7MIT+3wZEgZSei6wqtRXzIGcH
+	ylO7syU4UxpgvgvZSbL/RerQSf4reeCGy2tJRz+Oi1G3dMfbzUiEX3Tkr3jtaoOw6EJWdvgExcA
+	T9bougbosAi0fPlrl1JYAVGDugP9ThYiIvgxzF78rmrHNUVjYBA7Y8A/WG/2sbIayvZdkiZBAo2
+	v8xXZk/8qopDmwSMHHOoxvlxNekCuHNVjWVExn7ngY/YLCJCin+KlujXUIRNRbriQZ0uLmme4Ey
+	itfXOUwP4XISv+oKIwvKpM8nXY/xNzBOF4wjr3OjhPDU3AfLJQDKcj5BqUBpMwTu2dCDeX7uoZ8
+	8BjMqhzTROxOPC6OE1Swl6KBYKFREJKASY1qJHc7xMeQ7F6BQa2cL8gz+C3tTgJLyZDSq5VAu/W
+	pf11HxJnckLg6JkjoSLw==
+X-Received: by 2002:a05:6214:8010:b0:921:18e2:4b8 with SMTP id
+ 6a1803df08f44-92118e205f4mr59170016d6.12.1795069245648; Wed, 18 Nov 2026
+ 22:20:45 -0800 (PST)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -103,81 +103,82 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 From: =?UTF-8?B?5qKT5bed5ZKy5aSq?= <inkxiao12@gmail.com>
-Date: Thu, 19 Nov 2026 01:19:46 -0500
-X-Gm-Features: Aa3M54oxphJvWdfM-fUHq_7nMxHgG-ail465DDEoF5yzwUuPEfq0cOpWCDpLL0o
-Message-ID: <CAMcAce-4z6mGO70Bb32quoTj0aRmVERxPKCfb2VpY_w3wHjaRQ@mail.gmail.com>
-Subject: [PATCH bpf 1/3] bpf: Replace DECLARE_EVENT_CLASS names in raw_tp_null_args[]
+Date: Thu, 19 Nov 2026 01:20:34 -0500
+X-Gm-Features: Aa3M54peGcZ3HW3rbZ6EtpU-sE3Eis0PWV29zDNE9SCTxw0n7cbFv5MbYn1qN6c
+Message-ID: <CAMcAce9pi3BwKUAdsfx8GFwMMFx-=-UkkUkqsCDOqbwaL9eSxA@mail.gmail.com>
+Subject: [PATCH bpf 2/3] bpf: Fix missing raw_tp_null_args masks for NFS and pNFS
 To: bpf@vger.kernel.org
 Cc: Trond Myklebust <trondmy@kernel.org>, anna@kernel.org, linux-nfs@vger.kernel.org, 
-	steffen.klassert@secunet.com, herbert@gondor.apana.org.au, ast@kernel.org, 
-	daniel@iogearbox.net, stable@vger.kernel.org
+	ast@kernel.org, daniel@iogearbox.net, andrii@kernel.org, 
+	stable@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 
-btf_ctx_access() strips the "btf_trace_" prefix from attach_btf_id
-and matches tname with strcmp(tname, raw_tp_null_args[i].func). Because
-each attachable tracepoint typedef corresponds to a DEFINE_EVENT() name
-rather than its DECLARE_EVENT_CLASS() template, three existing entries
-in raw_tp_null_args[] never match any program:
+Audit of NFS/pNFS tracepoint callers against raw_tp_null_args[] reveals
+several missing or incomplete argument masks:
 
-  1. "nfs4_inode_callback_event" and "nfs4_inode_stateid_callback_event"
-     are DECLARE_EVENT_CLASS templates in fs/nfs/nfs4trace.h whose
-     DEFINE_EVENT instances are nfs4_cb_getattr (:1455) and
-     nfs4_cb_recall (:1518). fs/nfs/callback_proc.c:50,106 pass literal
-     NULL for arg 2 (const struct inode *inode), and TP_fast_assign
-     (:1424, :1481) checks !IS_ERR_OR_NULL(inode). Keeping 0x200
-     (0x2ULL << (2 * 4)) sets ptr_err_raw_tp = true so btf_ctx_access()
-     assigns SCALAR_VALUE to ctx[2], rejecting any pointer dereference
-     even under if (inode) and matching existing raw_tp_null_args[]
-     0x2-nibble convention (0x300 yields the identical SCALAR_VALUE).
+  1. pnfs_update_layout (fs/nfs/nfs4trace.h:1990): raw_tp_null_args[]
+     currently sets only 0x10000 (arg 4, lo), omitting arg 5 (lseg).
+     fs/nfs/pnfs.c passes both literal NULL (:2166, :2177, :2337) and
+     ERR_PTR(...) (:2205-2206, :2300-2301) for lseg. Set 0x200000
+     (0x2ULL << (5 * 4)) alongside 0x10000 so btf_ctx_access() marks
+     ctx[5] as SCALAR_VALUE, preventing both NULL and ERR_PTR
+     dereferences even behind a NULL check.
 
-  2. "iptfs_ingress_postq_event" is the DECLARE_EVENT_CLASS template in
-     net/xfrm/trace_iptfs.h:108 whose DEFINE_EVENT instances (:130-148)
-     are iptfs_first_dequeue, iptfs_first_fragmenting,
-     iptfs_first_final_fragment, and iptfs_first_toobig.
-     net/xfrm/xfrm_iptfs.c:2025 and :2051 pass literal NULL for arg 3
-     (struct iphdr *iph), requiring mask 0x1000 (PTR_MAYBE_NULL).
+  2. pnfs_mds_fallback_pg_{init_read,init_write,get_mirror_count}:
+     raw_tp_null_args[] sets only 0x10000 (arg 4, lo). In
+     fs/nfs/flexfilelayout/flexfilelayout.c:1225-1231,
+     ff_layout_pg_get_mirror_count_write() returns early whenever
+     pgio->pg_lseg != NULL, so trace_pnfs_mds_fallback_pg_get_mirror_count()
+     (:1228) unconditionally receives arg 5 (lseg) == NULL.
+     pg_init_read (:1128) and pg_init_write (:1201) are likewise
+     reached when pgio->pg_lseg == NULL. Update all three to 0x110000.
 
-Replace these dead template names with their DEFINE_EVENT tracepoints.
-Verified in QEMU on x86_64 7.4.0-rc3 (iptfs_first_{fragmenting,
-final_fragment} and nfs4_cb_{getattr,recall} flip from LOADED to
-REJECTED) and 6.12.118 (nfs4_cb_{getattr,recall} flip from LOADED to
-REJECTED; iptfs_first_* absent in 6.12).
+  3. nfs4_cb_layoutrecall_file (fs/nfs/nfs4trace.h:1520): absent from
+     raw_tp_null_args[]. fs/nfs/callback_proc.c:262-267,320 passes
+     ino = ERR_PTR(-ENOENT) / ERR_PTR(-EAGAIN) as arg 2 (inode) on the
+     out_noput path; TP_fast_assign (:1546) checks !IS_ERR_OR_NULL(inode).
+     Add { "nfs4_cb_layoutrecall_file", 0x200 }.
+
+  4. nfs4_test_delegation_stateid and nfs4_test_open_stateid
+     (fs/nfs/nfs4trace.h:1119-1120): absent from raw_tp_null_args[]
+     while fs/nfs/nfs4proc.c:2910 and :3003 pass literal NULL for arg 1
+     (const struct nfs4_lock_state *lsp). Add both with mask 0x10.
+
+Verified in QEMU on x86_64 7.4.0-rc3 (20eef29b7c84) and 6.12.118
+when CONFIG_NFS_FS=y and CONFIG_NFS_V4=y (all reproducers flip from
+LOADED pre-patch to REJECTED post-patch, including pnfs_update_layout
+and nfs4_cb_layoutrecall_file under if (!ptr) scalar enforcement).
 
 Fixes: c83e2d970bae ("bpf: Add tracepoints with null-able arguments")
-Cc: stable@vger.kernel.org # 6.12+ (nfs4_cb_*)
+Cc: stable@vger.kernel.org # 6.12+
 Signed-off-by: BoBppy <inkxiao12@gmail.com>
 ---
  kernel/bpf/btf.c | 11 +++++++----
  1 file changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/kernel/bpf/btf.c b/kernel/bpf/btf.c
-index 7e866bf..0044156 100644
+index 0044156..ef10af2 100644
 --- a/kernel/bpf/btf.c
 +++ b/kernel/bpf/btf.c
-@@ -7403,8 +7403,8 @@ static const struct bpf_raw_tp_null_args
+@@ -7402,13 +7402,16 @@ static const struct bpf_raw_tp_null_args
 raw_tp_null_args[] = {
+  { "nfsd_file_cons_err", 0x1 },
   /* nfs4 */
   { "nfs4_setup_sequence", 0x1 },
-  { "pnfs_update_layout", 0x10000 },
-- { "nfs4_inode_callback_event", 0x200 },
-- { "nfs4_inode_stateid_callback_event", 0x200 },
-+ { "nfs4_cb_getattr", 0x200 },
-+ { "nfs4_cb_recall", 0x200 },
+- { "pnfs_update_layout", 0x10000 },
++ { "pnfs_update_layout", 0x10000 | 0x200000 },
+  { "nfs4_cb_getattr", 0x200 },
+  { "nfs4_cb_recall", 0x200 },
++ { "nfs4_cb_layoutrecall_file", 0x200 },
++ { "nfs4_test_delegation_stateid", 0x10 },
++ { "nfs4_test_open_stateid", 0x10 },
   /* nfs from pnfs_layout_event */
-  { "pnfs_mds_fallback_pg_init_read", 0x10000 },
-  { "pnfs_mds_fallback_pg_init_write", 0x10000 },
-@@ -7441,8 +7441,11 @@ static const struct bpf_raw_tp_null_args
-raw_tp_null_args[] = {
-  { "btree_path_free", 0x100 },
-  /* hfi1_tx */
-  { "hfi1_sdma_progress", 0x1000 },
-- /* iptfs */
-- { "iptfs_ingress_postq_event", 0x1000 },
-+ /* iptfs from iptfs_ingress_postq_event */
-+ { "iptfs_first_dequeue", 0x1000 },
-+ { "iptfs_first_fragmenting", 0x1000 },
-+ { "iptfs_first_final_fragment", 0x1000 },
-+ { "iptfs_first_toobig", 0x1000 },
-  /* neigh */
-  { "neigh_update", 0x10 },
-  /* snd_firewire_lib */
+- { "pnfs_mds_fallback_pg_init_read", 0x10000 },
+- { "pnfs_mds_fallback_pg_init_write", 0x10000 },
+- { "pnfs_mds_fallback_pg_get_mirror_count", 0x10000 },
++ { "pnfs_mds_fallback_pg_init_read", 0x110000 },
++ { "pnfs_mds_fallback_pg_init_write", 0x110000 },
++ { "pnfs_mds_fallback_pg_get_mirror_count", 0x110000 },
+  { "pnfs_mds_fallback_read_done", 0x10000 },
+  { "pnfs_mds_fallback_write_done", 0x10000 },
+  { "pnfs_mds_fallback_read_pagelist", 0x10000 },
