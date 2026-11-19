@@ -1,91 +1,90 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.50
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.51
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795109063;
-	b=3PhZbio8G8tLCqdUXzEyl5w5fBUhynR8yXtZlphdWlRviYhMry0Tk0eRM+wikfJgRNPG
-	 4eSpiPLfh4t0ecf5A2dU0It8+6hJhzxIGEjITt8NyiUGOk7z/9iFsz5nFGSeHz57ErOaZ
-	 vQ1rzai93vL9Zw8lgwhvT+ebtk2V5YkkgerA2ubS4lBx0OOfd9TWx9UO6cfO8qxKng2xT
-	 KSz39/PoGZnJo0YTMnfNbSUp3PXt51rtYhXiy6uxz8n8WNb5t/p6x83l4xpgw+5UJZNHD
-	 m5yCVd1tTz2IEphfF2HtfhNUuJRFhf9FsTkWjYhlSgyq0VhAKibWjoMUV+6NWxqg20w==
+	t=1795109108;
+	b=CBWsQTUZXjz5SVg/q2YlFHmZVt2zuhdKdjhyhK157ARENqts5wWP/HWGpAnYdSyJa7/l
+	 eVOx4VP7j4s8RlzDo6v4rFnhIqYX/6bVX+Y9jVNIkn4ev/v8KY13EN5c377ENxXGEYY4f
+	 8yHPMEweop98JptCUFO3N18nWnsG0Z7KE7aicQ+o3cr8VT+7XA9NqyMQzgj8Eju5yyEv8
+	 bQfBN/s0KgRQjNbeeJJZtVVzS2uKgNZKu7ngHqEtLEW9bmm0eFbdUu406bg/mfZAtIi8P
+	 aHAgEiLKVXGFt5TSBkMZsIeqOUYWUH3VV3J3UOHcnMurziyxMGPkh/26ck58HQ2vcXA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795109063;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795109108;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=GvYmXdIJjpD4fC/vhrs8FSXJoxdTGJbay1F4HP97M9g=;
-	b=NBAMQ87+KVws84wHUsn6pdoUfZOuCtd1MQQUL20d6now3kTS2RZ6ymsf1tSPCrn9hCi8
-	 dlggQnG357eXmPe5TTqATnKytlAaU2Rovh0l2uY/L938Y/4FQ5jhCr8bCIXy0cs48mb7/
-	 u03GWxCIXim7h73K6F9ygYs+5cMvNU7gorJoHJWePp5XZxccDjzJkt4Lkmrti0y3SmmV7
-	 SnyV7e+nYh/kcfhSWrSWRApAhMiTfY44IxyOuPCYuSUOvV9RNY0iZt344vPd2afsCBHna
-	 1UCRbfQr35oKnPw9daVsZV1Ke78w0kPQpngz1m1g98MOcZPXIoY+WRNRdSoXaph7CyQ==
+	bh=1rcHE5CHzsVMtMuDdojH02EloAWT+8I+vlusNK/i0ns=;
+	b=Yo1KkWyvR+iYptiJDrVtulGN81IOD2Fcw3ecfllaxFte+0vapRjFSdmk3eGw3S3sEPhE
+	 y93eIpSOq1Kd/g2VJ/tx9AtmOGGtq3NYDWaj3ULKDzN/PLqMz/ANcuVwnZCfnq2a465Zz
+	 ZwkKCB7Rc3ONXlNmjEXrk8vJGWbTgby5bRiB8PTGuVmqonIyvyAQjyvo/Oq+2Y0JNFpE2
+	 fmaOS+dHE88D35Z5Eeup7kBIhYjJE/Or9srvKN3kYeVP2e+S/nQRXtYExeiySqU8A5aEv
+	 ZBm7oOJrBBueCwSIguCax6E+3DfdYBg1nMCNm14CWGa0k5jSooK9pADeVI1n942wyFg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NWLVjTYS;
-	arc=none smtp.remote-ip=209.85.210.50
-Received: from mail-ot1-f50.google.com (mail-ot1-f50.google.com [209.85.210.50])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=EzYmHSQH;
+	arc=none smtp.remote-ip=209.85.161.51
+Received: from mail-oo1-f51.google.com (mail-oo1-f51.google.com [209.85.161.51])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8E9160A2604
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:24:22 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C8E9160A2604
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 875A6606A325
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:25:06 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 875A6606A325
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NWLVjTYS
-Received: by mail-ot1-f50.google.com with SMTP id 46e09a7af769-862b76e3c8cso8328a34.1
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 09:24:22 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=EzYmHSQH
+Received: by mail-oo1-f51.google.com with SMTP id 006d021491bc7-705cb6ceebaso2024262eaf.3
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 09:25:06 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1795109061; x=1795713861; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1795109105; x=1795713905; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=GvYmXdIJjpD4fC/vhrs8FSXJoxdTGJbay1F4HP97M9g=;
-        b=NWLVjTYSMzc5zONKsRN1jgmpY4rLtFtPbElQFaHbEZZCL7Wq8uFswmnE9pR0g/Urxf
-         cB36lmI/euThEZSBWbBmV8SCCIDkocLlOE/PItFYND86vk3ZCTvpMNcoYpbbTyw86wTH
-         21CNY6l3xtxFexUxURboKY1oQ299FWR5r404VvxzZnHoKxb8QqqUiqID9CB1nnqWZLaf
-         LxqsAWzhPHW3hEdgbAcPo+6ZdweVjMPdrvJ+dGrK3PQOzPnBRiO2wJJg1R++gCpdiV0H
-         /pULPASQNebh5ShY8QRxZeXc7tGEmGiN1A8Qtk0/GqWbz70pmadbWYfv5WsRaGhNyBoY
-         ty3g==
+        bh=1rcHE5CHzsVMtMuDdojH02EloAWT+8I+vlusNK/i0ns=;
+        b=EzYmHSQHDY1iEt1zOdKZ3BrnY3gJ+VBBlonPfCHMGgvLbX2V23a30Pu3tIfJSSwkuJ
+         WurrGH6TTW7DMOAjJI6NJg7+R57Byz52z4yCS1dASxzATe05vWPnszMVS3zZLV1gt8Yk
+         gBZQUEsQHRFPz1VCx1wX9QP8GDRkL1FJ6r82tyJjd1ePkG/QIufgCpPGVzkyvotTsgeV
+         8gXlQ9xzuSoFsaiTqqlCxKo5FbdTFJ5pRJRsRIoY7DlXQmCA1eKDBD0vI7b20ByiOKA2
+         j2B0LdAhIRYb3L4U2g8Us1aE0VNW4KXy6ITYIB4beMzxf6JYQbiQhCVdHR2azqQ0cVbb
+         JQcg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795109061; x=1795713861;
+        d=1e100.net; s=20260707; t=1795109105; x=1795713905;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=GvYmXdIJjpD4fC/vhrs8FSXJoxdTGJbay1F4HP97M9g=;
-        b=QJ6QKeh8clzBxprGlaZvFTK2BiqYFZtTVOgVeoWdOM1yFrOYnJbimDoHJfJ5EwGmSL
-         Kdffu/zhEdez1nIRy+fB+02lHLUJPKcPY3kgObfn6qVrAbbXV5EsPI3yRszmoW5x99ck
-         0zrvimff3okmXSA8RFWlOxqBgHn9DK4FZ+tBxBi2uUU7KvIoJ/vqv14YwLVlUutV1BS9
-         vzuy/ALpiEt3rNw4LdvBzet3spds4Mmaf4Uz0KPXC0U0yNMQYC+A7VvHR/M8ugz2JKx+
-         uRvDQ7bWIbMByw0NZzB5vBW6w+O5l0jYczFYBdmO84O6+rro9h+VI0ruFV3qruCJppDh
-         dcFA==
-X-Gm-Message-State: APuU4Z8rysvdss05uEWGzc2dFIlBaKxdXb98Z2IOhXHDxN4EI3xSJlMK
-	J7pxZRwbJd127dszkBWU8EQViyxUJRU43vsY5KC+2oFa27hdMFo6ZekAZ5h5rFDVPtoycWyTcHx
-	ysWJG
-X-Gm-Gg: AYBFou22t+e8TuS+u3MDf/Q8VFq6Vb0P2EIua3JaBG6xZ+hoLk/zJ4vo7WYccDqkxKT
-	DstfYS7ZHDXahD5l5oY069zLKmqYp8ddCCN/HZQPzVawSs7Ev9Ln81fFc4f80dvYU+bnCieVjNi
-	3VEof8ttJtqSfBUfBfh/j6ViY1b2OAVCqgBFlK/P0YvIc03VMNX6GXCYVbWZlu7o8xUjYlXVQmq
-	5TSUfUidjW9UVdjXbPQy2HLpXRuYyVQUqqkRKypUhEixrwqdOXHev40sHc29ttYEy1vguqupBvF
-	hCaRfTfJclAUNnP6HIWWy1KU1ko1quXf1YLn4yle3y6IfuqPhIbmnhYf9Hzd94O4qj1wrKM5zfl
-	JsEjdD+tDUQ7Vyn6VXgLloWAPPh6w7nwjQrTEIGgcK44BzrL1bUt2pHDg1QBB8sxJt1Gb/omGVO
-	pztkmNP23HGvaMEI4s+VtCwdpGkqBCvilNn5gYMDrmpp3IFTmItEQVi59hQ650QZglmoY4EEBAC
-	dINWDJBDgqK+cBqoiEoLPU7Zc32y89ADhXvulbIoyM98AraIwVeSjtzbHZWootTFEpV3L3wHcgs
-	QfX8file54RaOq3a5aMYhUnpEEek932jbN01vn7yJ0srPL4vFaFYaQRYfxly4+5udV/ip7Cegz7
-	g
-X-Received: by 2002:a05:6830:92a:b0:862:8382:e0ba with SMTP id 46e09a7af769-86315490d73mr922134a34.9.1795109061507;
-        Thu, 19 Nov 2026 09:24:21 -0800 (PST)
+        bh=1rcHE5CHzsVMtMuDdojH02EloAWT+8I+vlusNK/i0ns=;
+        b=m1vPHutlgpH1n1CCRrn1BPhtNSACPxYtOOkHUaOoIqeCLRK7tGr2tngqi7u4ScnsOg
+         68IA9eZ/LkDLstfzmhNGqFTuXRZw8z71zwc5YflcZUDgtvEBDyg8jXnf7DbwC/gnlcrS
+         I1vVcD1M2MCKXMsty/bS94wFnsf2rW+FL4f6CqvInNxYfa5ZLxIq7uTt+HhS/swfuvVO
+         U6tGg+DH4KZbkCLY3u36ToPJsJle6kBlcauHRXm1+cftrfBHUfNudF20zvT4fliwmkVf
+         mv8m+Khgibqa2ht2vRN3KC2mt3aa80rF1Bw9yXD68EPQPSbl8haJ1rtLHLhjDx72Cy88
+         sDaA==
+X-Gm-Message-State: APuU4Z8FOQkKEYC4RjX4sFwH+BjjPgLJP1zuQBT2YdBSyDgEwingVC0x
+	GUzNM36k//ktR+g+NlYOf+MrYB4kk+DabcyQLXuqQ9dGKB97CUB6jLLxl5SnIgYHe0SMsMVmCAM
+	tqfMB
+X-Gm-Gg: AYBFou2UxgqYhWZPHp3gmuW9BoKZe6l1U5tghXP+FjX/d8cpB61XwOZnwgF/uZXi7o7
+	deAunE/m8+qr8O1calJScSn/NtTYNIxrJFHirEl1SmSYS/fENhqXYLQ0A4DZcG+4+/Z0BCdP77i
+	dMkJe3N08uHBUX2E8liqOTU93VGF74jkH/dxWfYGe0XPxzubME8mDC0yLGm2oDIWLGeJJ+1JTEN
+	4ijBHqOw9X0j8hxw/t0xBYj9qJrfyPxIauWxOqyc0DKEpkGiiR0d2Yw+80vn3lWFZoAQ4gM7A87
+	Qs0EpHhBUP4OVBqaYAu7L2bH3dY45BOaJ7y5fwg67c8YY5Ajj8azUvLBv1qsNuUPMrdr86GbmDR
+	bfIkG7sOe6x3VLKtLejeJiv7VUpuqP/oJ7f+Xcvw0Era9G5TtTX4LOV1chOWvdLU1zm9AoNq0Jk
+	fwJKM2Rhi/W4hH4ME55847mxtjte7nJaVdGE8oYlIdiRYIxZsQNBHNbRS5Mx5LZtCO1h3i6PoXJ
+	jQkAC4MqcmIPjfSfgC4L96PKzraqKSu2Ils0+8XzHqirA5f1MPWgxGwmY7oBoBDegcXgIWR/odh
+	loGI+DeRJ0522aSy2bXIR2V06yMWP2FyJ86P2Z5aXFXwE9jMnzb1imdQEzx422AmIODRR3pUL2t
+	B
+X-Received: by 2002:a05:6820:a746:20b0:71a:ec65:1cbf with SMTP id 006d021491bc7-71b39447e69mr184894eaf.24.1795109105188;
+        Thu, 19 Nov 2026 09:25:05 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-863168f6d33sm96641a34.18.2026.11.19.09.24.19
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-71b380bdff9sm401643eaf.11.2026.11.19.09.25.03
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 09:24:20 -0800 (PST)
+        Thu, 19 Nov 2026 09:25:04 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
-	Mike Snitzer <snitzer@kernel.org>,
-	Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] pNFS/flexfiles: don't delay or restart an rpc_task that LOCALIO never ran
-Date: Thu, 19 Nov 2026 12:24:18 -0500
-Message-ID: <9c46fda0f2cd6d3843b198dac304b4722514b8e3.1795108831.git.bcodding@hammerspace.com>
+Subject: [PATCH] pNFS/flexfiles: read the layout hdr under i_lock in pg_get_mirror_count_write
+Date: Thu, 19 Nov 2026 12:25:02 -0500
+Message-ID: <23435d398481f51ce2680053cd3a151fe673f91c.1795108831.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -100,80 +99,57 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-LOCALIO completes a flexfiles read, write or commit without running its
-rpc_task, and maps a local -ENOMEM, -EAGAIN, -ETIMEDOUT or -ERESTARTSYS
-to NFS4ERR_DELAY in op_status.  The flexfiles error handlers answer
-NFS4ERR_DELAY (NFSERR_JUKEBOX for v3) with rpc_delay(), and on a task
-that was never activated rpc_sleep_check_activated() warns and calls
-rpc_put_task_async(), taking tk_count below zero.
+When a write has no layout segment, ff_layout_pg_get_mirror_count_write()
+reads NFS_I(inode)->layout twice to test the hdr's NO_IO_THRU_MDS bit,
+without i_lock and without a reference.  No lseg pins the hdr at that
+point, so pnfs_put_layout_hdr() can detach it under i_lock and free it
+in between: the bit test then reads freed memory, or the second read
+finds NULL and the bit test dereferences it.
 
-For a commit, ff_layout_commit_done_cb() also asks for a restart, but
-LOCALIO has no way to restart a commit.  The request is dropped and the
-commit is released with tk_status cleared; its pages are written again
-only because the commit's zeroed verifier doesn't match theirs.
+Read the pointer once under i_lock and test the bit before dropping it.
+The hdr is detached under i_lock before it is freed, so a pointer found
+there is still valid.
 
-Skip rpc_delay() for a task that was never activated.  Whatever restart
-the handlers ask for is still run by nfs_local_pgio_release().  For a
-local commit, resend the writes instead of restarting, as is done when
-a commit to a data server has to be reset.
-
-Fixes: 38074de35b01 ("NFSv4/flexfiles: Fix handling of NFS level errors in I/O")
-Cc: stable@vger.kernel.org # v6.16+
+Fixes: 1d62e659c0bf ("NFSv4/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS in pg_get_mirror_count_write")
+Cc: stable@vger.kernel.org # v7.2+
 Reported-by: Sashiko <sashiko-bot@kernel.org>
-Closes: https://sashiko.dev/#/bug/linux-4421953e-5de7-428b-b77c-4ed6c87cd0f0
+Closes: https://sashiko.dev/#/bug/linux-712f3ebb-939d-4967-b9e6-09142f7b68b3
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 16 ++++++++++++++--
- 1 file changed, 14 insertions(+), 2 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 5c289737366f..5a9a9c487647 100644
+index 5c289737366f..a797a2a8e688 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1355,6 +1355,13 @@ static void ff_layout_reset_read(struct nfs_pgio_header *hdr)
- 	}
- }
- 
-+/* LOCALIO completes I/O without ever running the rpc_task */
-+static void ff_layout_rpc_delay(struct rpc_task *task, unsigned long delay)
-+{
-+	if (RPC_IS_ACTIVATED(task))
-+		rpc_delay(task, delay);
-+}
+@@ -1211,6 +1211,10 @@ static unsigned int
+ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
+ 				    struct nfs_page *req)
+ {
++	struct inode *inode = pgio->pg_inode;
++	struct pnfs_layout_hdr *lo;
++	bool no_fallback;
 +
- static int ff_layout_async_handle_error_v4(struct rpc_task *task,
- 					   u32 op_status,
- 					   struct nfs4_state *state,
-@@ -1392,7 +1399,7 @@ static int ff_layout_async_handle_error_v4(struct rpc_task *task,
- 		nfs_inc_stats(lseg->pls_layout->plh_inode, NFSIOS_DELAY);
- 		fallthrough;
- 	case NFS4ERR_GRACE:
--		rpc_delay(task, FF_LAYOUT_POLL_RETRY_MAX);
-+		ff_layout_rpc_delay(task, FF_LAYOUT_POLL_RETRY_MAX);
- 		goto out_retry;
- 	case NFS4ERR_RETRY_UNCACHED_REP:
- 		goto out_retry;
-@@ -1536,7 +1543,7 @@ static int ff_layout_async_handle_error_v3(struct rpc_task *task,
- out_retry:
- 	task->tk_status = 0;
- 	rpc_restart_call_prepare(task);
--	rpc_delay(task, NFS_JUKEBOX_RETRY_TIME);
-+	ff_layout_rpc_delay(task, NFS_JUKEBOX_RETRY_TIME);
- 	return -EAGAIN;
- }
- 
-@@ -1971,6 +1978,11 @@ static int ff_layout_commit_done_cb(struct rpc_task *task,
- 		pnfs_generic_prepare_to_resend_writes(data);
- 		return -EAGAIN;
- 	case -EAGAIN:
-+		/* A LOCALIO commit can't be restarted */
-+		if (!RPC_IS_ACTIVATED(task)) {
-+			pnfs_generic_prepare_to_resend_writes(data);
-+			return -EAGAIN;
-+		}
- 		rpc_restart_call_prepare(task);
- 		return -EAGAIN;
- 	case -NFS4ERR_FATAL_IOERROR:
+ 	if (!pgio->pg_lseg) {
+ 		pgio->pg_lseg =
+ 			pnfs_update_layout(pgio->pg_inode, nfs_req_openctx(req),
+@@ -1229,8 +1233,13 @@ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
+ 			0, NFS4_MAX_UINT64, IOMODE_RW,
+ 			NFS_I(pgio->pg_inode)->layout,
+ 			pgio->pg_lseg);
+-	if (NFS_I(pgio->pg_inode)->layout &&
+-	    ff_layout_hdr_no_fallback_to_mds(NFS_I(pgio->pg_inode)->layout)) {
++
++	/* No lseg pins the layout hdr, and it is detached under i_lock */
++	spin_lock(&inode->i_lock);
++	lo = NFS_I(inode)->layout;
++	no_fallback = lo && ff_layout_hdr_no_fallback_to_mds(lo);
++	spin_unlock(&inode->i_lock);
++	if (no_fallback) {
+ 		/*
+ 		 * FF_FLAGS_NO_IO_THRU_MDS: no current lseg but the server's
+ 		 * policy forbids MDS fallback.  Surface -EAGAIN so writeback
 -- 
 2.53.0
 
