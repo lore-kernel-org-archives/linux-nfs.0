@@ -1,59 +1,56 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795124001;
-	b=kyBKVSjaW0FpIvQHktjETnOKduGjLzQpnk9clVYW0Zk5lJMFsZcKQeq57gMGvZijfkm8
-	 HEQ4t6TRSdsrduY+8Sw+CgzI2XHjw1UFZ8M98PStPTfsjd5CIO5ZGirJO5YXD7fX/wTPE
-	 ktRbd0ddPUisiQkEVQFU2xPQlwxPmhhDyLm2nhk+Xhx3r9oavtCVXv/3+aye53gRjvqbv
-	 qEh5kDfutni2HTtMuMYu0PcFOhv0N5IDCz5n3v9/WbpS1Vkvlw5e96ysJJ0d1cOCylovc
-	 ZlH1QzRrz8qHKEUgrMvTYcvQYenLvs6CeCBtEQznT4V3d0U0kmtXI7a1KOFYdlGmfUg==
+	t=1795124084;
+	b=4MCGCmyF9BBCAW8BOQe5SY0nd8n8MeXVAOnybm4kNKA/DfKQw16Ev+uQOVaNoz61oM6i
+	 oLX+j+B15xa8HD3Z1DjT6NWivBBVaS3qhiHavMRvR2H6jBSgXB92QlaHLspkOov3bwQeY
+	 wHIBI/cP1LEpH8qd5SGm4XN5aD87LO/YkkLsfnpv1e7J57P8Dyb1ZlIM6QC6LHR248rRV
+	 WRjpGZBdHLcymDLTZ99zoeIFoI36q9nBrVgQ3ZzmzN1cCk48gx2ScZhURGD+93ytTdTeV
+	 Wu8s6x5RsnqsWnxuZ44oRqFgUnoYtIzv7PF/qcakwxaWLZOxBSMH1iYZn4nqX+aKEzQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795124001;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795124084;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=GntRI6tOBrAhacb25HAQl+V7JQYtYMfqRJJMvNkCZ00=;
-	b=hEbPi9uD00JIriPSRH4yliCtf3ExTDB94G4yVFa6fJREQVcf4C40P2CRslqwycv8FZuU
-	 lR8smvnEDA6i3b3mXLnISUOok7Tm8SFhzWd/PFLcBI8Ecp/Xg20NKE+A7kyDTPN4Sj2Jt
-	 1/0kjcrPyL50WgGyliECNc8QNJCCL+cVo/0fwCx3XXMWoUhSYG9d8A9iw9tLbf0zFt5Dx
-	 opNE0ejxV/VQjF1JUttxiDU6wY8yOQrtDykymbzYZNjVcMV3g9/f6ZLaBwT55l2B9pTeN
-	 O9FcNSlu0v2xqQS9E+EyleBAOCyKMHe4xFYhZL2YvfxRKzcYW3Ikgy4Dtzt/Y1mOdNA==
+	bh=ZcFDkkl2eRUpFFDxCO216QLTmznhu5dem4w/XJ5gAwM=;
+	b=BfzNTICeM5N8KfoUv24I37sn/ESW+TxuRs4nIrPns7H8Z2UuaadqpuyGEUBOit0fsPWo
+	 mkw13gJp7+Ror9Xe1RtJ56UNu7megd6YT4UjjqpMdMLjZV+qiE1HiCrpQSNw1RSbJ4bzO
+	 HUaVVyp3h+xNLuezqVt8cFXMZaLSGWIzdJs3wWKY/YQOlCp3dTOMcTdQ47J+F3Et4/xfg
+	 JUr8M2D1ZY+qDKDWKbjju8RC4PL7i1crDIoCbPoVEDn5U9iIxVhyZRuOSC/vxCc+qTSlF
+	 1s8NMaWygJPD0SEirTCM06u6wjQ3B0FS2QYsKMGRpuIP9KXOrkJWba5q1b1kpUztUhQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hORGslzE;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m8gSUnnD;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61131606A324;
-	Thu, 19 Nov 2026 21:33:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 222C9606A320
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:34:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hORGslzE
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 99A711F000C4;
-	Thu, 19 Nov 2026 21:33:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=m8gSUnnD
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 75FAD1F000C0;
+	Thu, 19 Nov 2026 21:34:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795124001;
-	bh=GntRI6tOBrAhacb25HAQl+V7JQYtYMfqRJJMvNkCZ00=;
+	s=k20260515; t=1795124083;
+	bh=ZcFDkkl2eRUpFFDxCO216QLTmznhu5dem4w/XJ5gAwM=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=hORGslzEfPnglEGYTeGwNMSOmJXFI4vnJPKl7LTQIu6U3OAB+1BJ8zyz54/2JFWHW
-	 8IzcYvIIspyPXWuuG+FVSxX2IKDKG3jeviaS8r1G59Tdpf2dwEh7dHkp4C0VTKzPSp
-	 xU39D1sTcGVRDUoasAYN2hvatrOuWn96/gCU/42hT1Buhv7/slwmOxJnShLEKvlM7T
-	 CR50NyB7flx0PVno5QiHLbPOSICq+5CqndPCX9A4MQ9hjHCY85q1TH1iMymhLUIfEu
-	 ic2rwg1eefJHL/yIOoMC3TgbyajVZsyb9WmJpYFEP68IBaq9Xax9q173rS+QAZjUNw
-	 AmTrz8Xdrv+Rg==
-Message-ID: <b4c8f20fd76086323f20ce2095d6aa116bbf1d3e.camel@kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: enforce cross-export and may_linkat() checks
- in nfsd_link()
+	b=m8gSUnnDbyxYZriTK+8y4mG0jIXqfaBpFNhN8JvJDOQrLu6rRgpxQpQpqkZ64tHQV
+	 db+TLparXgc7g70yLsv/fP4rlZUk5dtcEhvfLYy115IflDyfOBIf5g1hAut1AKgqu3
+	 7+9BhW1sX+L+6MeetN1fjQ609FMBMECCgaQcpzDvEn2TFF07RkLaOvZ6FEq7NyBKN6
+	 T7jtinWyY6rqwxYQQjdmwh36nvxtrF36KC7DoXkuF1HjXwxp8N7Myfk4ggQxhvlRlh
+	 KZOglq78OgFbQL4obNmMzMc9pJELjq2/u8VENYkrIHgoVUw+mUT1nOUqwPQibZuLHQ
+	 hHT4qM5ccS56Q==
+Message-ID: <3c727f131737d29665754cf16c2f72a42f77e616.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: require NFSD_MAY_EXEC when acquiring directory
+ delegations
 From: Jeff Layton <jlayton@kernel.org>
-To: Dominik Maier <dmnk@google.com>, Chuck Lever <cel@kernel.org>, Christian
- Brauner <brauner@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Jan Kara <jack@suse.cz>, NeilBrown <neil@brown.name>, Olga Kornievskaia	
- <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
- <tom@talpey.com>, 	linux-nfs@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, dmnk+artist@google.com
-Date: Thu, 19 Nov 2026 13:33:20 -0800
-In-Reply-To: <20261119192311.2684978-2-dmnk@google.com>
-References: <20261119192311.2684978-1-dmnk@google.com>
-	 <20261119192311.2684978-2-dmnk@google.com>
+To: Dominik Maier <dmnk@google.com>, Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org, 	dmnk+artist@google.com
+Date: Thu, 19 Nov 2026 13:34:43 -0800
+In-Reply-To: <20261119192318.2689409-1-dmnk@google.com>
+References: <20261119192318.2689409-1-dmnk@google.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -142,29 +139,28 @@ Precedence: list
 MIME-Version: 1.0
 
 On Thu, 2026-11-19 at 20:23 +0100, Dominik Maier wrote:
-> nfsd_link() verifies NFSD_MAY_CREATE on the destination directory
-> filehandle (ffhp) and NFSD_MAY_NOP on the source filehandle (tfhp)
-> before calling vfs_link() directly, omitting two checks enforced
-> elsewhere:
+> nfsd_file_acquire_dir() opens a directory on behalf of
+> nfsd4_get_dir_delegation() with NFSD_MAY_READ | NFSD_MAY_64BIT_COOKIE,
+> omitting NFSD_MAY_EXEC, while nfsd_file_do_acquire() unconditionally
+> ORs NFSD_MAY_OWNER_OVERRIDE into may_flags even for S_IFDIR (unlike
+> nfsd_open(), which restricts NFSD_MAY_OWNER_OVERRIDE to S_IFREG).
 >=20
-> 1. Unlike nfsd_rename(), nfsd_link() does not verify that the source and
->    destination filehandles belong to the same export path. In addition,
->    because tfhp is verified second with NFSD_MAY_NOP, if two distinct
->    svc_export entries share ex_path with different read-only or UID
->    squashing options, fh_verify(tfhp, NFSD_MAY_NOP) skips exp_rdonly()
->    and leaves current_cred() set to tfhp->fh_export's credentials.
-> 2. Unlike filename_linkat(), nfsd_link() does not call may_linkat()
->    before vfs_link(), allowing remote NFSv3 and NFSv4 clients to bypass
->    fs.protected_hardlinks restrictions and hardlink non-owned restricted
->    files.
+> On a directory that grants read permission without execute (search)
+> permission (for example mode 0744, where LOOKUP is denied with
+> NFS4ERR_ACCESS), an unprivileged NFSv4.1 client can still acquire a
+> directory delegation requesting NOTIFY4_ADD_ENTRY and
+> FATTR4_WORD0_FILEHANDLE. In addition, NFSD_MAY_OWNER_OVERRIDE causes
+> nfsd_permission() to return early before inode_permission() for the
+> directory owner, bypassing missing execute bits (such as mode 0400 on a
+> read-only or immutable directory) as well as POSIX ACL or LSM search
+> denials. When entries are subsequently created in that directory,
+> setup_notify_fhandle() constructs and signs valid child filehandles in
+> CB_NOTIFY callbacks, allowing the client to open child files without
+> search permission on the parent directory.
 >=20
-> Require ffhp->fh_export->ex_path and tfhp->fh_export->ex_path to match
-> (returning nfserr_xdev on mismatch, matching nfsd_rename()). When
-> ffhp->fh_export and tfhp->fh_export differ on the same ex_path, reject
-> read-only source exports via exp_rdonly() with nfserr_rofs and restore
-> ffhp->fh_export credentials via nfsd_setuser(). Finally, check
-> may_linkat() before proceeding with the link, mapping -EOVERFLOW on
-> unmapped inode IDs to nfserr_perm to match vfs_link().
+> Add NFSD_MAY_EXEC to the access mask in nfsd_file_acquire_dir() and
+> restrict NFSD_MAY_OWNER_OVERRIDE in nfsd_file_do_acquire() to
+> type =3D=3D S_IFREG, matching nfsd_open().
 >=20
 > This issue was discovered by an AI-assisted code review tool (ARTIST)
 > and validated in QEMU against an unmodified v7.4-rc3 kernel without
@@ -172,97 +168,48 @@ On Thu, 2026-11-19 at 20:23 +0100, Dominik Maier wrote:
 > available on request. The fix was build-tested with KCFLAGS=3D-Werror and
 > checked with checkpatch.pl --strict.
 >=20
-> Fixes: 800179c9b8a1 ("fs: add link restrictions")
+> Fixes: 544a0ee152f0 ("nfsd: allow filecache to hold S_IFDIR files")
+> Fixes: c10ce74117ad ("nfsd: add the filehandle to returned attributes in =
+CB_NOTIFY")
 > Cc: stable@vger.kernel.org
 > Signed-off-by: Dominik Maier <dmnk@google.com>
 > ---
->  fs/nfsd/vfs.c | 34 +++++++++++++++++++++++++++++-----
->  1 file changed, 29 insertions(+), 5 deletions(-)
+>  fs/nfsd/filecache.c | 10 ++++++----
+>  1 file changed, 6 insertions(+), 4 deletions(-)
 >=20
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 56c49b5..0c4e052 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -45,6 +45,7 @@
->  #include "netns.h"
->  #include "stats.h"
->  #include "vfs.h"
-> +#include "auth.h"
->  #include "filecache.h"
->  #include "trace.h"
+> diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+> index 17a94e6..f9cf0bc 100644
+> --- a/fs/nfsd/filecache.c
+> +++ b/fs/nfsd/filecache.c
+> @@ -1183,13 +1183,14 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, stru=
+ct net *net,
+>  	__be32 status;
+>  	int ret;
 > =20
-> @@ -1993,6 +1994,11 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh=
- *fhp,
->  	return err;
->  }
+> +	if (type =3D=3D S_IFREG)
+> +		may_flags |=3D NFSD_MAY_OWNER_OVERRIDE;
+>  retry:
+>  	if (rqstp)
+> -		status =3D fh_verify(rqstp, fhp, type,
+> -				   may_flags|NFSD_MAY_OWNER_OVERRIDE);
+> +		status =3D fh_verify(rqstp, fhp, type, may_flags);
+>  	else
+>  		status =3D fh_verify_local(net, cred, client, fhp, type,
+> -					 may_flags|NFSD_MAY_OWNER_OVERRIDE);
+> +					 may_flags);
 > =20
-> +static int exp_rdonly(struct svc_cred *cred, struct svc_export *exp)
-> +{
-> +	return nfsexp_flags(cred, exp) & NFSEXP_READONLY;
-> +}
-> +
->  /**
->   * nfsd_link - create a link
->   * @rqstp: RPC transaction context
-> @@ -2011,6 +2017,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ff=
-hp,
+>  	if (status !=3D nfs_ok)
+>  		return status;
+> @@ -1457,7 +1458,8 @@ nfsd_file_acquire_dir(struct svc_rqst *rqstp, struc=
+t svc_fh *fhp,
+>  		      struct nfsd_file **pnf)
 >  {
->  	struct dentry	*ddir, *dnew, *dold;
->  	struct inode	*dirp;
-> +	struct path	old_path;
->  	int		type;
->  	__be32		err;
->  	int		host_err;
-> @@ -2032,6 +2039,28 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *f=
-fhp,
->  	err =3D nfserr_exist;
->  	if (name_is_dot_dotdot(name, len))
->  		goto out;
-> +	err =3D nfserr_xdev;
-> +	if (!path_equal(&ffhp->fh_export->ex_path, &tfhp->fh_export->ex_path))
-> +		goto out;
-> +	if (ffhp->fh_export !=3D tfhp->fh_export) {
-> +		if (exp_rdonly(&rqstp->rq_cred, tfhp->fh_export)) {
-> +			err =3D nfserr_rofs;
-> +			goto out;
-> +		}
-> +		host_err =3D nfsd_setuser(&rqstp->rq_cred, ffhp->fh_export);
-> +		if (host_err) {
-> +			err =3D nfserrno(host_err);
-> +			goto out;
-> +		}
-> +	}
-> +
-> +	old_path.mnt =3D tfhp->fh_export->ex_path.mnt;
-> +	old_path.dentry =3D tfhp->fh_dentry;
-> +	host_err =3D may_linkat(&nop_mnt_idmap, &old_path);
-> +	if (host_err) {
-> +		err =3D host_err =3D=3D -EOVERFLOW ? nfserr_perm : nfserrno(host_err);
-> +		goto out;
-> +	}
-> =20
->  	err =3D nfs_ok;
->  	type =3D d_inode(tfhp->fh_dentry)->i_mode & S_IFMT;
-> @@ -2592,11 +2621,6 @@ nfsd_statfs(struct svc_rqst *rqstp, struct svc_fh =
-*fhp, struct kstatfs *stat, in
->  	return err;
+>  	return nfsd_file_do_acquire(rqstp, SVC_NET(rqstp), NULL, NULL, fhp,
+> -				    NFSD_MAY_READ|NFSD_MAY_64BIT_COOKIE,
+> +				    NFSD_MAY_READ | NFSD_MAY_EXEC |
+> +				    NFSD_MAY_64BIT_COOKIE,
+>  				    NULL, S_IFDIR, false, pnf);
 >  }
 > =20
-> -static int exp_rdonly(struct svc_cred *cred, struct svc_export *exp)
-> -{
-> -	return nfsexp_flags(cred, exp) & NFSEXP_READONLY;
-> -}
-> -
->  #ifdef CONFIG_NFSD_V4
->  /*
->   * Helper function to translate error numbers. In the case of xattr oper=
-ations,
 
-Looks sane, but sashiko has a comment on this about the credentials
-being used:
-
-https://sashiko.dev/#/patchset/20261119192311.2684978-1-dmnk%40google.com
-
-Sounds like this may require 2 may_linkat() checks?
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
