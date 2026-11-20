@@ -1,100 +1,63 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.52
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795161378;
-	b=F5Vkf2DzCJO2gzfTFfcvRi6B0VtvrRXPmWB9aESEnkRaNFKEdgFql51WT+D/AuqvdTXL
-	 YFArtjxVVhgD55Pf/dp2ZJqN47M8BJLuwqgEH0v6sS3fwlOmWJuRVjm+qUiAUyUmyh8Qm
-	 LbRsuD0XkAGGRoGWsG7/0brzkeTZlxjeECeBKzmh/Nb7gq4bbykdL/JaKh31IsfjSy1ur
-	 IsUAGekuHNJHFAqIa0BKdyfLIAZkMs6UB+olIhevheSlfh7cC1W9ngPjnlFgsGX4YRCXZ
-	 cNSwZm5Qw5SW2b2TTolL7KL4ffKIikGCTZ6ZAomjux27AtC+BjGmwNRo6bAl6cWysEQ==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795161378;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=D6D46AsAqBpehZlFwumznPvfnW8E6n53WMjbxwAnW40=;
-	b=1Ed+JZi8rjGetlQGCf6jETR5Umr1c2n3D63xuXsdFx1bbuB3CLyPbqDeqYkIjfQ4uoAU
-	 sf5qoYcvrl+iBUdi0htc4ElB3Bd6SYwkDEisCTHgVfzupLiGMXSGfRldcJ5v166j+n/l0
-	 2NWU1j4knm+8IfcRKnb3In3M/CWb4l2VjGS3E/T2sSLN9QjlK4owk644wbhNdl0h7w16I
-	 o2oR27h28a/vuGB0sSEdVP+fXH1BythR4W/7hQEHfOiiT71kfVF81Tco1ThtnV1HTkNjq
-	 xwFSA8oJNSaes5xbpTLjCQQDX5FBBPXLN+28iQW2KyL09STZY1Fi09t4Tq94TscQmGQ==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Ygo7u8hh;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.52
-Received: from mail-ed1-f52.google.com (mail-ed1-f52.google.com [209.85.208.52])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795167522;
+	b=OpkBCQa+hyguvi92icHIP8TNeqUYSEyPd9qN5b0vicJ410LO1LWtvzmfwfb3Ms2JfrAZ
+	 lkwIKRUOYhyDdo/6xvA59eTpurKsOrhIY0dAYgtfWl2UqL453N8sxv9wcOUCYT6hBco5J
+	 TRQr0PCs5WevktPQ52n0TY5TbfESwI0XL1+zzZc+GlyJm0HuyG8+NDFQLFdDQ/B8i4wEH
+	 8OvvKPZMjGrGR/Gy729oyo2Ckqp1XrTi5Z00mnaDPx3PI5f/cd49vcemoJOTKWo6Mj8iH
+	 vZ48N+54b+V24LkV7yWE6kb9oKSlXt0uy3sVZdMBmfMPiCGjFUYb79vf10yDRx1w4RA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795167522;
+	h=Received:DKIM-Signature:From:To:Cc:In-Reply-To:References:Subject:
+	 Message-Id:Date:MIME-Version:Content-Type:Content-Transfer-Encoding:
+	 X-Mailer;
+	bh=Afd1H3HLHSzEfHiPoIegI1/ZAbqBna+yrjuMxmwAVis=;
+	b=jm6BIZKBbRd72vwuc+dOpELu7YHRywoTj3Y08SkcighrlOVVW7QS2Y7tjuE+CT/AZPvJ
+	 dAcQv/1sjcPXgtaFsFLI6Q5naMScxS3BNRQ8UoWiBLWsBNnV5VDNTLR8yXzkSBQW1Ujse
+	 TsGUuFDPRr1vRXWdYAOkDO3GgNedGwrY3Y7b/6yQRToTMTnHQbcrlnvLxaaIG2Uc/dNB7
+	 i+xBxEcJy1RqW9iRRpmIL17ldY8T8x5YG3otHAi25ddfCD0MdjPro2Ug9fJFqkUgo+Jx3
+	 yPImE8XKgeTxuuoFpDZKsp9fv5EVOjzTPuQaaEts1zbZ3HXk/F1Nl3zXAyDp7/Sh0qw==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=P9BgjAry;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3EAD606A320
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 07:56:17 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E3EAD606A320
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A995606A33B;
+	Fri, 20 Nov 2026 09:38:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=Ygo7u8hh
-Received: by mail-ed1-f52.google.com with SMTP id 4fb4d7f45d1cf-6b88bc47e23so757541a12.2
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 23:56:17 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795161376; cv=none;
-        d=google.com; s=arc-20260327;
-        b=DAXZhMcdZP2RJ8XtPzbqpytHwTyk+85nMNHqlmlMH7Xi+2UiEyXuf/zOnsL1fyuWHK
-         xSTGnvg9L1ZH1oxQDMnLc4g3+nNVeKO7nShtVJljZJK7iGiUNIGnIFZ0ywvzCx/6nRdw
-         /6A9lM4lwJZL4mELjHce4ZcgG70k4cwr9Y91yOlOxNYwcmArZ9h1R1Hg8/L1w3K27j1M
-         AQiICDE2X5xcN/gYXgLnXj+6sWwlUfY0JmQF5WNZWF58v15mkCEVoG7lUohNH4d8Xcrn
-         YVD4YvWAyEqtMZPTC/L2NDCv15Fhktk7cGWBXUqtwYIF0mAun9EPCxDe6Cy3IL5cYS6l
-         qm7w==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=D6D46AsAqBpehZlFwumznPvfnW8E6n53WMjbxwAnW40=;
-        fh=Q/RK3z+rHJYWshofqInodN1m3aHo+/M1YqvU1Wbl0hE=;
-        b=OE6wWz7rsI4GD1W8jMD1ze09E43k/VHpSqXexWVqQEvUN4XkSJkXPse9K/qc4+bjdT
-         wIf92nJdcj0Ruar9vHPqdRRrEDPu4Qn5QAdiT2zyC1XtwJsw0BnoZD/OxFw5qirhfUKe
-         KXdheJy6KWmBTzDqTb/OafPIzCb2ppEMjHEJUp78cZxYCvVmn44YAxLgUmPsp+WDhFKw
-         szLiInTBmxOEDzuin7/wH1/T4KbvImjHkbVNpJPAzQAnffneMS6k+dVYuCeSDCzXdEnF
-         hxShvzRit8hdAFxD5KWWIKwYf9RlMBJIukNJ5Xp6DKxMjl1MZ5yIyCiQXNjnD8CL8QwW
-         aP1w==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795161376; x=1795766176; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=D6D46AsAqBpehZlFwumznPvfnW8E6n53WMjbxwAnW40=;
-        b=Ygo7u8hhmT8ZRlQdmS0vOD0LtKqCRvNQy8jKtH4jKR6rqYRw55nOxHH49oSqwd7310
-         tqh0K6hEP33VvvjziZCuo3m8QswhaN3kPeoSMEm0e3vamqxNJYSzr1ogjhjwG8x5kgoA
-         O6hNEcPAPWKodC+kQWJklTSqcn8hda7Sja3R2uUvsbTtUVBI27nqXzheiNBf38ERo3NX
-         ey6XMfzoNtmgqw/zJqTMOnp03ljHQz5A4Y4uXTPodouzp1/HYxnKXzq3R0cHZrICpabx
-         ixSDKTsTv3sotbbXlaJs4vwkgaS8TSHoUl8mw0inid7Y0tkejNrg13cwdskBxffkK1Jq
-         GO/g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795161376; x=1795766176;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=D6D46AsAqBpehZlFwumznPvfnW8E6n53WMjbxwAnW40=;
-        b=FFtgSvZVEtVJpgCr6jV3yhhIaeYmFZEyMbmZuz+exvDgifA+LQcrmLWZIs9xPqeZrr
-         9kVOJXiWQYhSZgvNoGJ9ml3xum7qNCxG/b4th4Fd8a0lpSGY1LJOW2C62l+fZCgGTaXh
-         e+P4M033IIT9oEG+oecA+ljzeysfwEM1FX4yuBp91EtuPT/nz5aSzTTyR4/4nfl5tujK
-         SV+NhhOOk2vWNHSgDA3tFjai08g+svBaO2D1XNPCk0JT/vAo4GfjeIpGkugIQcMhy3de
-         lMfYkRPx/H5XvCrzc4AiqVxfA8eGxld4F8S26LLuYa9BzufEAOXlMWEg5/+jvMoEXqcS
-         wx/Q==
-X-Forwarded-Encrypted: i=1; AL+hErEQMcO0OYHaPa/LnBr8yUdT2SeO8nnwwgpxUQjqUFgCiFIzCzGMvM4QqQY0LfcyT3YH68w/KD/vPfQ=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+8nIYZkl1ZRH/duejAytHkYqRy/+6eCfZdLmFYWpZICX3Jeo95
-	Yp6aZApW3bUt5cwhHSUWXm3yqe0yrS1LbvMUz1QfoQfJXF+0/42jDUfjDlasFu5gggMsbazFM2t
-	ljkNGgpwgjNDQ0IJiNA7Ixe5wFFp5Hu0=
-X-Gm-Gg: AZFdTZddM8fSJFxdHnxViqMe0OFTMGfk0uuExouqvKcqq5+feH5vTiCeWfrhkofzpjS
-	ovJW/VeWdRD3cMMrIg+gMVrBMZFN9i8/aDOII7kzo1cK3mPWW2YWGcmqO1o54ffcCKYdOYvcxqU
-	E1ZMJroGwORJDJFibymlS1THVqjWNGQqkQN/g/q+tJx1ZD3QtupwrJdPr5q3bds3gRHER56Xj1a
-	4aeQwTozFFTqAMoauYxyZ+rRbfYrWko7djoW7QM+NwLOn1vsFWxVO8V5Pa87fzDnISnW3M9C+ZE
-	zsK1JxfAoa2FkdiuAeVj091l5JelrkBHN/JdmMLtP8tzpa353vFVEYnizYpdj3aSN1Sj1UTo69w
-	7JU58HYVnoBpQCiWXAX+cJyKLtGBa2HmggTdCuZhgiude2cW8M2xiYspsj43DC6B10P7M
-X-Received: by 2002:a05:6402:c6c8:20b0:6b4:1037:2bb1 with SMTP id
- 4fb4d7f45d1cf-6ba37e90658mr958557a12.22.1795161376138; Thu, 19 Nov 2026
- 23:56:16 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=P9BgjAry
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 243BC1F000D1;
+	Fri, 20 Nov 2026 09:38:37 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795167522;
+	bh=Afd1H3HLHSzEfHiPoIegI1/ZAbqBna+yrjuMxmwAVis=;
+	h=From:To:Cc:In-Reply-To:References:Subject:Date;
+	b=P9BgjAryBt+3bY5m/SLXSxDvgSE1J5cTrN85T5FlspUqiGiRY+TDcTEQ2pB+Nk2WU
+	 s/l3tIaGXPJB9IOZTFkyiZ/fF365eqlMfnnqd9D0DGZLkjU75jkjP13P+Vod8jrI39
+	 jZfj5MkeQITq6V0NHMDic6D3NOk7jBAj1QlAmaX/Nn3pDgRjqlJSpkvDN475/j2XI/
+	 MOBD20m1QYazNVzMBEAmFRDMGtM5LG2aKs6GgBN0tPDHSP9WcIbF3Hq6WccgG0xPE+
+	 T544xi1ba+5i3xtr7VaobdBha5xS9kHMn/K70pDpAY83IRBB3VM8IhXEWr08NU0OBe
+	 Uln8HSiREyYaA==
+From: Christian Brauner <brauner@kernel.org>
+To: Christian Brauner <brauner@kernel.org>, 
+ David Howells <dhowells@redhat.com>
+Cc: Paulo Alcantara <pc@manguebit.org>, 
+ Matthew Wilcox <willy@infradead.org>, Namjae Jeon <linkinjeon@kernel.org>, 
+ Marc Dionne <marc.dionne@auristor.com>, Stefan Metzmacher <metze@samba.org>, 
+ Eric Van Hensbergen <ericvh@kernel.org>, 
+ Dominique Martinet <asmadeus@codewreck.org>, 
+ Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev, 
+ linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
+ linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, v9fs@lists.linux.dev, 
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <20261119083851.3306418-1-dhowells@redhat.com>
+References: <20261119083851.3306418-1-dhowells@redhat.com>
+Subject: Re: [PATCH v19 00/17] netfs, iov_iter: Use a chain of bio_vec
+ arrays instead of folio_queue
+Message-Id: <20261120-koriander-wohnform-parolen-1f10ac9dbc4e@brauner>
+Date: Fri, 20 Nov 2026 10:38:35 +0100
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -104,48 +67,73 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261119-nfsd-copy-same-file-v1-1-ef18e53a00d0@kernel.org>
-In-Reply-To: <20261119-nfsd-copy-same-file-v1-1-ef18e53a00d0@kernel.org>
-From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
-Date: Fri, 20 Nov 2026 08:55:00 +0100
-X-Gm-Features: AclHuK8gGGskXGfFPzME8Y_v-1TiWdShNUYoz4-qwshh3EGdWiYpATvAHeQokQw
-Message-ID: <CA+1jF5rurDObkiP0pg3Kp1vgB+sdxU6FYBaUUPWLJoHsoJ_6oQ@mail.gmail.com>
-Subject: Re: [PATCH] NFSD: Reject a COPY whose source and destination are the
- same file
-To: Jeff Layton <jlayton@kernel.org>, nfsv4@ietf.org
-Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
-	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Mailer: b4 0.17-dev-04696
 
-On Thu, Nov 19, 2026 at 6:44=E2=80=AFPM Jeff Layton <jlayton@kernel.org> wr=
-ote:
->
-> RFC 7862 Section 15.2.3 says that COPY MUST fail with NFS4ERR_INVAL
-> when SAVED_FH and CURRENT_FH refer to the same file, whatever the
-> ranges. NFSD never checks for this. A same-file COPY with
-> non-overlapping ranges succeeds, and one with overlapping ranges fails
-> only because the VFS rejects it.
->
-> The overlap-only rule applies to CLONE (Section 15.13.3), so leave
-> nfsd4_verify_copy() alone. Instead, check in nfsd4_setup_intra_ssc(),
-> after both stateids are verified. For an inter-server copy, SAVED_FH
-> names a file on another server, so that path is not affected.
->
-> The Linux client never sends a same-file COPY, so this does not change
-> its behaviour. Found by pynfs COPY11.
+On Thu, 19 Nov 2026 08:38:31 +0000, David Howells wrote:
+> Could you pull these patches please into your vfs-7.5.netfs branch?  This
+> is the third of five batches (two already having gone upstream), in this
+> case replacing the folio_queue struct with a bvecq struct.  It has been
+> rebased on v7.4-rc3.  This was split from v11 of a larger netfslib
+> series[1].
+> 
+> This series adds a new type, struct bvecq.  This points to a bounded array
+> of bio_vecs with information about how to clean up the memory they point
+> to.  A number of bvecq structs can be linked together to form a chain and
+> an iterator type, ITER_BVECQ, is provided that can be pointed at the chain
+> and can walk it.  Netfslib is then switched to use the new type and
+> folio_queue is removed along with ITER_FOLIOQ.
+> 
+> [...]
 
-Why should COPY within the same file be blocked?
+Applied to the vfs-7.5.netfs branch of the vfs/vfs.git tree.
+Patches in the vfs-7.5.netfs branch should appear in linux-next soon.
 
-For example: Windows FSCTL_OFFLOAD_READ+FSCTL_OFFLOAD_WRITE is used
-exactly like that by databases like Oracle. Even advertised as a
-"database accelerator" feature...
+Please report any outstanding bugs that were missed during review in a
+new review to the original patch series allowing us to drop it.
 
-Better tix the NFSv4.2 COPY spec at RFC level then...
+It's encouraged to provide Acked-bys and Reviewed-bys even though the
+patch has now been applied. If possible patch trailers will be updated.
 
-Aur=C3=A9lien
---=20
-Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
-Big Data/Data mining expert, chess enthusiast
+Note that commit hashes shown below are subject to change due to rebase,
+trailer updates or similar. If in doubt, please check the listed branch.
+
+tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+branch: vfs-7.5.netfs
+
+[01/17] iov_iter: Fix kunit test to remove __init and __refdata marks
+        https://git.kernel.org/vfs/vfs/c/1bce9def76dd
+[02/17] block: Add a function to kmap one page of a multipage bio_vec
+        https://git.kernel.org/vfs/vfs/c/14e2292a9706
+[03/17] iov_iter: Add a segmented queue of bio_vec[]
+        https://git.kernel.org/vfs/vfs/c/5f1dd24265f0
+[04/17] netfs: Add some tools for managing bvecq chains
+        https://git.kernel.org/vfs/vfs/c/b4e0ea3853e5
+[05/17] iov_iter: Add an API document for the bvecq structure
+        https://git.kernel.org/vfs/vfs/c/ca90a27f2d94
+[06/17] iov_iter: Add a bvecq kunit test
+        https://git.kernel.org/vfs/vfs/c/0a2f9551262e
+[07/17] afs: Fix an inconsistency in the symlink code
+        https://git.kernel.org/vfs/vfs/c/44921a81054c
+[08/17] netfs: Explicitly pass tail padding to netfs_writeback_single()
+        https://git.kernel.org/vfs/vfs/c/7a3a80623cca
+[09/17] netfs: Change netfs_writeback_single() to not look inside the iterator
+        https://git.kernel.org/vfs/vfs/c/6703bfa120ef
+[10/17] netfs: Pass the write length to request creation where appropriate
+        https://git.kernel.org/vfs/vfs/c/c7496c6ed431
+[11/17] afs: Use a bvecq to hold dir content rather than folioq
+        https://git.kernel.org/vfs/vfs/c/65752f84cf61
+[12/17] cifs: Use a bvecq for buffering instead of a folioq
+        https://git.kernel.org/vfs/vfs/c/145d329f12ee
+[13/17] smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
+        https://git.kernel.org/vfs/vfs/c/adf3cafd9933
+[14/17] netfs: Switch folioq to bvecq
+        https://git.kernel.org/vfs/vfs/c/5b95afa0aeaf
+[15/17] smbdirect: Remove support for ITER_FOLIOQ from smbdirect_map_sges_from_iter()
+        https://git.kernel.org/vfs/vfs/c/c7879d1a4e06
+[16/17] iov_iter: Remove ITER_FOLIOQ
+        https://git.kernel.org/vfs/vfs/c/3d9d0bbb7fcd
+[17/17] netfs: Remove folio_queue
+        https://git.kernel.org/vfs/vfs/c/d6d5b8979e5d
+
