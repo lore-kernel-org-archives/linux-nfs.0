@@ -1,101 +1,66 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.45
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=165.173.182.15
 ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795153941;
-	b=h1CF7JQQm/I/HuJXgCU6iSrdtfC2JMI5qWUXw2IUHgJgkybhE1X5iT+OHeasQyFXlshE
-	 hYq2Ajw5qCkYRXoQU47UvuHmRBL6NGfpI4hUF8TWig40xvoo91jECNsa5tyqdSUC8J2+V
-	 pVox73JS/O8Nff4kAb4aHDk8EkN5Lj0Mglz7ek58QT1HWz73tLIhp6aYPMLh0evrx8HFj
-	 h8a6HyowGRqnevAndii8do2QOu3rbXIA625W55ioY9FpBGi74nEIQalbcGgUvDXgObxm1
-	 jwToVsKpwap3x9BUa2Y92KlnKwIHOleukQVLAYj2kdxxygUUJzdH2KOnRamQCXi3Qhg==
+	t=1795154430;
+	b=BOobYxbNiXple9N8VlA6J9oaCwAWe5T6v1eTTjh9caXyjK2IRrV6Yg3CcCsSayDQDKZe
+	 DBuPzMBaQuHt5y4N32Mj37dBieYa6EuzX3eXzwDSVxIKaV4lvnArOJ/on8u0rL97l8yQ3
+	 HBCdsx7QRFxzqJOjkfpeM5EZFqNU8zNGJ4gctYiDWWX/caRXKUZLaTbWbBzzY4KiJB47v
+	 1mqGc5sJzNRjgy1/kl5MInotWtTau6ekqraF1srElonqRe7dumNX7mRWuEMPnQcEBsjWY
+	 lqM9yMRjjEmze56VKMZ4EWwFYaDBkOjJr5PGs6ftnNBjaI1jkXG9TJhEFZPj5WiKLZw==
 ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795153941;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=qqjvXkHLWKlzcTbLqLrZX5sRTWJ1QjhTUD6O+HEdyZk=;
-	b=WD7a0nQZxBWp64P/hxuZqiAJERzuPW1yIHdG4pOvrfA27EICCnxVbuDkdR1GqH4DfDma
-	 DqsdDv4dMc3ri68b9DamOiprPyOcUBi4RsvR+hfsP3V2tzxV/X0DpbTHeyurBszxautj5
-	 2bojiW6XvcH/z/KOPylsJwSDJ4cK6pCf1d15wCfICkFFDQIX0KdMX5vL2j5U+1txuKNzr
-	 +H9ki9ZFXNIYdowlOkkwuOwqhvNSsGb7XraaKPK5Pdy7r10Be08rW4ml6sO+2qWeviGIN
-	 q5pWRlmOMrI/SH7bfC4P+JOtRgSk7Gunhx0ndwOdj3tcl87puWiApxBlARs2k5Rvhgg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795154430;
+	h=DMARC-Filter:DKIM-Signature:Received:From:To:Cc:Subject:Date:
+	 Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=5Uq0u2UqluTfsfMVM/ngVbgb8vECy5ebkPRwAU+bl3s=;
+	b=SS8jlk+fFZmV8PCdTMtVP4G9LkLUUeZYrMUoJnFqt2XbDi/mnACbLDqWgyI+zLdboZZ+
+	 N5uZfGfPQzdk2njzuPReHXn5M2dAQZ2j6VgxY+SQy08t4ExWhtRl7+lPjXDZA1xaH3aFx
+	 pObkYzXxEmmSN1dhFV4oN4CKv72biQLqtdSOV32yMGKpxI3UDJS7ITFwyUQZ2Wv52LAWk
+	 SE6A8eirpbEiAlxYTte0YwcnW0dGRFxbNM2u0n+qam896Mu4ae89r3u4745lNJNkQlOzB
+	 3MK50k02UnqNX1lducN6JA27K6PwfsAT0pQ8Hu6EV420UO8N55AKOJphI6O+EBzoNYg==
 ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=wmhJsyO7;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.45
-Received: from mail-ed1-f45.google.com (mail-ed1-f45.google.com [209.85.208.45])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	dmarc=pass header.from=ikuyo.dev;
+	spf=pass smtp.mailfrom=ikuyo.dev;
+	dkim=pass header.d=ikuyo.dev header.i=@ikuyo.dev header.a=rsa-sha256 header.s=s1 header.b="kU5r/FrA";
+	arc=pass header.oldest-pass=0 smtp.remote-ip=165.173.182.15
+Received: from sender5-op-o15.zoho.com (sender5-op-o15.zoho.com [165.173.182.15])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E368606A330
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 05:52:20 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4E368606A330
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A6AF606A525;
+	Fri, 20 Nov 2026 06:00:27 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3A6AF606A525
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ikuyo.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ikuyo.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=wmhJsyO7
-Received: by mail-ed1-f45.google.com with SMTP id 4fb4d7f45d1cf-6b408f2d936so760923a12.1
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 21:52:20 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795153939; cv=none;
-        d=google.com; s=arc-20260327;
-        b=hbYTWR/BBol0lQrNueiNgW8ECDlKoxL30t6j1Q9z+mDHoxJrXcs09fJ/0LxTrUWVd3
-         cqXMK5tvVOw+nYtMNHZl0/9MsIizn/p1Fji6BUyZWHh+Hnq8ZuhEWZQ9eq3BukwRzqD8
-         EOIEHZ0uUQ4IP49BOp6E6cmJtGjoipa5W54xXKFN+hs3RXgGRogM0zW171zH9Ky7UA/b
-         sNombB8+tYE5yAsPPqsAtVF+G9DgBJHO4F3QKvT/n9xdAsxrysEAkusB/fu3k7TwZTLk
-         DuONvvvlSqHJnxHT63TVhLZJmKHZBo4fnmFi7cfh4WQAW9QOUf9TcYe7AGbpyVVwYZ9e
-         tetQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=qqjvXkHLWKlzcTbLqLrZX5sRTWJ1QjhTUD6O+HEdyZk=;
-        fh=bXU2F63ERB4yMIK1qBkpzCZ+3Q6VhcqhYnY0EHQ4W5w=;
-        b=UYQN6nj1lcCEQIlb9bYwYhP1lKTYvwPjCerp34ImjMSmnEs/YcHthLmec34oEDzF5B
-         7X3hYmMms/9mn48ESa3CAH0EH2WXzTiJ0lfSUPj9yhO8KRr5QUha54Hp2WPGxNiqWYpR
-         vqQrWY7KpTKrCpOgNzh3vBIYx2lV7FOwm862JKZRBRyErPIZmnEVF3ZSuFFbGs7sU1pE
-         e+RTVpVB1TJmCtZZ3gFJCkva31G3emaVFMsi2B6+pw9aJggulpmgS5wu9a5LHoxtWskz
-         XBuhEyCwq7jrJBtXn5K66vGK479fG/LEaKoIWflVrgXT2SBUWI+d5po1pJ+scJ2zx09E
-         naAA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795153939; x=1795758739; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=qqjvXkHLWKlzcTbLqLrZX5sRTWJ1QjhTUD6O+HEdyZk=;
-        b=wmhJsyO7LXdtpOpN24yz8CRlOs4eSWNNVUOkZBY1tRFNTzDNjI6Vw/tltKajtxSSIy
-         Z3RSrwlw2aN/7KOYSfwDmqv/8SZU9suzpStUneQeV26W3+gjUXaT/43AtR5t3so2X6OM
-         KwcpyDeJ7+tuJ1CjehvUB6DAqJHDcpttecgsOgCwjbgXA4g123JxS+D5EPNithQ2Vsh5
-         oBFbPBCrEuIbxdLL43qGPGkV3VoSMohUPHkEr/exxAgsRXzctsEwj7ghRkD5WmkbM/iT
-         Ed+zlZcsMUS6AswLDEKiA5Nf3s4lcw/0GIiI9ofVSYoVfZo2ApeBHY/UhbOE3KbcvPxL
-         8Uxg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795153939; x=1795758739;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=qqjvXkHLWKlzcTbLqLrZX5sRTWJ1QjhTUD6O+HEdyZk=;
-        b=AkUJqiDhNiNug+hypGl6rFriQVJmg1/HX+nXTRKKhb/rjjcDfBK2hn/Q+ZvE4q07CS
-         yFzmsMsV0XTKfJUEyKKoMJVfmfcdnPPSm6ZsyiUD5ZnUxVqR/5umE+KCpSvMasJDsCcm
-         Qff8VHWtL2wOLW4913odxFkkE/QqEeVvZU0kxe8Rh8k+HfwCFxLzjiKiOjX0m/zZND3p
-         HM+IectFJPov5nQ8nhJv42FvtKT6UWJx0wWecQIidBOJDH4/OtZLfgT6gpuQT2680TZF
-         +iVSLOKLqcpQAnWk0hNs+AhAQ+Ujf5k1rmS7+W2chFXhosKe0xhU5Qz5bzIWJ64GtAGA
-         XVPg==
-X-Forwarded-Encrypted: i=1; AL+hErG785MfDtN+dc4ftIA3rdn1VbtR71oJ45bEGZin0snh6xMx4Ed5rvICdTOMPuIXNvQIzyVWJvu2Y5g=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/YfEfTPX4WzXKOByjWRg5Ug2BGR427sr7xk3FFaqSg6NqZwx9n
-	xFnXWVtJnikuUWJkHnehhVDahrB+4ScwI3uP4yXEbfhQ+roQTozA4OvwfKa85NWVtGnjKGN/9m/
-	2guANoKwnD3hdqbiFP2fw2VewbKhEuaQ=
-X-Gm-Gg: AZFdTZevHahbFyR/Jqe2ECBmo4Wp+fZJUNab34yzMqagN64i78/DP8WKc2g9ecpXKka
-	qYOcXOkiqUQvhFs7kGWqP0b10ThpCnPc4jmThkIHYaMqlIjeYDlTMJXCZC3op1bRllZuzcHfjC2
-	P8xmCO/b12ZCYNy4nDiXt4vKSWvUK8595+3stiLAdskCqAHGJHZLg3dV6B8tXzfbiLqsTyJ6m7Z
-	RarrDQM+aJyC3b+MFBQLBi9OSegLcRWP3XEgm7JRkI0zXs0a6Q+ElgOSsVP9rDmlkIksNHjHu8L
-	Jul3OZ6XcHGvUIGtp/14AcP8pAU7Rj2oFjcxWn6CHD7gHDazFjSAkUGlYXtOuFj5VYJDNbkAD/C
-	LKy3E13dOJO0k1nfSJrBDP1mat3ipn8GsHNDH3u9wqEGuPSdL6zZM8qFgrSBUNF2e5g1hIaDMf7
-	r8sJsCLedtcbb9u2A=
-X-Received: by 2002:a05:6402:c4e2:10b0:6b8:8131:4fc3 with SMTP id
- 4fb4d7f45d1cf-6ba37d5c08dmr826270a12.8.1795153938406; Thu, 19 Nov 2026
- 21:52:18 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=ikuyo.dev header.i=@ikuyo.dev header.a=rsa-sha256 header.s=s1 header.b=kU5r/FrA
+ARC-Seal: i=1; a=rsa-sha256; t=1795154412; cv=none; 
+	d=zohomail.com; s=zohoarc; 
+	b=ksIpHU2pSu+1+Zehrg0nhruRQKUeMFc/z0WOZRX8k14AHgb7KtkhWJ7pKV5eEeXTwuVbX1bBEib+Nbh3NEeVH7w8hBJalFRye0Zm7yUarJnDI9AeCB9srAbB0oPujpoT58L/5A0yEkdTpA/NLgwyOSawNaGYKqe6qiJTg4e4Gy8=
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=zohomail.com; s=zohoarc; 
+	t=1795154412; h=Content-Transfer-Encoding:Cc:Cc:Date:Date:From:From:MIME-Version:Message-ID:Subject:Subject:To:To:Message-Id:Reply-To; 
+	bh=5Uq0u2UqluTfsfMVM/ngVbgb8vECy5ebkPRwAU+bl3s=; 
+	b=GX34z2lfoujbv+i4FUQnqVX/n6BOYKKEXO2FBVI/V8YusQJSZ/mqyQg3Ew5lIrR6kVMI0lBDtM352nG8yyvbUPuYOIwOAJs6E7xEkeXx3M+1bQQ96KyFe2tZJYgg5he1xZ+JJwVdWy5dyb9a2hZlRx/ObM8N7HSLdtEId4jAC20=
+ARC-Authentication-Results: i=1; mx.zohomail.com;
+	dkim=pass  header.i=ikuyo.dev;
+	spf=pass  smtp.mailfrom=eritque-arcus@ikuyo.dev;
+	dmarc=pass header.from=<eritque-arcus@ikuyo.dev>
+DKIM-Signature: a=rsa-sha256; b=kU5r/FrA9VFlj8KOZytdj8Ed5L5B4OKMwLySVG+OTOT4ovMklkcxvF0yJNFYf8FjMMjUeKsI1oxzlSkiwclCr7hJk9GbtekI1ToUuVfQS/cXKTC3WhKaxQXD3wrK24KryJuqydW2/p1L1mYlULvCDM5kJylAe/QBN9fzv58UpJnRA3o/GMbtIW7Vu5ptBls+N2j3rxvfzu2ePCuC/ZJlW0O92oWpTl6R+juMjzbvh7j/rrurFig+Hgng7rShySDI5isarvM80OdotA0kSm6vXr3gofhFYpF7Vt4KGcAWEzgb/LZT35HrVU2X6T3OmxDPKy8FakR+eFN+vedPNz5d8w==; c=relaxed/relaxed; s=s1; d=ikuyo.dev; v=1; bh=5Uq0u2UqluTfsfMVM/ngVbgb8vECy5ebkPRwAU+bl3s=; h=Content-Description:Content-ID:Content-Type:Content-Transfer-Encoding:Cc:Date:From:In-Reply-To:List-Subscribe:List-Post:List-Owner:List-Id:List-Archive:List-Help:List-Unsubscribe:MIME-Version:Message-ID:Resent-Sender:Resent-Cc:Resent-Date:Resent-To:Reply-To:Resent-Message-ID:Resent-From:Sender:Subject:To:Date:From:Message-Id:Reply-To:Subject:To:Cc;
+Received: by smtp.zohomail.com with SMTPS id 1795154409481972.0674257614792;
+	Thu, 19 Nov 2026 22:00:09 -0800 (PST)
+From: Yiran Qiu <eritque-arcus@ikuyo.dev>
+To: cel@kernel.org,
+	jlayton@kernel.org
+Cc: neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Yiran Qiu <eritque-arcus@ikuyo.dev>,
+	stable@vger.kernel.org
+Subject: [PATCH] SUNRPC: copy the GSS init token with read_bytes_from_xdr_buf()
+Date: Fri, 20 Nov 2026 01:00:07 -0500
+Message-ID: <20261120060007.302599-1-eritque-arcus@ikuyo.dev>
+X-Mailer: git-send-email 2.56.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -105,246 +70,113 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <av4Hn9u80fs8iHZ6@dread> <20261119095943.85048-1-lauri.gates@gmail.com>
- <DMZ4VQ7SZ07T.29WMPQ0BQZGSS@gmail.com> <CAOQ4uximow25oc=3XEN1ATgQvonQaTXtDPmQufxo75tJ=e355A@mail.gmail.com>
- <DMZJDGMJ1RVF.32ES391JKNFGP@gmail.com>
-In-Reply-To: <DMZJDGMJ1RVF.32ES391JKNFGP@gmail.com>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Fri, 20 Nov 2026 06:52:07 +0100
-X-Gm-Features: AclHuK-YsoPheARTk1Y-k0Sf7l8kI7S9AqS3vA0HZDdsJRePZdUYZxVxtnQosZU
-Message-ID: <CAOQ4uxjVQ9cjV=_jBjQtNg9zCuWUEJT9KNYMKV+1jwBkHen5OA@mail.gmail.com>
-Subject: Re: Concurrent FIEMAP on reflinked files serialises on the AGF buffer lock
-To: koraynilay <koray.fra@gmail.com>
-Cc: Lauri Gates <lauri.gates@gmail.com>, Dave Chinner <dgc@kernel.org>, 
-	Christian Brauner <brauner@kernel.org>, Christoph Hellwig <hch@infradead.org>, linux-xfs@vger.kernel.org, 
-	Carlos Maiolino <cem@kernel.org>, Christian Brauner <christian@brauner.io>, 
-	"Darrick J. Wong" <djwong@kernel.org>, linux-api@vger.kernel.org, 
-	linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org, 
-	ocfs2-devel@lists.linux.dev, linux-nfs@vger.kernel.org, 
-	linux-cifs@vger.kernel.org, Theodore Tso <tytso@mit.edu>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Thu, Nov 19, 2026 at 11:21=E2=80=AFPM koraynilay <koray.fra@gmail.com> w=
-rote:
->
-> On Thu Nov 19, 2026 at 6:04 PM CET, Amir Goldstein wrote:
-> > On Thu, Nov 19, 2026 at 12:00=E2=80=AFPM koraynilay <koray.fra@gmail.co=
-m> wrote:
-> >>
-> >> On Thu Nov 19, 2026 at 10:59 AM CET, Lauri Gates wrote:
-> >> > On Wed, Nov 18, 2026 at 10:16PM +0200, Dave Chinner wrote:
-> >> >> I really don't care if it is exposed by statx or file_attr; checkin=
-g
-> >> >> the flag through either interface will be orders of magnitude faste=
-r
-> >> >> than using FIEMAP to iterate extents on every file to find shared
-> >> >> extents. My concern with statx is coherency - it runs completely
-> >> >> unlocked and so can race with operations that add/remove the reflin=
-k
-> >> >> flag...
-> >> >
-> >> > Thanks, Dave and Christian. Given Christian's preference and the
-> >> > coherency point, I'll write the RFC against file_attr, once the
-> >> > question at the end is settled. xfs_fileattr_get() already reads the
-> >> > flags under XFS_ILOCK_SHARED, so the new flag gets that without extr=
-a
-> >> > work. The answer can still go stale right after the call, as with an=
-y
-> >> > stat result: a clone that lands after the read is missed, just as on=
-e
-> >> > that lands after FIEMAP returns is missed today.
-> >> >
-> >> > As I suggested on the 6th, the flag would take the inverted meaning,
-> >> > so that an unset flag stays the safe answer: say FS_XFLAG_NOSHARED
-> >> > ("no extents shared with another file"), read-only, in
-> >> > FS_XFLAG_RDONLY_MASK next to the case-folding flags.
-> >>
-> >> Hello, I don't have any say in the FIEMAP issue, but I wanted to let y=
-ou
-> >> know that, since also a mask was mentioned and your patch would be
-> >> touching the fileattr API, there is work going[1] on for adding a
-> >> fsx_xflags_mask that filesystem use[2][3] to advertise supported flags=
- (on
-> >> get, like stx_attributes_mask) and users use to say what they want to
-> >> change (on set).
-> >> It doesn't seem like an FS_XFLAG_NOSHARED flag would touch this new
-> >> change, but I thought it was worth pointing out, especially because th=
-is
-> >> patch would also add FS_XFLAG_PROJID and a new FS_FILE_ATTR_XFLAGS_MAS=
-K
-> >> to have a way to include both legacy and newly added xflags, so
-> >> FS_XFLAG_NOSHARED would maybe also go there (correct me if I'm wrong).
-> >>
-> >> > Christian, one question on the shape within file_attr: would you tak=
-e
-> >> > the inverted flag, or would you rather keep a plain "may share" flag
-> >> > and add a mask to struct file_attr that says which xflags the
-> >> > filesystem reports?
-> >>
-> >> And if Christian chooses the mask approach, then my patch[4] becomes
-> >> relevant.
-> >> (in [4] I put the patch that will be sent in v5 of [1], since in [1]
-> >> it's merged with the ptime change)
-> >>
-> >> (For Amir who I just CC'd, [5] is the main link for this thread)
-> >
-> > Thanks for the CC and the link
-> >
-> >>
-> >> Thanks,
-> >> koraynilay
-> >>
-> >> [1]: https://lore.kernel.org/all/20261115180343.576773-1-koray.fra@gma=
-il.com/T/#u
-> >> [2]: https://lore.kernel.org/all/CAOQ4uxj82K4z+2OiY5W1g7NyWAFOFjqqWnZS=
-S3prytW36j1LgA@mail.gmail.com/
-> >> [3]: https://lore.kernel.org/all/CAOQ4uxiuJ=3DeZu28FZAUz3rpqPKqCimPxJu=
-cOnYYuBowvD09_Cw@mail.gmail.com/
-> >> [5]: https://lore.kernel.org/linux-xfs/20261102193533.93690-1-lauri.ga=
-tes@gmail.com/T/#u
-> >>
-> >> [4]:
-> >> commit 0efe0de3b5cc2b767aa6e2bb9174eb05b0d818f1
-> >> Author: koraynilay <koray.fra@gmail.com>
-> >> Date:   Tue Nov 17 14:57:47 2026 +0100
-> >>
-> >>     vfs: add xflags mask to file_attr API
-> >>
-> >>     Add fa_xflags_mask to struct file_attr and equivalent fsx_xflags_m=
-ask
-> >>     to struct file_kattr.
-> >>
-> >>     This lets filesystems advertise their support for specific xflags =
-and
-> >>     users specify only what they want to change, behaving like
-> >>     statx.stx_attributes_mask:
-> >>     - on GET (file_getattr): each filesystem fills the mask according =
-to
-> >>       its supported xflags, e.g. FS_XFLAG_COWEXTSIZE or FS_XFLAG_EXTSI=
-ZE,
-> >>       and provides the values in the corresponding struct fields;
-> >>     - on SET (file_setattr): userspace fills the mask according to whi=
-ch
-> >>       xflags it wants to change, VFS validates this and preserves xfla=
-gs
-> >>       that were not specified in the mask;
-> >>     - if xflags_mask =3D=3D 0, use legacy full-struct replacement to k=
-eep
-> >>       compatibility with older programs.
-> >>
-> >>     Furthermore, add the missing FS_XFLAG_PROJID flag, to allow usersp=
-ace to
-> >>     set the projid using file_[sg]etattr().
-> >
-> > Correction. usersapce can already set projid using file_[sg]etattr().
-> > With FS_XFLAG_PROJID in fsx_xflags_mask, chattr -p <projid>
-> > could set the projid without having to read and set all the other xflag=
-s.
->
-> Oh right, thanks, I'll fix it.
->
-> >>
-> >>     Finally, in order to prevent the legacy FS_IOC_FSSETXATTR from acc=
-epting
-> >>     FS_XFLAG_PROJID, add an FS_FILE_ATTR_XFLAGS_MASK to support new xf=
-lags
-> >>     and use it in fileattr_to_file_attr()/file_attr_to_fileattr() to
-> >>     validate that the xflags passed in fa_xflags and fa_xflags_mask fi=
-elds
-> >>     are valid.
-> >>
-> >>     Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.5.7
-> >>     Signed-off-by: koraynilay <koray.fra@gmail.com>
-> >> ---
-> >>  fs/file_attr.c           | 46 +++++++++++++++++++++++++++++++++++++++=
-+++----
-> >>  include/linux/fileattr.h |  5 +++++
-> >>  include/uapi/linux/fs.h  |  3 +++
-> >>  3 files changed, 50 insertions(+), 4 deletions(-)
-> >>
-> >> diff --git a/fs/file_attr.c b/fs/file_attr.c
-> >> index 833e03810b24..56ea65f790f1 100644
-> >> --- a/fs/file_attr.c
-> >> +++ b/fs/file_attr.c
-> >> @@ -102,10 +102,18 @@ EXPORT_SYMBOL(vfs_fileattr_get);
-> >>  static void fileattr_to_file_attr(const struct file_kattr *fa,
-> >>                                   struct file_attr *fattr)
-> >>  {
-> >> -       __u32 mask =3D FS_XFLAGS_MASK;
-> >> +       /*
-> >> +        * fsx_xflags_mask contains only flags added after the
-> >> +        * file_[gs]etattr() API, so we need to tell userspace the fil=
-esystem
-> >> +        * actually supports all legacy (FS_XFLAGS_MASK and FS_XFLAG_P=
-ROJID,
-> >> +        * which lacked its own bit) and new advertised flags.
-> >> +        */
-> >> +       __u32 mask =3D (FS_XFLAGS_MASK | FS_XFLAG_PROJID | fa->fsx_xfl=
-ags_mask) &
-> >> +                    FS_FILE_ATTR_XFLAGS_MASK;
-> >
-> > This is not exactly how I envisioned exporting fa_xflags_mask.
->
-> This is exactly why I CC'd you :D
->
-> > fa_xflags_mask =3D=3D 0 means old kernel or unmodified fs.
-> >
-> > For a new kernel with fs that supports flags other than
-> > FS_XFLAGS_MASK it's the fs responsibility to advertise its supported
-> > flags.
-> >
-> > Something like:
-> >
-> >      __u32 mask =3D (fa->fsx_xflags_mask ?: FS_XFLAGS_MASK) &
-> >                               FS_FILE_ATTR_XFLAGS_MASK;
-> >
-> >      memset(fattr, 0, sizeof(struct file_attr));
-> (I'm sorry, but why memset if we assign the fields right after?)
-> >      fattr->fa_xflags =3D fa->fsx_xflags & mask;
-> >      fattr->fa_xflags_mask =3D fa->fsx_xflags_mask ? mask : 0;
-> >
-> > Then you can add filesystems that support get/set of new
-> > attributes without support for legacy attributes.
-> >
-> > And specific filesytems could opt-into the set of an individual
-> > attribute like projid by advertising
-> > fa->fsx_xflags_mask =3D FS_XFLAGS_MASK | FS_XFLAG_PROJID
-> > or a subset thereof.
->
-> I agree, this is definitely better.
->
-> > And I am still on the fence wrt should API also advertise the
-> > fsx_xflags_ro_mask in addition to the supported mask.
-> >
-> > The advantage being that it makes the interface symmetric.
-> > User can alway setattr() with the buffer they got from getattr()
-> > and instead of randomly ignoring flags in set, the fsx_ro_mask
-> > along with fsx_mask defines the behavior exactly.
->
-> Hmm, so ro_mask would be ignored by vfs on set so users don't have to
-> manually remove the read only flags, correct?
->
+gss_read_proxy_verf() copies the token from the head of rq_arg and then
+from rq_arg.pages, assuming the rest of the token is in the page list.
+svcrdma rebuilds a Call that carries one Read chunk as head (inline data
+before the chunk position), pages (the chunk) and tail (inline data
+after it), and xdr_stream_remaining() counts the tail. When the token
+starts at the chunk and continues into the tail, the copy runs past the
+chunk's pages. If the chunk fills rq_pages, the copy takes the NULL
+entry at rq_pages[rq_maxpages] and memcpy() reads from
+page_address(NULL); otherwise the stale contents of the next page go to
+gssproxy in place of the tail. This runs in svcauth_gss_proxy_init()
+before any credential is checked, so a client of an NFS/RDMA server that
+uses gssproxy can oops nfsd threads without authenticating.
 
-Correct.
-With non-zero xflags_mask, internal contact masks
-can be used for -EINVAL not for silent ignoring.
+Commit 62319c2534b6 ("SUNRPC: fix oversized GSS proxy token copy") fixed
+the copy from the head and left the copy from the pages as it was. Copy
+the token with read_bytes_from_xdr_buf(), which follows head, pages and
+tail.
 
-> Also I think I'll try writing some basic userspace programs that use
-> this API and see how I'd expect it to be.
->
+Found with afb-afl, an LLM-driven kernel audit/repro pipeline; the fix
+and this changelog were also drafted with LLM assistance. Reproduced on
+an unmodified KASAN build of mainline, nfsd listening on "rdma 20049"
+over rxe with use-gss-proxy set. An RPCSEC_GSS INIT Call whose token is
+a 12-page Read chunk (max_block_size 32768) plus 64 inline bytes gives
+(gss_read_proxy_verf() is inlined):
 
-Don't write programs please contribute to chattr (e2fsprogs) and
-xfs_io (xfsprogs). The latter already support the new syscalls, the
-former not yet.
+  BUG: KASAN: wild-memory-access in svcauth_gss_proxy_init+0x71f/0xe10
+  Read of size 64 at addr 0005088000000000 by task nfsd/184
+   __asan_memcpy+0x23/0x60
+   svcauth_gss_proxy_init+0x71f/0xe10
+   svcauth_gss_proc_init+0x22b/0x440
 
->
-> Anyway, I think it would be better to split the _mask change into its
-> own separate patch series, so it can more easily be used by this shared
-> extent patch and it's easier to reason about the API when it's
-> disconnected from the ptime/btime change.
+With an 11-page chunk, gssproxy received the chunk followed by 64 bytes
+that were not the tail. With this patch there is no report and gssproxy
+receives the chunk followed by the tail, for 12- and 11-page chunks; a
+chunk without a tail and an inline token are unchanged. Over TCP, tokens
+of 100 to 30000 bytes reach gssproxy intact with and without this patch.
+Kerberos and NFS functional tests were not run.
 
-Agree.
+Fixes: 5866efa8cbfb ("SUNRPC: Fix svcauth_gss_proxy_init()")
+Cc: stable@vger.kernel.org
+Signed-off-by: Yiran Qiu <eritque-arcus@ikuyo.dev>
+---
+Tested on mainline 4405c18c95d2 (v7.4-rc3+) in QEMU. Applies to
+cel/linux.git nfsd-next and nfsd-testing.
+A reproducer and the test logs are available on request.
 
-Thanks,
-Amir.
+ net/sunrpc/auth_gss/svcauth_gss.c | 38 +++++++++----------------------
+ 1 file changed, 11 insertions(+), 27 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 43839e805531..da4043aed247 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1056,9 +1056,8 @@ static int gss_read_proxy_verf(struct svc_rqst *rqstp,
+ 			       struct gssp_in_token *in_token)
+ {
+ 	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
+-	unsigned int length, pgto_offs, pgfrom_offs;
+-	int pages, i, pgto, pgfrom;
+-	size_t to_offs, from_offs;
++	unsigned int base, length;
++	int pages, i;
+ 	u32 inlen;
+ 
+ 	if (dup_netobj(in_handle, &gc->gc_ctx))
+@@ -1090,30 +1089,15 @@ static int gss_read_proxy_verf(struct svc_rqst *rqstp,
+ 		}
+ 	}
+ 
+-	length = min_t(unsigned int, inlen, (char *)xdr->end - (char *)xdr->p);
+-	for (to_offs = 0; to_offs < length; to_offs += PAGE_SIZE)
+-		memcpy(page_address(in_token->pages[to_offs >> PAGE_SHIFT]),
+-		       (char *)xdr->p + to_offs,
+-		       min_t(unsigned int, length - to_offs, PAGE_SIZE));
+-	inlen -= length;
+-	to_offs = length;
+-	from_offs = rqstp->rq_arg.page_base;
+-	while (inlen) {
+-		pgto = to_offs >> PAGE_SHIFT;
+-		pgfrom = from_offs >> PAGE_SHIFT;
+-		pgto_offs = to_offs & ~PAGE_MASK;
+-		pgfrom_offs = from_offs & ~PAGE_MASK;
+-
+-		length = min_t(unsigned int, inlen,
+-			 min_t(unsigned int, PAGE_SIZE - pgto_offs,
+-			       PAGE_SIZE - pgfrom_offs));
+-		memcpy(page_address(in_token->pages[pgto]) + pgto_offs,
+-		       page_address(rqstp->rq_arg.pages[pgfrom]) + pgfrom_offs,
+-		       length);
+-
+-		to_offs += length;
+-		from_offs += length;
+-		inlen -= length;
++	base = xdr_stream_pos(xdr);
++	for (i = 0; i < pages; i++) {
++		length = min_t(unsigned int, inlen - i * PAGE_SIZE, PAGE_SIZE);
++		if (read_bytes_from_xdr_buf(&rqstp->rq_arg, base + i * PAGE_SIZE,
++					    page_address(in_token->pages[i]),
++					    length)) {
++			gss_free_in_token_pages(in_token);
++			goto out_denied_free;
++		}
+ 	}
+ 	return 0;
+ 
+-- 
+2.56.1
+
