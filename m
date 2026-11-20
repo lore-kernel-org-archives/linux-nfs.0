@@ -1,83 +1,136 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.43
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795204637;
-	b=yj//POgh+kYRLfG+3TI7pnGFH/drczx/e9HNMlftSCl3VzUI7JDlx+aHhZjVeVLy/pFi
-	 dY1rANwtYmA4/FOx28J3EM84K6mmx0zJwg4BxrW9VRQNZm8SEKa8U7XKufdR2eLogCVPM
-	 2105HkvVCjtjHrmeVNJlq6ghS7jvMmfZOipoar8QAttSbHLkEcVGu5/sRo6T5vjSBBkOS
-	 X+ORhjJtpiAS8eZP3u0NPVwqHN2rhiEFeaPfasmz1Gi4Pczz8/CVMoOgqADAQz7gbZO3o
-	 RwPPp9rfmysE4LcpYzUKEpZ2hIvEZ6L0k03TpsptwEvbEXKdTFo6pd8zxVHk+gbaHmg==
+	t=1795209373;
+	b=WDVb6LyVUQX981yvHQ3uRumHPf2jOSjCTXa1uSCmNMeEsgsFkAs6CKd+fwL+aak/1T/V
+	 RfF90kDwmaw+6to4klVfDZLa//69ucsrjk+Zo+dMVGhgSre19vB06RuOCWBVQvlMz+3Wn
+	 GPx9wl6iO1vylPLsNOPlDo9Ch1IB3abw7ngUihgZKPBLqp6Yx3HyDSixXFxEnKYBOyXbA
+	 ve/4B0gLdSRq9xKK2WtuD2coK/EdC8/nGlfXkIVsX9uEDh36CJtvUgSi0kMErjUbQ39Ir
+	 u1D5gYEECbHX/aIA+X9mrx5r7CQDcz7YdbSBnz8SAEErkVd0buHh1S/eOQ+2kgmTV7Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795204637;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Mime-Version:Content-Type:Date:Message-Id:Cc:Subject:From:To:X-Mailer:
-	 References:In-Reply-To;
-	bh=bepP2SIrLZrZLh3YoUhcI7r4qP8FXfE4vnBTwIQ4Skc=;
-	b=jYUF2Z1DOxLMGJvyCiE8akyZ3W78SWng16ZZSeAvIkPDyANdZtbM+QuRowG5Uj3jzKOD
-	 bihoJyLXpV4M5AMnoYBJ1wwS/GqIjEeGuSJhll626Vj9pfSXePoz0hSJHOaMoDgfFd/hY
-	 tjwP/JsS4abX4m9cPQw2bmk/zQfb7iWrsHQswQTJUs4acGlbMjWvN+3W7du6eA2GLJU1L
-	 tOXrJDDIu9ZFHEwKOdwhaK9WvWSaXGYuBuLs0pjGqLngL9nD+wdEHbKX4A5oi2vkNSxBr
-	 q8sgXls+2Hs0EU9zOZmARG6tbVN2hcQA34QGxNIi4jGyelOgTv0zNbrquitS1XL8xOA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795209373;
+	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
+	 In-Reply-To:References:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=+Q3LbnqrHy2JjrTQx5XbBm02H8XBd9CBXOTuLMnubbQ=;
+	b=wLtBvAzCpqvsn500HBU/p419KS2upzHIhWzUxTnKRPbm7f5xahK4GGBzFieHnPItNn61
+	 F6IMyVSavervz7Mj0K63K17zNA/RdQxA0Ur4HGTQUyexE/h97Zo5Ow74X0GYAuJp3+XDd
+	 XOY+qABLK7wyzLxQSe3EHQBEeP31qGnv6EnXEUkWBnG/TKnzSCeYc1LW1KmJG+31Sl8P7
+	 +sesTMHfS/lY+hQDVxz80AxjINv8U8pg+PXmF1Cz6MVgPGQquisMjr5lRjJPdWK4J1WM4
+	 FJkgXmsIQVttUKrmxWBI7DoDogz6gDWR6KI5MOeE2dNucML5DQGoRAKri7+ELFhVBzQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=AyTB9L41;
-	arc=none smtp.remote-ip=209.85.221.43
-Received: from mail-wr1-f43.google.com (mail-wr1-f43.google.com [209.85.221.43])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Itjtc399;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5065060A2606
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 19:57:13 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 5065060A2606
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C0BD606A696;
+	Fri, 20 Nov 2026 21:16:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=AyTB9L41
-Received: by mail-wr1-f43.google.com with SMTP id ffacd0b85a97d-4a358881793so717170f8f.0
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 11:57:13 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795204632; x=1795809432; darn=vger.kernel.org;
-        h=in-reply-to:references:to:from:subject:cc:message-id:date
-         :content-type:mime-version:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=bepP2SIrLZrZLh3YoUhcI7r4qP8FXfE4vnBTwIQ4Skc=;
-        b=AyTB9L411sWeTLrB7sHYPusz60A/1/Nv/TJkQTNNIeffYmh5yaV9kxmJlFcKpU5ORq
-         rEcgDnLB0ZviSU3SHZQDeZx4auT1Tbi2Bx6Hvn4840ApcbI0hJQbC4obcQdmLQDZ94s9
-         sF850yLI25iBMPAfhk1lw6XgZG1G0JRQpdJO+Qh5O+DZbsKYCRx8VmR2BjML2uYw7RjI
-         Ss/ozztQvFAL44SPp/zOhqrZMlvYwp3/C02wmdtBcneEI9GClXWjC0Wfz/UDJLLRi2uW
-         /LfLhc6X5fTJFRgIBDtEGVYEQbRINXzgzQ+S7eQafxUJW8Urdx8bLpc+0oHF3lur40xH
-         KVxg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795204632; x=1795809432;
-        h=in-reply-to:references:to:from:subject:cc:message-id:date
-         :content-type:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=bepP2SIrLZrZLh3YoUhcI7r4qP8FXfE4vnBTwIQ4Skc=;
-        b=uzABECrOJdzCFVv2OUKmy8CZnoSsfhx/MTIf0//CmYZ1bYc7VCq9LUq6MprlQDzYaG
-         wNMzgaYHLoJC2wm8sD4cKc+jfQHzmdkUFvQWNEmSkvB1NT37OluTOIafM2pB2Q+Yrbem
-         RZyOrJSdp7LHYfolIGR+OZEQZbx7W5Uwkp1gv8/weSjmxgDw2uTxfQw0CGstOL5WN/fF
-         dCFlHWXJ4aCZDgdBoOFWfYdT+g4nFNaOHlv80Y5u91RzT2XY84hfjlf4B8Hwp8kcAJs1
-         ZW5SMZQZEc6LAiE+ZBMNi7q38zwWpY3T/cgDoRxCKgYgWojrrOo6aZbYyruzdS67o/ly
-         rt0w==
-X-Forwarded-Encrypted: i=1; AL+hErGve0EGsj6683Fs+6OH5s1w76/YNkU2kK3G/oE0SUvmDxG2cBI2iXAj031hqjkooquF24wJIMbQM+k=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/zX4FQxKlZpSnLaCUtkDPYvLktPWvAqw+IAL/zRsY2F32tMaF3
-	r0aAp0+K9SWA9bCVE9GKn/kQLXRHhOdsbhF2dlAe4JYkUzYhRuLoSw+U
-X-Gm-Gg: AYBFou1BuTbDjqlc2yzKoAzLwldpgTzunPZ1OZX/99SdFrTLgz3PCbCS9TqUNQdC4b3
-	2TSVUyjdEj1NhKArTSazN1yXt4yigMr8ginZ3D53kPBvDqs0K/SwOwiXs3uiWJbOJAl/FndWS97
-	vqLonT4KvVCo947XSg+Vo9yVaX8lF/CJ3EgPNDUW6TuTJ2xhjRujWqog4+j6PdO0tCO88TI+cnj
-	GaKwTbNOFln5KLMVDzw481Bi5T880i0LWtNTzIoogdMukIz9D/HNSftaophqNmOTOCuq1lt06u1
-	8a8Stznmw2kfVBQUYGAUxMi+1O89WfGQEjJl7ubXAzzgKOOtGC8RnQhcnDDbC1E472MKhhzCHCu
-	mU2Di+EYaswOitz6VFRayyvICd9zqcxWrFEqi4CaW83sJr92M+NoTzeBw0fvxyapmXbSaO3LTO2
-	OCm1LsXtkLNh0QaMMgddqGlIbvV3iW3eNzFAKzLaUweDWZjNg+V7KxCpugRrzDHFa0uICRCsUWO
-	vaEc5wKUS4T8HumlcRyCepNU6aWmSoHYovFMm+yXcCWHWiyjUYAkpmBsrpPTJgehdJtBwtfWH6N
-	66LnsyQ4JAU8tpOurab3fAdTiQ==
-X-Received: by 2002:a05:600c:638e:b0:4bb:6c5e:b006 with SMTP id 5b1f17b1804b1-4bb887e265fmr93789305e9.3.1795204631450;
-        Fri, 20 Nov 2026 11:57:11 -0800 (PST)
-Received: from localhost ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb8526cbd0sm177401215e9.0.2026.11.20.11.57.08
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 20 Nov 2026 11:57:10 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Itjtc399
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3C7E51F000CA;
+	Fri, 20 Nov 2026 21:16:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795209372;
+	bh=+Q3LbnqrHy2JjrTQx5XbBm02H8XBd9CBXOTuLMnubbQ=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=Itjtc399nXLSzeNR98cgl76575NeeifQ8XcQ5SkouGaNf95KxB40Cva2yZEVr8FB5
+	 7GhO7mOs0aBIOk/CKU86ZahfomJ3csB41Mjh4l+EImTG0VArcCRsyT1oXcgOr8t5b0
+	 j4WNg3OOZXMIE+mqzKCWwsAFnckh1H2AFHw9HT1K0jKOLmiyZXDJpiWKVa0pBCkFcI
+	 whhD9HFqyuzp3pRxMJetRNo8M+8Yu4EYiS7y9gaiflf3ufj+1Bmm/L28j+LwcGpmp7
+	 6G4MrBtVeVZTzuXnKOLzaPHMM1P3ccqSFf5Ug4BssuIo/3HDOm/a/b0EfeCmB2v7Kc
+	 oxxKYbvX7SU/w==
+Message-ID: <03349d0b6b8b3cd2069f216871046093d75b17be.camel@kernel.org>
+Subject: Re: [PATCH] NFSD: Reject a COPY whose source and destination are
+ the same file
+From: Jeff Layton <jlayton@kernel.org>
+To: =?ISO-8859-1?Q?Aur=E9lien?= Couderc <aurelien.couderc2002@gmail.com>, 
+	nfsv4@ietf.org
+Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>, Anna Schumaker	 <Anna.Schumaker@netapp.com>,
+ linux-nfs@vger.kernel.org, 	linux-kernel@vger.kernel.org
+Date: Fri, 20 Nov 2026 13:16:11 -0800
+In-Reply-To: <CA+1jF5rurDObkiP0pg3Kp1vgB+sdxU6FYBaUUPWLJoHsoJ_6oQ@mail.gmail.com>
+References: <20261119-nfsd-copy-same-file-v1-1-ef18e53a00d0@kernel.org>
+	 <CA+1jF5rurDObkiP0pg3Kp1vgB+sdxU6FYBaUUPWLJoHsoJ_6oQ@mail.gmail.com>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-3.fc44) 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -86,99 +139,37 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-Content-Type: multipart/signed;
- boundary=0ce1f2737ac23ac54221dfe9ad89c8615ea720b53f7a9f6f6b271bd43f0e;
- micalg=pgp-sha512; protocol="application/pgp-signature"
-Date: Fri, 20 Nov 2026 20:57:05 +0100
-Message-Id: <DN0AXFYCMGXO.1O5VDUA6GJCT4@gmail.com>
-Cc: "David Sterba" <dsterba@suse.com>, "Namjae Jeon"
- <linkinjeon@kernel.org>, "Sungjong Seo" <sj1557.seo@samsung.com>,
- "Alexander Viro" <viro@zeniv.linux.org.uk>, "Christian Brauner"
- <brauner@kernel.org>, "Trond Myklebust" <trondmy@kernel.org>, "Anna
- Schumaker" <anna@kernel.org>, "Chuck Lever" <cel@kernel.org>, "Jeff Layton"
- <jlayton@kernel.org>, "Konstantin Komarov"
- <almaz.alexandrovich@paragon-software.com>, "Paulo Alcantara"
- <pc@manguebit.org>, "Chris Mason" <mason@kernel.org>, "Yuezhang Mo"
- <yuezhang.mo@sony.com>, "Jan Kara" <jack@suse.cz>, "NeilBrown"
- <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo"
- <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>, "Ronnie Sahlberg"
- <ronniesahlberg@gmail.com>, "Shyam Prasad N" <sprasad@microsoft.com>,
- "Bharath SM" <bharathsm@microsoft.com>, "Sergey Senozhatsky"
- <senozhatsky@chromium.org>, "ChenXiaoSong" <chenxiaosong@chenxiaosong.com>,
- "Darrick J . Wong" <djwong@kernel.org>, "Sean Smith"
- <defendthedisabled@gmail.com>, "Andrey Albershteyn" <aalbersh@kernel.org>,
- "Pedro Falcato" <pfalcato@suse.de>, =?utf-8?q?Pali_Roh=C3=A1r?=
- <pali@kernel.org>, <linux-btrfs@vger.kernel.org>,
- <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
- <exfat@lists.linux.dev>, <ntfs3@lists.linux.dev>,
- <linux-cifs@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
- <linux-api@vger.kernel.org>
-Subject: Re: [RFC PATCH v4 03/10] ntfs3: make crtime user-settable using
- ptime
-From: "koraynilay" <koray.fra@gmail.com>
-To: "Amir Goldstein" <amir73il@gmail.com>, "koraynilay"
- <koray.fra@gmail.com>
-X-Mailer: aerc 0.22.0-0-gc2f86b7abde3
-References: <20261115180343.576773-1-koray.fra@gmail.com>
- <20261115180343.576773-4-koray.fra@gmail.com>
- <CAOQ4uxjdEiuJMQxtSL8XrPYHSamtfMh+BM8kS1wj_PVME4JynQ@mail.gmail.com>
-In-Reply-To: <CAOQ4uxjdEiuJMQxtSL8XrPYHSamtfMh+BM8kS1wj_PVME4JynQ@mail.gmail.com>
+MIME-Version: 1.0
 
---0ce1f2737ac23ac54221dfe9ad89c8615ea720b53f7a9f6f6b271bd43f0e
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset=UTF-8
-
-On Fri Nov 20, 2026 at 4:58 PM CET, Amir Goldstein wrote:
-> On Sun, Nov 15, 2026 at 7:04=E2=80=AFPM koraynilay <koray.fra@gmail.com> =
+On Fri, 2026-11-20 at 08:55 +0100, Aur=C3=A9lien Couderc wrote:
+> On Thu, Nov 19, 2026 at 6:44=E2=80=AFPM Jeff Layton <jlayton@kernel.org> =
 wrote:
->>
->> Since NTFS supports user-settable file creation timestamps, map
->> provenance time (ptime) to NTFS file creation time (crtime) by using the
->> newly introduced ptime API (in commit "vfs: add provenance time
->> (ptime)").
->>
->> To do this, update ntfs_fileattr_[gs]et(), ntfs_getattr() and make it
->> persist to disk in ni_write_inode().
->>
->> The timestamp is now retrievable by using file_getattr() or statx(), and
->> is settable by using file_setattr() with the FS_XFLAG_PTIME flag.
->>
->> Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.4.7
->> Signed-off-by: koraynilay <koray.fra@gmail.com>
->> ---
->>  fs/ntfs3/file.c    | 20 ++++++++++++++++++--
->>  fs/ntfs3/frecord.c |  8 +++++++-
->>  2 files changed, 25 insertions(+), 3 deletions(-)
+> >=20
+> > RFC 7862 Section 15.2.3 says that COPY MUST fail with NFS4ERR_INVAL
+> > when SAVED_FH and CURRENT_FH refer to the same file, whatever the
+> > ranges. NFSD never checks for this. A same-file COPY with
+> > non-overlapping ranges succeeds, and one with overlapping ranges fails
+> > only because the VFS rejects it.
+> >=20
+> > The overlap-only rule applies to CLONE (Section 15.13.3), so leave
+> > nfsd4_verify_copy() alone. Instead, check in nfsd4_setup_intra_ssc(),
+> > after both stateids are verified. For an inter-server copy, SAVED_FH
+> > names a file on another server, so that path is not affected.
+> >=20
+> > The Linux client never sends a same-file COPY, so this does not change
+> > its behaviour. Found by pynfs COPY11.
+>=20
+> Why should COPY within the same file be blocked?
 >
-> Please don't change the unmaintained ntfs3 driver.
->
-> If you want to include an ntfs patch work on the new fs/ntfs driver.
+> For example: Windows FSCTL_OFFLOAD_READ+FSCTL_OFFLOAD_WRITE is used
+> exactly like that by databases like Oracle. Even advertised as a
+> "database accelerator" feature...
+>=20
+> Better tix the NFSv4.2 COPY spec at RFC level then...
+>=20
 
-Huh, I thought ntfs3 was the modern and latest one by Paragon.
-But apparently I missed some news[1][2] lol.
-I'll use fs/ntfs for the mutable btime patch then.
-
-Thanks,
-koraynilay
-
-[1]: https://www.phoronix.com/news/New-NTFS-Driver-Submitted-Linux
-[2]: commit 1e9ea7e04472d4e5e12e58c881eaacfb3e49b669
-
-> Thanks,
-> Amir.
-
-
-
---0ce1f2737ac23ac54221dfe9ad89c8615ea720b53f7a9f6f6b271bd43f0e
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABYKAB0WIQSgVimKafU5DQMcjcDmj22qf5IGXAUCawCmEQAKCRDmj22qf5IG
-XMFuAP4jbqqWLf0rzRDeTfZI93Ntri5exvb2a4tXBADewtwEHQD+MLXXfUDqNxpu
-FJSnl3dfZi2d0aWeniR+psgoM+VAKw0=
-=6Hcz
------END PGP SIGNATURE-----
-
---0ce1f2737ac23ac54221dfe9ad89c8615ea720b53f7a9f6f6b271bd43f0e--
+It does seem a bit restrictive, but that's way the RFC is written
+today. If you want to lead an effort to update the RFC, then be my
+guest!
+--=20
+Jeff Layton <jlayton@kernel.org>
