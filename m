@@ -1,90 +1,94 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.43
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.50
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795191000;
-	b=FdcxzrW4s6xhPPBf+WVELkhqCPVlFtvId7Jwt7BHqUAxNeOuewc++QXcknDsYOJJdEWr
-	 28RpeQEuMd1Funf6rvc6e0f6ssPEgyrCmMpQ2kD8G2J/tRP7UQwF1kCBbWcQLbVNM1x7P
-	 FKpRcPpJL0vVIdmX3KMYA9fhNwXMr2GuMUXDHc7CjXdqRQkXUcweaWngZH73nG4MYExoe
-	 2EsYrdA4/TsDNI3pmMx3gzAyn/2sAMkZoRFMDioIoOoYVdOKRyUi6DQSmSizL4OthGB1v
-	 Ov9e0A4xQMv22vBxYLtO0olBHdRoEih1b04LggXV81XK71dwcoiwE3WncE6CoK7Pn7w==
+	t=1795191001;
+	b=zqIwDJ0yxk2FZdhtEF+nCYKP2Wos44m9y7Jqjp//KY961ZHs1+PU2ArN5Wkg4fcth22l
+	 JvmFheEr+8AErm5dC+qVt4z105IMWorCgmI6os69EAyzrBuTtglCIeLjQVPqPcfvRLXCI
+	 4XI10AB5APdLgOmrzygb0J3YcQKIs2RDCcvS5Y+FPEz3NXLWahPlIy48+sWhHn9Zy2eA7
+	 hMv3S9Pa9LUGz4W/BOIGxALgbKpz4isw/NhogkcL7BmQ5gu2VomKhvRnl0GrfYB1RH7t5
+	 A6uC1qHiSqgQs96+Dr+vr3cV76SuIz5MW0IeUeVMBBGSCZUoYSRML08Jd0jkzDRi/Fw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795191000;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795191001;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
-	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=kYlcCsFrxQ96d4UApfYpFv8IgnjvdMtq2KOAExmlIz4=;
-	b=qdHZmaSwgdTXqYKCmDjsHOrHvd1ElzY9ULi/nEMOCGrwfKPhe+B8AqxnEA8NHmIhw8Sx
-	 STiVNBtslKLhjB7wCOScpdKtQTkgkxHjsxoWWYf9DVv2ILhafNSvuZm363G+N8guC0UlK
-	 Hxh2ggniP+ngEUtVt+P7fZvT9Z1985jE8Q+gHVqKA3IKnRfnJXZtkdt6L39KZ1dOQdX5Q
-	 mcbLiNLsE2v+6NOZeYRRPQixGoswvIV3+cIbC4/fuo35J/uf16DY0Qq4rpCYKgk31RxWh
-	 X753fy+WqTdAXDzMXntiFUc+KfSupZb5W/z4mLiKf9Y5fp4JvRTiqSAiJ7ACo3IV7MA==
+	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=Cy1/J7nVIEfr7R/L1kA9RYu1H+FxhJ3E+qpLeZZUjwI=;
+	b=CmICgIo6mjpz4tgB2Ovlhiw8QnqcE9AUVFfm4ibDy6/4TGroT5Qhw3O6ipNgUXiRpuiB
+	 FRrIiUk0F0yIvnLD0xhIP3pMsXo8HYZlEftLdQuyB3Bj6RdOaKpVafi/d4k9fymPIe/lG
+	 GVus9TRMUaE9pL5oQI6DtFAts9ANfT69r73ej2Xn4Wq5y7GIpq9otB495jZ1ERbsFJ7lu
+	 pism2NwRBSTeqp+ri2M3T1gUqTQYGNY6dC4gpAWvmQfY9YLARxY9zvfE0NpkLyqO1+wcJ
+	 Mv6i2UrNhUYFZsnzhPsDEs0ucJ3b4WOm3aF3ikMuSo7yO2b+FgKdblHdH5ainxLp6QA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=R0xzR3Fl;
-	arc=none smtp.remote-ip=209.85.161.43
-Received: from mail-oo1-f43.google.com (mail-oo1-f43.google.com [209.85.161.43])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=LibPHncA;
+	arc=none smtp.remote-ip=209.85.161.50
+Received: from mail-oo1-f50.google.com (mail-oo1-f50.google.com [209.85.161.50])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20AE760A2600
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 16:09:59 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 20AE760A2600
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB8F5606A332
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 16:10:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BB8F5606A332
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=R0xzR3Fl
-Received: by mail-oo1-f43.google.com with SMTP id 006d021491bc7-71aed54d4c5so759869eaf.0
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 08:09:59 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=LibPHncA
+Received: by mail-oo1-f50.google.com with SMTP id 006d021491bc7-71ad5f20016so748310eaf.1
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 08:10:00 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1795190999; x=1795795799; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=kYlcCsFrxQ96d4UApfYpFv8IgnjvdMtq2KOAExmlIz4=;
-        b=R0xzR3FlQ7uumx821xP1guV4SSD8W8GDv0soWchFzOYgfu+vi5LCpUJAb0+i0ZNyv4
-         dvbfFrLnxi/ugXLPXZS2k3BY+u2sdYIs+hpre4g/vji4sbpEsYoTL/xckS0MPC52H70z
-         /dpoFDwxeYU604OsLpocBFCRGgTygMUBoA0S+6U3g8E+3dRXu1m70qVfRmsifeYZ6Pbe
-         ggZnMAUyv8i5mRf30uPauHDg72O3y9gv/wHq8rMdkQemMRbax/k8bG2cPIMymfRg2cnM
-         3p4IxhhU7Xjegqa7FOyEUmEq5iM8QOCROw5D0T97YjKAwszRZ51KXOZQpULCPQhd9Lb2
-         lxKw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795190999; x=1795795799;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=hammerspace.com; s=google; t=1795191000; x=1795795800; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=kYlcCsFrxQ96d4UApfYpFv8IgnjvdMtq2KOAExmlIz4=;
-        b=opoViGWq4W1Neu+OslAPkFhar4D+rqQmEBNq7KvngFyq2RXNLaU4hfPo1jPrbNsUet
-         Y9REvnwTQKThlBKVmYdI/9JiTCndC9Y5thcLaYRbSkSEkbfSlap/AreripwfWbUWHYHy
-         mtxid3Hkz9C5VzxdasYGvDuPoIyDqekmTNWPZnN6B0PxFzwmWodN3bwW7ohwRIJfOwF3
-         pqzq6lKvOgMrV6kdTLu5xWvjyzJ13ue3DvbWwfpkmyYsjayuj/ToIbOyxIWSosK7ceWk
-         LyU9kWMZU9At+0crkbK9K56z98aEvJ/HY34hwvyU29HpMvj1SRaP+o9qRbHij1wPEp0f
-         Wprg==
-X-Gm-Message-State: APuU4Z/SlXhzWih76Ey3vRj6UJ0/HYMDtYm1ZK0Tu4grLSpthCNKKcxl
-	R6C0ebZWYJ7OJJNuM83XkmkkyKZlw5IgXu1GeRuypo0ucT5zVAwRAJKjKLreBps2nm0=
-X-Gm-Gg: AYBFou1jWoVQoiYzAIikqQjezyWk5L62TPiL6r9G0iufsRHdpSON83V9UOt3S4sxrE8
-	NNEvA6c6tA0++XBcTrCTmeIIGVKby8x0k9a2SYh90m73O2sRi7wcwNq1qg6HJqMrUaSWDPUvB39
-	uX5bWDlij4JibwgewxQE6fI5m51OTl1NOpgpsEGGdTZtBvcEfbRZsZCtjGBQeysisvxabEuGI9B
-	bJi9QceQM58uXd+fKaPopandp5vNMp30fY+K0+ScNjbg2yCc+3QEsOnNkb4Kn19t3pYIuUBQkuv
-	Gg7+Vef3UWRGwevc8DkezSpKPJzBk/6CZ1qbONet9X74/5g5CaowpyQ+660oi2UTDdXvS3rcAy7
-	qt0KXLV7ypXTPAgJClUu3tlNY8TrzrU9WljmBI1qRyf0mlppQ+1g9wfvYAD4Q8A4ENRlFkU3sEL
-	CGI4sO6zVlZZTrd0WFa+R9+yAYUg7nRQ2ZJ4dw7A1cJcBWzfNblxUevt5oJ0q2Ir1JhzJRd1E+m
-	m+zs8ktYYuTEsPVdcVOUVmm57RdzaS0V1SZgoMRU7ICSVa3z1HvRgPren+PBH0OUqQmVRNba0bq
-	boRrbpfzBKShEqkEGGn10KUVJARVny1YyaqTHfRVX8G9K7+lBO3LE01d9Y7HrLeVWzzQD3AsRM4
-	zNX3BHRtMFaZ9Fd4/tAC7sy0qTGN7U6EGdpjS69PfpH55608DuJVQ
-X-Received: by 2002:a05:6820:570c:10b0:71a:df61:2f5 with SMTP id 006d021491bc7-71b395213bdmr1903229eaf.20.1795190998659;
-        Fri, 20 Nov 2026 08:09:58 -0800 (PST)
+        bh=Cy1/J7nVIEfr7R/L1kA9RYu1H+FxhJ3E+qpLeZZUjwI=;
+        b=LibPHncAG7PihS8hF9fbSssEbfr42m5ZQGDSX1oD/JLkiwJcMn2T0bo/8DQsZ6mNVm
+         0BMlRJBEl8WJU9WXM3Yw4TmCgDNR/P7H5JrY7tYKsQKyUpD6/wwO2lI6Ee8imY3QNSnY
+         dFQ5CAzpkV4C0hl/IoiDs5NEOhv7UAOuhYfhF+pUA53fzx9+QA6QcRq5AuOgGGhkO4xI
+         BbSEdRgxuF8v0xfY1HnhAEcecxBVt1X8uw6eFXvNXpf29B3wcJUuV84X8HpI+d3w2KzI
+         X7FslENqZju7fZ53Ia/DQ0ETWpvqCBDxVPDEhFzrtuvRs8bUXuYJMd4dSTb05/Xg3VkX
+         6fjA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795191000; x=1795795800;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=Cy1/J7nVIEfr7R/L1kA9RYu1H+FxhJ3E+qpLeZZUjwI=;
+        b=vhYnG3CjdXKoJFLX0Bzpj+oXnx6nNTpnGyoQQiFkGRqEaZCxVrJcvuc7ACaMZZWIaU
+         KTtH0WOUU+cKRJGg3fyfQq4l6ue0YpeC8XcDhYns8ooIbkhckmpCWL28c5GfoPRbQPnR
+         zRsxFIxbAr+7ZmQmGQt7/hB8+mx1scDVXDYcXuhaTDulzak7pIhsO4W2IEpgCiCGz396
+         nij+7FdFQ05JnviCxiREgDTqYeNdQDDggDmxajMxU500PKc2zWB5EqYxRyNPzDab3OkI
+         cwUOy1CcK6RMRVCXNt6YJ+/wyN8Ll6zrZDwesJgjlywbOj6vY+h3PAPnThHFTodRHhlE
+         qbig==
+X-Gm-Message-State: APuU4Z87Qy3dctTKDK/pqeJyiYqnAp78WWDyPislPM0pjUjNkD47FX1a
+	p/eD3RhsesytiD2YrQQRHa1j/Lv1xLa1Z3CL38cYa5+e25NsD3qJc3NZ+MtNS8rl8Qk=
+X-Gm-Gg: AYBFou2azjAyCTIPwaELrE9fMKAUyzvxGy0pFPBITFKEKuuDPZDPi0cuO6STe5W7tZN
+	Lo/DNYpJF5742kGVi4vWOSFZYlaIPf++Lft4BMZ8RcK+zFpVdSdLBGC2IbApbCQl4oQF3jjnP+R
+	hAX1ii/rEcCFcs/iVOTttgpfCqVgHtJhLdQQUA2UtObfqX1kw/dCQIpCCGduotU3MDfFXSAO5Mz
+	QfbkSwSctgMn0bwJNtBSY7hAKh18dTospBFW/oCNQlmmKPCXtcFS0AgdWjkmMvdINXS+XhTk1NJ
+	2+sD/GR0ycMWu3p4t9vAag+Um1eaT4HYFfkG1XOMzMEAT6nIDMYEr+jIXU4FiC3biQqXRHZENC7
+	sOzMF4uC9KcDez94YGH3THZzwQc7XuYBirixrCSr5cJhKc8q8mZldm/KxQOhplQD63FnBEJSjfS
+	SJJAWRwNTbDmiJ6QhOGyRu8brSUzlVpkhLcRFoxJr8GYvTmxUx3WHdDgpj77IdLPkeFtZrYLvGy
+	6ftBA8Zznb/Qiviippev29SwzPWyAFIEYZDzRTAIm9j5YNFxyCs17RcH9hQP1york8C1bWTB5Qi
+	3Li3Vrwgy6l3zf/Am5hAH2fV9pgZ3Awp+ho0zvM0Wn0arSqZ1hvsS9Lef1h6pMaoCPRBFtQQV6p
+	EEweSW0xjZu12XLcldfTyApjOpFlzSsFY
+X-Received: by 2002:a05:6820:603:b0:710:8db7:5f55 with SMTP id 006d021491bc7-71b3956c224mr2993622eaf.71.1795190999543;
+        Fri, 20 Nov 2026 08:09:59 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com (196.sub-174-201-28.myvzw.com. [174.201.28.196])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-71b37ea8472sm2147928eaf.2.2026.11.20.08.09.57
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-71b37ea8472sm2147928eaf.2.2026.11.20.08.09.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 20 Nov 2026 08:09:58 -0800 (PST)
+        Fri, 20 Nov 2026 08:09:59 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 0/5] pNFS/flexfiles: I/O without a layout under FF_FLAGS_NO_IO_THRU_MDS
-Date: Fri, 20 Nov 2026 11:09:51 -0500
-Message-ID: <cover.1795122899.git.bcodding@hammerspace.com>
+Subject: [PATCH v3 1/5] pNFS/flexfiles: use the MDS for locked-folio writeback without a layout
+Date: Fri, 20 Nov 2026 11:09:52 -0500
+Message-ID: <81fea5dcd8feebcf1590effad8b96648b288bb11.1795122900.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
+In-Reply-To: <cover.1795122899.git.bcodding@hammerspace.com>
+References: <cover.1795122899.git.bcodding@hammerspace.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -98,123 +102,152 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-When a file's flexfiles layouts carry FF_FLAGS_NO_IO_THRU_MDS, the client
-keeps reads and writes off the MDS when it has no layout segment for
-them.  Reads and writes handle that differently:
+nfs_writepage_locked() writes back one folio that its caller holds
+locked, for nfs_wb_folio(), nfs_wb_folio_reclaim() and migration.  When
+there is no layout segment and the file's layout header carries
+FF_FLAGS_NO_IO_THRU_MDS, ff_layout_pg_get_mirror_count_write() refuses
+the write with -EAGAIN.  nfs_do_writepage() redirties the folio and
+returns the -EAGAIN, and nfs_wb_folio() passes it to nfs_updatepage(),
+nfs_flush_incompatible(), nfs_read_folio() and nfs_launder_folio().  A
+read(2) or write(2) on a blocking file then fails with EAGAIN, for
+example when another open context has dirtied the same folio while a
+layout is being recalled.
 
- - Reads test the inode's NFS_INO_NO_IO_THRU_MDS bit, wait a second
-   between attempts, and honour io_maxretrans on soft mounts.
+Resending from nfs_wb_folio(), as nfs_writepages() does, would hold the
+folio locked across the resends.  A bulk recall can't complete while
+nfs_writepages() holds a layout segment, and nfs_writepages() would be
+waiting for that folio's lock.
 
- - Writes test a bit on the layout header and return -EAGAIN.
-   nfs_writepages() and the O_DIRECT reschedule path resend at once, so
-   writers spin for as long as there is no layout.  nfs_wb_folio()
-   returns the -EAGAIN, so a read(2) or write(2) that has to flush a
-   folio another open context dirtied fails with EAGAIN.  Once the
-   header is freed the bit is gone and writes go through the MDS, and
-   ff_layout_pg_init_write() sends them there whenever
-   pnfs_generic_pg_check_layout() drops an invalidated segment.
+FF_FLAGS_NO_IO_THRU_MDS is a hint (RFC 8435, section 5.1.2).  Mark the
+descriptor that nfs_writepage_locked() uses with a new pg_allow_mds
+bit, and send its write through the MDS when there is no layout
+segment.  When ff_layout_pg_init_write() can't use a data server, send
+such a write to the MDS too, instead of retrying with the folio locked.
 
-Neither direction uses the MDS when the server has said there is no
-layout to give.  After NFS4ERR_LAYOUTUNAVAILABLE, RFC 8435 says the I/O
-is to go to the MDS (section 5.1.1), and the flag is a hint (section
-5.1.2).  Instead, reads wait and writes spin until the 120 second fail
-bit expires, then send a LAYOUTGET that can fail the same way.
+ff_layout_pg_init_write() switches a write to the MDS by resetting the
+descriptor and returning -EAGAIN, which nfs_wb_folio() also passes up,
+with or without the flag.  When nfs_wb_folio() gets -EAGAIN, wait for
+any part of the folio already under writeback, as its loop does, and
+write the folio once more with a descriptor that goes straight to the
+MDS.  nfs_wb_folio_reclaim() still returns the error, and
+nfs_release_folio() keeps the folio.
 
-Patch 1 sends writeback of a single locked folio (nfs_wb_folio(),
-reclaim, migration) through the MDS instead of refusing it.  Resending
-with the folio locked could deadlock against a bulk recall, which can't
-complete while nfs_writepages() holds a layout segment, and
-nfs_writepages() would be waiting for that folio.  Patch 2 makes the
-O_DIRECT write work a delayed_work.  Patch 3 has the remaining writes
-test the inode bit.  After the folios and requests of a refused pass
-are unlocked, data-integrity nfs_writepages() waits a second before it
-resends, and the O_DIRECT reschedule queues its next pass a second
-later; other writeback leaves the folios dirty.  Patch 4 removes the
-header bit, which nothing tests after patch 3.  Patch 5 sends reads,
-writes and the resend after a data server error through the MDS while
-the fail bit for their iomode is set.
+Fixes: 8b0401373734 ("pNFS/flexfiles: Fix list corruption if the mirror count changes")
+Fixes: 1d62e659c0bf ("NFSv4/flexfiles: honor FF_FLAGS_NO_IO_THRU_MDS in pg_get_mirror_count_write")
+Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
+---
+ fs/nfs/flexfilelayout/flexfilelayout.c |  5 +++--
+ fs/nfs/pagelist.c                      |  1 +
+ fs/nfs/write.c                         | 20 ++++++++++++++++----
+ include/linux/nfs_page.h               |  1 +
+ 4 files changed, 21 insertions(+), 6 deletions(-)
 
-That last change is also the path for a data server the client can't
-use, such as a version mismatch: the client reports the failure with
-LAYOUTERROR or LAYOUTRETURN, and the server decides whether to answer
-the next LAYOUTGET with NFS4ERR_LAYOUTUNAVAILABLE.  The missing-nfsv3
-case is covered separately by Roberto's "NFSv4/flexfiles: couple back
-with NFSv3".
-
-These patches are independent of the series "pNFS: don't reply
-NOMATCHING to a layout recall with I/O in flight", but both change
-ff_layout_pg_get_mirror_count_write(), so whichever goes second will
-need a small rebase.
-
-Tested against a reffs MDS and DS with a six-way mirrored layout,
-injecting LAYOUTGET errors after a file recall.  With
-NFS4ERR_LAYOUTUNAVAILABLE, reads and writes go through the MDS at once,
-and the data written through the MDS is on every mirror.  With a
-retryable error (NFS4ERR_SERVERFAULT) held for 6 to 8 seconds, fsync
-and the O_DIRECT reschedule retry once a second with no I/O to the MDS,
-SIGKILL ends a writer blocked in fsync or an O_DIRECT write,
-sync_file_range(SYNC_FILE_RANGE_WRITE) returns 0, and a soft mount with
-io_maxretrans=3 returns EIO after about 3 seconds.  During the hold, a
-read of a folio that another open context had dirtied flushes it
-through the MDS and returns without EAGAIN.
-
-The series is based on v7.4-rc3 with three flexfiles fixes that were
-posted separately for stable:
-
-  pNFS/flexfiles: read the layout hdr under i_lock in pg_get_mirror_count_write
-  https://lore.kernel.org/linux-nfs/23435d398481f51ce2680053cd3a151fe673f91c.1795108831.git.bcodding@hammerspace.com/
-  pNFS/flexfiles: don't delay or restart an rpc_task that LOCALIO never ran
-  https://lore.kernel.org/linux-nfs/9c46fda0f2cd6d3843b198dac304b4722514b8e3.1795108831.git.bcodding@hammerspace.com/
-  pNFS/flexfiles: restart a write that the DS error handler retries
-  https://lore.kernel.org/linux-nfs/8ee107c9d0c68b6d0ee7305605ff7edbe0ffa160.1795108832.git.bcodding@hammerspace.com/
-
-Patch 3 replaces the header bit test that the first of these fixes.
-
-Changes since v2:
-https://lore.kernel.org/linux-nfs/cover.1795117974.git.bcodding@hammerspace.com/
- - Patch 3: on a soft mount, fail the refused write once the next pass
-   would exceed io_maxretrans, instead of waiting a second for a pass
-   that fails anyway.  The first O_DIRECT pass queues its reschedule a
-   second later too, instead of at once (sashiko).
-
-Changes since v1:
-https://lore.kernel.org/linux-nfs/cover.1795024981.git.bcodding@hammerspace.com/
- - Rebased onto the three fixes above.
- - Patch 1: shorter pg_allow_mds comment; the nfs_wb_folio() comment
-   says the refused folio was redirtied (Anna).
- - New patch 2, so that patch 3 no longer sleeps on nfsiod.
- - Patch 3 (was 2): only data-integrity nfs_writepages() waits, and a
-   fatal signal ends the wait; other writeback returns 0 instead of
-   waiting a second per folio.  The O_DIRECT reschedule requeues after a
-   second instead of sleeping.  The tracepoints that read the layout
-   header without an lseg are emitted under i_lock.
-
-Benjamin Coddington (5):
-  pNFS/flexfiles: use the MDS for locked-folio writeback without a
-    layout
-  NFS: make the O_DIRECT write work a delayed_work
-  pNFS/flexfiles: pace writes that have no layout and can't use the MDS
-  pNFS/flexfiles: remove the layout-header NO_IO_THRU_MDS bit
-  pNFS/flexfiles: use the MDS when the server has no layout to give
-
- fs/nfs/direct.c                        |  13 ++-
- fs/nfs/flexfilelayout/flexfilelayout.c | 138 ++++++++++++++++---------
- fs/nfs/flexfilelayout/flexfilelayout.h |  16 ---
- fs/nfs/internal.h                      |  14 +--
- fs/nfs/nfs4trace.c                     |   1 +
- fs/nfs/nfs4trace.h                     |   1 +
- fs/nfs/pagelist.c                      |   2 +
- fs/nfs/pnfs.c                          |  22 ++++
- fs/nfs/pnfs.h                          |   1 +
- fs/nfs/write.c                         |  31 +++++-
- include/linux/nfs_page.h               |   2 +
- 11 files changed, 164 insertions(+), 77 deletions(-)
-
-
-base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
-prerequisite-patch-id: 71097d575f7ba74684462ab64b028ff8815dff63
-prerequisite-patch-id: 5a73a1fb9d47a31d4ec337ec0264eadbcaa9fd4e
-prerequisite-patch-id: 2663ab8e1949d6a11d957cc2784161bf2816cac2
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 3adfcc7d0cfc..56527054d87b 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1176,7 +1176,8 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 					       mirror_ds, dss_id, OP_WRITE);
+ 		if (IS_ERR(ds)) {
+ 			nfs4_ff_layout_put_deviceid(mirror_ds);
+-			if (!ff_layout_no_fallback_to_mds(pgio->pg_lseg))
++			if (pgio->pg_allow_mds ||
++			    !ff_layout_no_fallback_to_mds(pgio->pg_lseg))
+ 				goto out_mds;
+ 			pnfs_generic_pg_cleanup(pgio);
+ 			/* Sleep for 1 second before retrying */
+@@ -1239,7 +1240,7 @@ ff_layout_pg_get_mirror_count_write(struct nfs_pageio_descriptor *pgio,
+ 	lo = NFS_I(inode)->layout;
+ 	no_fallback = lo && ff_layout_hdr_no_fallback_to_mds(lo);
+ 	spin_unlock(&inode->i_lock);
+-	if (no_fallback) {
++	if (!pgio->pg_allow_mds && no_fallback) {
+ 		/*
+ 		 * FF_FLAGS_NO_IO_THRU_MDS: no current lseg but the server's
+ 		 * policy forbids MDS fallback.  Surface -EAGAIN so writeback
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 71f0ce2bc4ea..aa6d7b658d79 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -871,6 +871,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 		     int io_flags)
+ {
+ 	desc->pg_moreio = 0;
++	desc->pg_allow_mds = 0;
+ 	desc->pg_inode = inode;
+ 	desc->pg_ops = pg_ops;
+ 	desc->pg_completion_ops = compl_ops;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0b42d31f7a75..0b2b262b0dde 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -627,15 +627,16 @@ static int nfs_do_writepage(struct folio *folio, struct writeback_control *wbc,
+  * Write an mmapped page to the server.
+  */
+ static int nfs_writepage_locked(struct folio *folio,
+-				struct writeback_control *wbc)
++				struct writeback_control *wbc, bool force_mds)
+ {
+ 	struct nfs_pageio_descriptor pgio;
+ 	struct inode *inode = folio->mapping->host;
+ 	int err;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
+-	nfs_pageio_init_write(&pgio, inode, 0, false,
++	nfs_pageio_init_write(&pgio, inode, 0, force_mds,
+ 			      &nfs_async_write_completion_ops);
++	pgio.pg_allow_mds = 1;
+ 	err = nfs_do_writepage(folio, wbc, &pgio);
+ 	pgio.pg_error = 0;
+ 	nfs_pageio_complete(&pgio);
+@@ -2057,7 +2058,7 @@ int nfs_wb_folio_reclaim(struct inode *inode, struct folio *folio)
+ 		return -EBUSY;
+ 	if (folio_clear_dirty_for_io(folio)) {
+ 		trace_nfs_writeback_folio_reclaim(inode, range_start, len);
+-		ret = nfs_writepage_locked(folio, &wbc);
++		ret = nfs_writepage_locked(folio, &wbc, false);
+ 		trace_nfs_writeback_folio_reclaim_done(inode, range_start, len,
+ 						       ret);
+ 		return ret;
+@@ -2084,6 +2085,7 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
+ 		.range_start = range_start,
+ 		.range_end = range_start + len - 1,
+ 	};
++	bool force_mds = false;
+ 	int ret;
+ 
+ 	trace_nfs_writeback_folio(inode, range_start, len);
+@@ -2091,7 +2093,17 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
+ 	for (;;) {
+ 		folio_wait_writeback(folio);
+ 		if (folio_clear_dirty_for_io(folio)) {
+-			ret = nfs_writepage_locked(folio, &wbc);
++			ret = nfs_writepage_locked(folio, &wbc, force_mds);
++			/*
++			 * -EAGAIN redirtied the folio and asks for a resend,
++			 * which can't wait for a layout with the folio locked:
++			 * resend it through the MDS once any part of it
++			 * already sent has completed.
++			 */
++			if (ret == -EAGAIN && !force_mds) {
++				force_mds = true;
++				continue;
++			}
+ 			if (ret < 0)
+ 				goto out_error;
+ 			continue;
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index c38e4b380be5..d79bea9d4f90 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -120,6 +120,7 @@ struct nfs_pageio_descriptor {
+ 	u32			pg_mirror_idx;	/* current mirror */
+ 	unsigned short		pg_maxretrans;
+ 	unsigned char		pg_moreio : 1;
++	unsigned char		pg_allow_mds : 1;	/* MDS if no layout */
+ };
+ 
+ /* arbitrarily selected limit to number of mirrors */
 -- 
 2.53.0
 
