@@ -1,92 +1,92 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.43
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795136519;
-	b=JqHeIwBz3SuUT9VVHRErSr7Ha6eAZ7+0R2jyyPQ80IEsteq87vFAEPplprnDso8BGorC
-	 Je44k9zUeO06bB7eelRALo9x23lNje0V6NYxBb1D2lZVikNp7AniHwv+GAYqT4/2OW7cx
-	 QndcE7eQS5lpoduBuxhasWlFlbRVIn42UyXRd6Q/5nNs44EvqlMtun3nNth61IoZmoj3E
-	 FEWbiV9OGV76dV7yxR9v3aorIJDE+bYEa8mf1tG7v1kqy3KC4/1iyFMFhb8XYFf2W5TcB
-	 KSpTszOgI6j+2WwWz4JEkaNjkZjDOp13lrNq6T3Ya/XdKWFjNxgOhCeMfgA1PBw7nSg==
+	t=1795136520;
+	b=TlweJdm4cKzaI1by2FErz6N5EKY9YdG7UNdDKLwVyFi+2kWUyWi6d1GdIQN92HP7fywT
+	 V4OWVnfZIFj5c+ITZ0a9o13o8hF/Hdlue1fUsNJL8fEjLRDGrc1ZNqNqlF1xz1nH11R1W
+	 KejXXtmFTdgGIzQ7Q+FxEJ/Ed2eHoZWJdwU7pI1brGfwadVqdkWreEYc7po0x5ccgCRmC
+	 opgaeni9nL2PlziQEl4LBjoi9GJjQNIeGtSCYUwA377uaP4F5fGv/55LzYVqD/Iqn/2zS
+	 SpWqaa/p2lAXI4jBAL7kF6KGxaIindZ8d2Eilw1+P0hRtuQdPADkNOl5BU6AvGRpAXw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795136519;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795136520;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=w5d0hOkm67mYdHCAEsmMGzKbwRsLjIjoR1T050D1zsc=;
-	b=OiTmjB/PSa0h2gws6Oy6LfM7ZuD8Ir2FG0NhyUgK2EOJ8daRIVhrWpfrRwNNjSqqgDPz
-	 Sl7aoLIys6TbDRj4ZWjGXRhr/JaV3yN6Y/++ZPhE19/Ueca/AE8suPoB+UbsYw6mUbOPu
-	 2KzFkb3CyteumPFwknvopGcmz9K8B6u0N5TZ//J2g5QS8yvegYo790DPgC0VA1SNeE2de
-	 /SDz5mwWHRB1C5MBHcv6ybAf8j0McHqECfZwaiVCM0t/r7INqomOaHm7VRSEXj/kHzdP+
-	 nNNItPrLPYnsKa/3ka535yAh/mC6Jlave3PpDQuq3EVIvQ4GrNLeQZqIngacnHMngUw==
+	bh=RJF1LQwepLu6WRzJCpDZBxa3Fd67BOeHnb9dxUl8x2o=;
+	b=S/R15Fxi7bzXzYylfi4zPYly+8HlYLYg7SFQyBb1C8wN9RsgMPs1wvWlc7AQBLbYZek9
+	 zbE24b2Eqk9JEVlKPdB2wYa5TgMJ2gfDN9Z/3XnyqSALm2GkRpHSIlnEyRhRNHCVEvaIX
+	 kSQHqDKPp3nDlOSQh/FYcfCBd0Da7xj8nb+w1AQPnV/ZY6WEesyAlFtY0btFhUcPh8N4N
+	 uesp04ZfXmCv5/l3IiVBUtA6TClPq+CE9aNgIc646jQiN/lyHjLFAIOpyw5z6zn7LB65G
+	 oI/Ci0gFUc2PE0mwgPg3vI3PAZy+6kXgqAr2HSr9fhvxB5rDCFiMsCLRrfxBmsv6rSA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=kY4Dx8u5;
-	arc=none smtp.remote-ip=209.85.161.41
-Received: from mail-oo1-f41.google.com (mail-oo1-f41.google.com [209.85.161.41])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=GP9rvFHg;
+	arc=none smtp.remote-ip=209.85.210.43
+Received: from mail-ot1-f43.google.com (mail-ot1-f43.google.com [209.85.210.43])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E25F2606A326
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 01:01:58 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E25F2606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C35E606A326
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 01:01:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1C35E606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=kY4Dx8u5
-Received: by mail-oo1-f41.google.com with SMTP id 006d021491bc7-6e560e00a86so242762eaf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:01:58 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=GP9rvFHg
+Received: by mail-ot1-f43.google.com with SMTP id 46e09a7af769-862aca1ed4dso209289a34.0
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:01:59 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1795136518; x=1795741318; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1795136519; x=1795741319; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=w5d0hOkm67mYdHCAEsmMGzKbwRsLjIjoR1T050D1zsc=;
-        b=kY4Dx8u587U9gJEegDx6ZiX/dd3AiRpasJjMQ2vorXdkSrbO0MHzSVYBvRb0adleku
-         tu/EeYplEa5iZMgwuZ59GtgnKyvoYT0wcA0p4h5cOgIpnrAB2pPd3mPaxaRUqRDFPg5+
-         cFhh8uAwXmwKKw0SwXf+HeWWQ+oLmfARE5wY7giyOW2TfdyjMCSZh81IimpfPowQpRWz
-         NmunPN6tn7xLa8CthSfDLxeRavZIPnl3xMM+dFsQXjbfBGHLKcz79qElCGYYtJJx1ylD
-         QJBLuTnZ3197er+OqXbuyWIZBqmpYEEOVe5oGB/ySEZttfFsoQk/vxCxQP1hu0IsPtKm
-         Meag==
+        bh=RJF1LQwepLu6WRzJCpDZBxa3Fd67BOeHnb9dxUl8x2o=;
+        b=GP9rvFHgMYXEiY7TrqtwBW72sOSRZo2RiX112vUK0HcHV54tDunxa517goFifg+HdD
+         sMCsupIlQTIlAxUgkZbPQvWrW6JiYabVLrjXYMXUyaoQ6DkrxwKXQDBGPj8xBbOMvLmp
+         79CLbsJWY7yj5rK+UQM/n/pzuBkLDj3GzalbpS/BVHsj0ZT13JgWEHtWrxgVvb03KiPZ
+         3co5QVCW5IDIQ2Ti3GNfyklJFl6GXmopoRRec2ZG9wwaLzdV16biSob3DRL4jIpAmXGF
+         z+OyCeXyl34xaaY8Dx48qUJgp3Btj+jLwiLwY/p08dHgNr/jRckpLV0debwc2tRn+kHq
+         DNqw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795136518; x=1795741318;
+        d=1e100.net; s=20260707; t=1795136519; x=1795741319;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=w5d0hOkm67mYdHCAEsmMGzKbwRsLjIjoR1T050D1zsc=;
-        b=jFVE9tluTrCyZ4ofFL6itRoojv9nVwm5qO2sDK+JpBi9NQVsg/R9kroZaLtdV0Nmqz
-         CySJe8Q75/o7U2UXWQBjB1o8GL0CNhdqjSpRBlRU2HmBSaOXggAfpxCRql8Vq5443lTe
-         BO3tqt70xJij/W5INShtGMiIsDQkKbKNnBshzUrP9xvabZ14/NUGjnPBM5wE+GqEWEcs
-         yRZdmDJp7ay/4Eta6b86nwbdiNHQVdHmo/xOBprenqJq/Vzx3TCB1ycdnPhTX20mgXpv
-         3fKcyCkPJKzBK12xcfOXt9OvaLpsc405J+wkN5lOi9JH606rok9bKnwu4e4LU7Rb84HI
-         F3TA==
-X-Gm-Message-State: APuU4Z9el08C0kJ+DJGrpu+FMPrIG2ipx/XPrXhLR0Tr9deYoN5MKuzu
-	l2IaEmOV0xgrFQizVEGyOraef1YlJE7YvM8sFeyCRb3DY5ccR8ht5K20Bw+nTw+pDlkchQDU6vO
-	z0uUM
-X-Gm-Gg: AYBFou1QKY4EPo/DMndb9TwPnhRikFcwE3KfahYvIdFEl34GNTFbcmVNItydQQHqkb9
-	5QjzAr13SNerXmfY85mRcNir40xDd6kQAbf/8rlCeV9C4/MTZko//uZ+weqexkbT91sps3eZ6OV
-	x8O16ErfRnSQnYyYtsgbdagUBPnxx3cRj13T/3knQm1AUL7l9cMfimlCWcPRzXTcE/djqRHh2mr
-	KIAGhjU4kLyn7P3iSkFiNR+H5K0sSumpizct6EEQJmAclY3WkNrZ6tW1KMun1wXH9gyaHlxo3Mm
-	C9FUpR13nlW4oWv1S2OKFhL99uHIk6uf4P3AEO3F1s/szO9+faL0k1GL2TLJ0KRqWsPJlC8VVkb
-	3xgx1W74u9jQ5MfIt3bmlRan4Cft6ArgKeq86Ea1qVnzLEQ5Std+g8Vfwb/iKcov3jrG8n6xD+V
-	qdYQL2bszj9LpMEx5Kk4j0grtHW/rtsJGSnElsfMYEmaLkJvixQRqgXbfiJ6pnMMpBFj5VF2D1y
-	2J5tjCgjgUrba/TO8GMz+BdIIt/1KwJDuQS+dEYf5EdoI8uY9z57XK08IoRRe0KhDUb0kDnM5P2
-	INukQML9OgSgUfEsXpXpOyFXlVLd0OGW2zR6nOb+jEZ0+fPhi+bovlv20BKAQQq7Liz/SG6p8js
-	+DzG7ElMnlbW9srZMsL2b3Q==
-X-Received: by 2002:a05:6820:3397:10b0:71a:f6ba:5f3b with SMTP id 006d021491bc7-71b3929459amr1144548eaf.5.1795136517837;
-        Thu, 19 Nov 2026 17:01:57 -0800 (PST)
+        bh=RJF1LQwepLu6WRzJCpDZBxa3Fd67BOeHnb9dxUl8x2o=;
+        b=B3CySZDNBlk7G0gmkbzGQD0iuxR5XM/JIJa0nAld3IMj55242ZRVwoFbZ10HRmDQuY
+         NL/bwZ6kG4tHC8/D9al8OPne1SfFgmcsYwj5zm/KNgNQOfZLwdURzA6QVP42BLj4c1rl
+         XxV6gdi3liZEpYpdclgsulpCHh9O+QwgCpwJSLQ+HSvq4VZ9CuTPfED815NoMFGOEC+h
+         G0mcceDA+Dqd3WsfXk4kswoc1+FUcDZnwXCobLbjrBo+cxkXGWhME0K6+Q3lRy+mB+cq
+         DZveigDzJUtkFs2i78iHDXaSvtQ4Ytv2GCAHCaKw/vGnfgA6c7aBogCUitmbf0Apc35H
+         9RDw==
+X-Gm-Message-State: APuU4Z+GotfSm6IV4V4NGThg/D1reli2zlZcupBz2KxSaZaNUbZJJV05
+	QpcxK0LkZeONd1yuOBoAJoODofspUDIuhQpEjVU+2B4thac5RzfTLrXBqdEThBqf8aRg5T2a5FQ
+	hcZKs
+X-Gm-Gg: AYBFou0vNaOug0mX/CMbOGsiXQwTh/gzYORKRlofct3iYlvgxWkvI8eC8qN18dO1Jie
+	7uBQU2VmDTsZcjjvslFICsZmLGgkW0Nin9H8tJK6y4TPdWWM1rr066PffwkJAZPjJ2vZRSA5oNv
+	cONIq2JSOKXhODKXdyOZpjao5hxXVeLJqlNm/1XxvoOxEdHt++IYS9zQL87xCNTzLA5Tysv3cRg
+	MxW8fw9jhrTvj9zeHE0bIRTsiz5iz/CoipV567UtOgLikbXkELug9x2vKfNCzrPOqBzAZekOFwE
+	4xLtlG68EVAOjteDEm/rbfQ2B4jVZU8buQgIYc/AgRcncyjWJ7bBSiKympY0/TkfF8qsyYFhwJR
+	SldqwGljZGHU6i9XCyMxnqeSYkZs16AnDaLUApDBNABo6N0btAGZfwOz8Gto0L2s21ErX06FTlb
+	bsoTToAyqczzZjj54D2w9yYUXQIZjLcn4uvPURcCrOmwzivzrPjhgzgcGQCJ4L3Jtajox+X1zPF
+	WOm9Aepp3dSakM4gnzhxyf80JegfaE+z6fLi4L8dJn1o4eOlkfxny+bKG9SsOPTULEcyEbe5jW5
+	mHaN9vf+G/tIwGNVtOXdrJXekqa40AXKQJ06ujadWOXfRJbd0pt6w17Hh50DCVwELp+uV9ZIrV8
+	kmv3uoCmbThN+xV0su+UClg==
+X-Received: by 2002:a05:6820:82b:b0:71a:f0b8:5dc7 with SMTP id 006d021491bc7-71b39206939mr1416764eaf.8.1795136518746;
+        Thu, 19 Nov 2026 17:01:58 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
-        by smtp.gmail.com with ESMTPSA id 006d021491bc7-71b37ea818bsm1101995eaf.1.2026.11.19.17.01.57
+        by smtp.gmail.com with ESMTPSA id 006d021491bc7-71b37ea818bsm1101995eaf.1.2026.11.19.17.01.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 17:01:57 -0800 (PST)
+        Thu, 19 Nov 2026 17:01:58 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFS: resend O_DIRECT write requests that error cleanup gets with -EAGAIN
-Date: Thu, 19 Nov 2026 20:01:52 -0500
-Message-ID: <95ac680997bbb3efc145c492ae9a817e9639cb05.1795136323.git.bcodding@hammerspace.com>
+Subject: [PATCH 2/3] NFS: don't use a mirror after pg_init can free it
+Date: Thu, 19 Nov 2026 20:01:53 -0500
+Message-ID: <b848a173b03e00d9a3faf17eda185a379b771d5e.1795136323.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1795136323.git.bcodding@hammerspace.com>
 References: <cover.1795136323.git.bcodding@hammerspace.com>
@@ -103,197 +103,54 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-A layout driver's pg_init can fail a descriptor with -EAGAIN while it
-still holds queued requests; flexfiles does this when the mirror count
-changes.  nfs_pageio_error_cleanup() hands those requests to
-error_cleanup, and for O_DIRECT writes nfs_write_sync_pgio_error() just
-unlocks and releases them.  nfs_direct_write_schedule_iovec() treats
--EAGAIN as soft and defers only the request it was adding, so the queued
-requests, already counted in requested_bytes, are never written and no
-error is reported.
+When a layout driver's pg_init switches a mirrored descriptor to the MDS,
+nfs_pageio_reset_write_mds() frees pg_mirrors_dynamic.  nfs_do_recoalesce()
+keeps the mirror pointer it took before calling __nfs_pageio_add_request()
+and, on error, splices the remaining requests onto it and sets
+pg_recoalesce, writing to freed memory.  Look up the current mirror again
+after the add.
 
-Pass the descriptor's nfs_direct_req to error_cleanup.  On -EAGAIN, put
-the O_DIRECT write requests on the commit list and set
-NFS_ODIRECT_RESCHED_WRITES so the write completion resends them.  Move
-that code out of nfs_direct_write_reschedule_io() into
-nfs_direct_write_requeue() and use it in both places.
+nfs_pageio_complete() also keeps completing the remaining mirrors after one
+of them fails.  A pg_init that fails during completion may have released
+the layout segment, and the next mirror's pg_doio then sends with a NULL
+pg_lseg.  Stop completing mirrors once pg_error is set; error cleanup then
+handles the requests still queued on every mirror.
 
-Fixes: 954998b60caa ("NFS: Fix error handling for O_DIRECT write scheduling")
-Cc: stable@vger.kernel.org # v6.6+
+Fixes: 03d5eb65b538 ("NFS: Fix a memory leak in nfs_do_recoalesce")
+Fixes: a7d42ddb3099 ("nfs: add mirroring support to pgio layer")
+Cc: stable@vger.kernel.org # v4.0+
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/direct.c         | 48 +++++++++++++++++++++++++----------------
- fs/nfs/pagelist.c       |  7 +++---
- fs/nfs/read.c           |  3 ++-
- fs/nfs/write.c          |  5 +++--
- include/linux/nfs_xdr.h |  3 ++-
- 5 files changed, 41 insertions(+), 25 deletions(-)
+ fs/nfs/pagelist.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index a3c6e8f4ea06..c771bb1b0730 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -330,7 +330,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 	hdr->release(hdr);
- }
- 
--static void nfs_read_sync_pgio_error(struct list_head *head, int error)
-+static void nfs_read_sync_pgio_error(struct list_head *head, int error,
-+				     struct nfs_direct_req *dreq)
- {
- 	nfs_release_request_list(head);
- }
-@@ -818,39 +819,50 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 	hdr->release(hdr);
- }
- 
--static void nfs_write_sync_pgio_error(struct list_head *head, int error)
-+static void nfs_direct_write_requeue(struct nfs_direct_req *dreq,
-+				     struct list_head *head)
- {
-+	struct nfs_commit_info cinfo;
- 	struct nfs_page *req;
- 
-+	nfs_init_cinfo_from_dreq(&cinfo, dreq);
-+	spin_lock(&dreq->lock);
-+	if (dreq->error == 0)
-+		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
-+	spin_unlock(&dreq->lock);
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
--		nfs_unlock_and_release_request(req);
-+		nfs_unlock_request(req);
-+		nfs_mark_request_commit(req, NULL, &cinfo, 0);
- 	}
- }
- 
--static void nfs_direct_write_reschedule_io(struct nfs_pgio_header *hdr)
-+static void nfs_write_sync_pgio_error(struct list_head *head, int error,
-+				      struct nfs_direct_req *dreq)
- {
--	struct nfs_direct_req *dreq = hdr->dreq;
- 	struct nfs_page *req;
--	struct nfs_commit_info cinfo;
--
--	trace_nfs_direct_write_reschedule_io(dreq);
- 
--	nfs_init_cinfo_from_dreq(&cinfo, dreq);
--	spin_lock(&dreq->lock);
--	if (dreq->error == 0)
--		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
--	set_bit(NFS_IOHDR_REDO, &hdr->flags);
--	spin_unlock(&dreq->lock);
--	while (!list_empty(&hdr->pages)) {
--		req = nfs_list_entry(hdr->pages.next);
-+	/* -EAGAIN: requests already counted by the caller must be resent */
-+	if (error == -EAGAIN) {
-+		nfs_direct_write_requeue(dreq, head);
-+		return;
-+	}
-+	while (!list_empty(head)) {
-+		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
--		nfs_unlock_request(req);
--		nfs_mark_request_commit(req, NULL, &cinfo, 0);
-+		nfs_unlock_and_release_request(req);
- 	}
- }
- 
-+static void nfs_direct_write_reschedule_io(struct nfs_pgio_header *hdr)
-+{
-+	trace_nfs_direct_write_reschedule_io(hdr->dreq);
-+
-+	set_bit(NFS_IOHDR_REDO, &hdr->flags);
-+	nfs_direct_write_requeue(hdr->dreq, &hdr->pages);
-+}
-+
- static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
- 	.error_cleanup = nfs_write_sync_pgio_error,
- 	.init_hdr = nfs_direct_pgio_init,
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 71f0ce2bc4ea..bdf8b7305e61 100644
+index bdf8b7305e61..3bdf3f308c8e 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -1208,7 +1208,8 @@ nfs_pageio_cleanup_request(struct nfs_pageio_descriptor *desc,
- 	LIST_HEAD(head);
- 
- 	nfs_list_move_request(req, &head);
--	desc->pg_completion_ops->error_cleanup(&head, desc->pg_error);
-+	desc->pg_completion_ops->error_cleanup(&head, desc->pg_error,
-+					       desc->pg_dreq);
- }
- 
- /**
-@@ -1337,7 +1338,7 @@ static void nfs_pageio_error_cleanup(struct nfs_pageio_descriptor *desc)
- 	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
- 		mirror = nfs_pgio_get_mirror(desc, midx);
- 		desc->pg_completion_ops->error_cleanup(&mirror->pg_list,
--				desc->pg_error);
-+				desc->pg_error, desc->pg_dreq);
- 	}
- }
- 
-@@ -1440,7 +1441,7 @@ int nfs_pageio_resend(struct nfs_pageio_descriptor *desc,
- 	nfs_pageio_complete(desc);
- 	if (!list_empty(&pages)) {
- 		int err = desc->pg_error < 0 ? desc->pg_error : -EIO;
--		hdr->completion_ops->error_cleanup(&pages, err);
-+		hdr->completion_ops->error_cleanup(&pages, err, hdr->dreq);
- 		nfs_set_pgio_error(hdr, err, hdr->io_start);
- 		return err;
- 	}
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index e7497b029d6c..7047883ddb6b 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -220,7 +220,8 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
- }
- 
- static void
--nfs_async_read_error(struct list_head *head, int error)
-+nfs_async_read_error(struct list_head *head, int error,
-+		     struct nfs_direct_req *dreq)
+@@ -1299,6 +1299,8 @@ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
+ 			req = list_first_entry(&head, struct nfs_page, wb_list);
+ 			if (__nfs_pageio_add_request(desc, req))
+ 				continue;
++			/* pg_init may have switched to the MDS and freed the mirrors */
++			mirror = nfs_pgio_current_mirror(desc);
+ 			if (desc->pg_error < 0) {
+ 				list_splice_tail(&head, &mirror->pg_list);
+ 				mirror->pg_recoalesce = 1;
+@@ -1457,8 +1459,12 @@ void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
  {
- 	struct nfs_page	*req;
+ 	u32 midx;
  
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 0b42d31f7a75..ab94b8a833f3 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1373,7 +1373,8 @@ static void nfs_redirty_request(struct nfs_page *req)
- 	nfs_release_request(req);
- }
+-	for (midx = 0; midx < desc->pg_mirror_count; midx++)
++	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
++		/* A failed pg_init may have released what the next mirror needs */
++		if (desc->pg_error < 0)
++			break;
+ 		nfs_pageio_complete_mirror(desc, midx);
++	}
  
--static void nfs_async_write_error(struct list_head *head, int error)
-+static void nfs_async_write_error(struct list_head *head, int error,
-+				  struct nfs_direct_req *dreq)
- {
- 	struct nfs_page	*req;
- 
-@@ -1389,7 +1390,7 @@ static void nfs_async_write_error(struct list_head *head, int error)
- 
- static void nfs_async_write_reschedule_io(struct nfs_pgio_header *hdr)
- {
--	nfs_async_write_error(&hdr->pages, 0);
-+	nfs_async_write_error(&hdr->pages, 0, NULL);
- }
- 
- static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index c0e29b4dfa62..fce0e773bd7b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1742,7 +1742,8 @@ struct nfs_commit_data {
- };
- 
- struct nfs_pgio_completion_ops {
--	void	(*error_cleanup)(struct list_head *head, int);
-+	void	(*error_cleanup)(struct list_head *head, int error,
-+				 struct nfs_direct_req *dreq);
- 	void	(*init_hdr)(struct nfs_pgio_header *hdr);
- 	void	(*completion)(struct nfs_pgio_header *hdr);
- 	void	(*reschedule_io)(struct nfs_pgio_header *hdr);
+ 	if (desc->pg_error < 0)
+ 		nfs_pageio_error_cleanup(desc);
 -- 
 2.53.0
 
