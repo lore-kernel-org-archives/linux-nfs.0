@@ -1,92 +1,92 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.43
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.161.52
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795136520;
-	b=TlweJdm4cKzaI1by2FErz6N5EKY9YdG7UNdDKLwVyFi+2kWUyWi6d1GdIQN92HP7fywT
-	 V4OWVnfZIFj5c+ITZ0a9o13o8hF/Hdlue1fUsNJL8fEjLRDGrc1ZNqNqlF1xz1nH11R1W
-	 KejXXtmFTdgGIzQ7Q+FxEJ/Ed2eHoZWJdwU7pI1brGfwadVqdkWreEYc7po0x5ccgCRmC
-	 opgaeni9nL2PlziQEl4LBjoi9GJjQNIeGtSCYUwA377uaP4F5fGv/55LzYVqD/Iqn/2zS
-	 SpWqaa/p2lAXI4jBAL7kF6KGxaIindZ8d2Eilw1+P0hRtuQdPADkNOl5BU6AvGRpAXw==
+	t=1795136521;
+	b=ykamwAxDD9i6B2iWhsglMVQv9KZ0ctbMJLNcyPitdQd+mtcY25oBYd4RR0sv/OxbfSfr
+	 hyMl15P4sQ0nNdcNjTBXj0V/yRBpU4zxsPyKAX5nu4DlnRvhN27yWrB0tnJxZCBxrNGSg
+	 2yeWA+jQ2FCCPOGEhYckqiMtMnzNq3Qsa6kDBuMESLr5uEN7OuFxO7pH5LRjYTkDyNdp4
+	 u3ShQXDFJEWDqlj26PjcMJaSnxc8t7lnLmFAj9ZDJ5ZwCbOqbSgI53E22hhbwiznNkVV8
+	 oplRfSEbucau/lTTC7PWANNJoRB2tLHa7zsaAU7RDm9Mc2JxCRjDaae2kTQLhnZRygQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795136520;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795136521;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
 	 Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=RJF1LQwepLu6WRzJCpDZBxa3Fd67BOeHnb9dxUl8x2o=;
-	b=S/R15Fxi7bzXzYylfi4zPYly+8HlYLYg7SFQyBb1C8wN9RsgMPs1wvWlc7AQBLbYZek9
-	 zbE24b2Eqk9JEVlKPdB2wYa5TgMJ2gfDN9Z/3XnyqSALm2GkRpHSIlnEyRhRNHCVEvaIX
-	 kSQHqDKPp3nDlOSQh/FYcfCBd0Da7xj8nb+w1AQPnV/ZY6WEesyAlFtY0btFhUcPh8N4N
-	 uesp04ZfXmCv5/l3IiVBUtA6TClPq+CE9aNgIc646jQiN/lyHjLFAIOpyw5z6zn7LB65G
-	 oI/Ci0gFUc2PE0mwgPg3vI3PAZy+6kXgqAr2HSr9fhvxB5rDCFiMsCLRrfxBmsv6rSA==
+	bh=lqsZ0W3pztHAbDfq8i7xBbH2UFJrqKGxgAFxaM3+iYM=;
+	b=LHe0XCeJdkD1k0gPjeF5AgTtext3vbaShdjqmio6Zn94bjBPRKUSsaBLLNPhwR9eJlvr
+	 zgQF0anrPNRvZTgD4wQW//sJgZT0p5Tdh1RKGLh+lhTBXw3BvW1frWyMJFIWWJGxWQc3B
+	 ckMUINABFVvZsrNQmYXBxNhiYu+Wo1NtJwfwF71vIzfpVpdhMzVlEWAzD2Z9ZZnGgmbf4
+	 b/rD9jlxIr3TZ6PujsOnnnqnWpBdbFVXNN77EJIQCjZVG3Os9c0EXDiqrnxftNWa3Hhpx
+	 ssy9gkdAx97/tJPhbcAytlmVHfMb1RXyN1yujF5JJbNSwmx5K9rFz0Boy2wP6vAEpCg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=hammerspace.com;
 	spf=pass smtp.mailfrom=hammerspace.com;
-	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=GP9rvFHg;
-	arc=none smtp.remote-ip=209.85.210.43
-Received: from mail-ot1-f43.google.com (mail-ot1-f43.google.com [209.85.210.43])
+	dkim=pass header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NDZHNpUP;
+	arc=none smtp.remote-ip=209.85.161.52
+Received: from mail-oo1-f52.google.com (mail-oo1-f52.google.com [209.85.161.52])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C35E606A326
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 01:01:59 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 1C35E606A326
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F513606A326
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 01:02:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3F513606A326
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=GP9rvFHg
-Received: by mail-ot1-f43.google.com with SMTP id 46e09a7af769-862aca1ed4dso209289a34.0
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:01:59 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.a=rsa-sha256 header.s=google header.b=NDZHNpUP
+Received: by mail-oo1-f52.google.com with SMTP id 006d021491bc7-702dedeb70dso253964eaf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:02:01 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1795136519; x=1795741319; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1795136520; x=1795741320; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=RJF1LQwepLu6WRzJCpDZBxa3Fd67BOeHnb9dxUl8x2o=;
-        b=GP9rvFHgMYXEiY7TrqtwBW72sOSRZo2RiX112vUK0HcHV54tDunxa517goFifg+HdD
-         sMCsupIlQTIlAxUgkZbPQvWrW6JiYabVLrjXYMXUyaoQ6DkrxwKXQDBGPj8xBbOMvLmp
-         79CLbsJWY7yj5rK+UQM/n/pzuBkLDj3GzalbpS/BVHsj0ZT13JgWEHtWrxgVvb03KiPZ
-         3co5QVCW5IDIQ2Ti3GNfyklJFl6GXmopoRRec2ZG9wwaLzdV16biSob3DRL4jIpAmXGF
-         z+OyCeXyl34xaaY8Dx48qUJgp3Btj+jLwiLwY/p08dHgNr/jRckpLV0debwc2tRn+kHq
-         DNqw==
+        bh=lqsZ0W3pztHAbDfq8i7xBbH2UFJrqKGxgAFxaM3+iYM=;
+        b=NDZHNpUP/UWqgHTG5PFp1q9fFdjEi3Q0kUZ7TgBgOEMQLXzSw2JLB0yI4CFTrp/6GY
+         ftGWt/NYQ+tUrBS0Pk4gslzyABonduhjGPaLDs3+Ne4aNhcla1r9/nNLwqLOz+APZ5dO
+         NuVziRahnd16bY1eG+9iKj6yeL/MHj8fyMX5EAGqzfpauGvlmXSzYzkN59LbNPHu+/XT
+         ERRqVTRtzODdnBtDBApP93+8TJkXeRdAlQ/N9/tPC/oXqiNJBK3qvCkpNJrHYe9e+cr1
+         WyKk4klDvGM+thMxe3YisBkOO7tR3HKQx2wfuuXms/mN9vqb/JB1Hac0Ciw/pHkLXXsY
+         tMzA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795136519; x=1795741319;
+        d=1e100.net; s=20260707; t=1795136520; x=1795741320;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=RJF1LQwepLu6WRzJCpDZBxa3Fd67BOeHnb9dxUl8x2o=;
-        b=B3CySZDNBlk7G0gmkbzGQD0iuxR5XM/JIJa0nAld3IMj55242ZRVwoFbZ10HRmDQuY
-         NL/bwZ6kG4tHC8/D9al8OPne1SfFgmcsYwj5zm/KNgNQOfZLwdURzA6QVP42BLj4c1rl
-         XxV6gdi3liZEpYpdclgsulpCHh9O+QwgCpwJSLQ+HSvq4VZ9CuTPfED815NoMFGOEC+h
-         G0mcceDA+Dqd3WsfXk4kswoc1+FUcDZnwXCobLbjrBo+cxkXGWhME0K6+Q3lRy+mB+cq
-         DZveigDzJUtkFs2i78iHDXaSvtQ4Ytv2GCAHCaKw/vGnfgA6c7aBogCUitmbf0Apc35H
-         9RDw==
-X-Gm-Message-State: APuU4Z+GotfSm6IV4V4NGThg/D1reli2zlZcupBz2KxSaZaNUbZJJV05
-	QpcxK0LkZeONd1yuOBoAJoODofspUDIuhQpEjVU+2B4thac5RzfTLrXBqdEThBqf8aRg5T2a5FQ
-	hcZKs
-X-Gm-Gg: AYBFou0vNaOug0mX/CMbOGsiXQwTh/gzYORKRlofct3iYlvgxWkvI8eC8qN18dO1Jie
-	7uBQU2VmDTsZcjjvslFICsZmLGgkW0Nin9H8tJK6y4TPdWWM1rr066PffwkJAZPjJ2vZRSA5oNv
-	cONIq2JSOKXhODKXdyOZpjao5hxXVeLJqlNm/1XxvoOxEdHt++IYS9zQL87xCNTzLA5Tysv3cRg
-	MxW8fw9jhrTvj9zeHE0bIRTsiz5iz/CoipV567UtOgLikbXkELug9x2vKfNCzrPOqBzAZekOFwE
-	4xLtlG68EVAOjteDEm/rbfQ2B4jVZU8buQgIYc/AgRcncyjWJ7bBSiKympY0/TkfF8qsyYFhwJR
-	SldqwGljZGHU6i9XCyMxnqeSYkZs16AnDaLUApDBNABo6N0btAGZfwOz8Gto0L2s21ErX06FTlb
-	bsoTToAyqczzZjj54D2w9yYUXQIZjLcn4uvPURcCrOmwzivzrPjhgzgcGQCJ4L3Jtajox+X1zPF
-	WOm9Aepp3dSakM4gnzhxyf80JegfaE+z6fLi4L8dJn1o4eOlkfxny+bKG9SsOPTULEcyEbe5jW5
-	mHaN9vf+G/tIwGNVtOXdrJXekqa40AXKQJ06ujadWOXfRJbd0pt6w17Hh50DCVwELp+uV9ZIrV8
-	kmv3uoCmbThN+xV0su+UClg==
-X-Received: by 2002:a05:6820:82b:b0:71a:f0b8:5dc7 with SMTP id 006d021491bc7-71b39206939mr1416764eaf.8.1795136518746;
-        Thu, 19 Nov 2026 17:01:58 -0800 (PST)
+        bh=lqsZ0W3pztHAbDfq8i7xBbH2UFJrqKGxgAFxaM3+iYM=;
+        b=DxUvvVjmxC73nwD+o+sF89ppg/9Acwrb2iJ8KUEPmPw79MaFBUjZznfrzV/XGF+zm2
+         1kOvrlQ7WtjwYfUuySlhvU1b0ajQ7ehsnQZkXHR4dYd9IBZnSK9K7BlUq/DpKSelKk1v
+         66Rcgp/VKq0f/a1lDVFqkCeyPLLjotLlqYP5s0CGhH+k5QBL+rc4Z5LslEXgnSjtvyoL
+         +hsCgCSrXDGBWkaY7iZaNxq8p2RPtr6OZhYFUK44B3KAwJJyOwEyx3YJrxfLtdoISiLx
+         JENJpRhkGttuzi0qJBtxxrIzOeDhhDiYOco3wXfpYd9OtfnEUA4AbO3CGWRCPnGN0C6O
+         TroA==
+X-Gm-Message-State: APuU4Z89M/uB4d+MiCKDIQLK9evdR/06oEVdwhpEhPUaD2i0nA6ctzLM
+	QAYNArJfKfzltcXoPsjwFn+fTgJ5XWarqSoLdf8JjKBz0saKx6hUnaZ4nThPMNoqCGsm6f2+sp7
+	Vbj9d
+X-Gm-Gg: AYBFou2Dj9/8v+BCBpvDxaw+yn6QihtgE8yiO+Bf94DBhROjcZmIVDoVHQ6GMM6joOF
+	UL7UzVF1ZQ6ELTidgKleIXnthwMpExQB7jf74GHlvVcd1ev+a9IVyO2nSDEP+oIW6pXqK0EXx9z
+	nmh9dd+rilCbftp220qmz7UwTrZfT902S0H4ftxHHHB4/ho16Mfik3jotB2kSycBmxqaGeMgICC
+	gHYxouDju2Ay9LF2k9+LlDg+45qBisHcw+tqM0s+pnGMvK8zTFP/J7IHCt2Sti2myl1vnnLG/eX
+	DdKFvcbaXewWxPMGjMWxfFGeXHTxmY/BrpTLNW4FOYzozhL5Pp5TBSItYx6YnvlrPWC6LHwczjS
+	qVNm26RstvevjSG4EjqKw/tKJRiAC1pSJVvPjn9z5aWlw2M94nNgvUCr6K8lY7EQe3gOk3A7SUP
+	tSqI5ZdncEIiBz2nrkQ1JnyJkA7Va9RLToeWrFWrDOLsO0TdxAK6t7IFekBsp0iZLUqdUinPuIm
+	Srk2tQrM6lEvfRMto9+l1rquPqrhiTMF4c7dbHxMDtTgGOZe6DSsQVsMI9QAyE2tPn5a+57btgM
+	hd3TrTrCKT94B3ZN0O2e9aHOuOxeFhLsX4K2e5CpdZopF/DW2tcgQJ+g7+qmqmApehIX/oE+3D7
+	P
+X-Received: by 2002:a05:6820:808:b0:71a:cf71:eac8 with SMTP id 006d021491bc7-71b39511525mr1479014eaf.57.1795136519777;
+        Thu, 19 Nov 2026 17:01:59 -0800 (PST)
 Received: from bcodding.csb.hammerspace.com ([12.117.181.174])
         by smtp.gmail.com with ESMTPSA id 006d021491bc7-71b37ea818bsm1101995eaf.1.2026.11.19.17.01.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 17:01:58 -0800 (PST)
+        Thu, 19 Nov 2026 17:01:59 -0800 (PST)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Mike Snitzer <snitzer@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFS: don't use a mirror after pg_init can free it
-Date: Thu, 19 Nov 2026 20:01:53 -0500
-Message-ID: <b848a173b03e00d9a3faf17eda185a379b771d5e.1795136323.git.bcodding@hammerspace.com>
+Subject: [PATCH 3/3] pNFS/flexfiles: don't switch a busy mirrored write descriptor to the MDS
+Date: Thu, 19 Nov 2026 20:01:54 -0500
+Message-ID: <ac9c90fc9576a7651e13cb0c6cca1f11a1ea5daf.1795136323.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1795136323.git.bcodding@hammerspace.com>
 References: <cover.1795136323.git.bcodding@hammerspace.com>
@@ -103,54 +103,131 @@ Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@hammerspace.com>
 
-When a layout driver's pg_init switches a mirrored descriptor to the MDS,
-nfs_pageio_reset_write_mds() frees pg_mirrors_dynamic.  nfs_do_recoalesce()
-keeps the mirror pointer it took before calling __nfs_pageio_add_request()
-and, on error, splices the remaining requests onto it and sets
-pg_recoalesce, writing to freed memory.  Look up the current mirror again
-after the add.
+nfs_pageio_reset_write_mds() replaces pg_ops before it completes the
+descriptor, so the completion sees only mirror 0.  Requests queued on the
+other mirrors are never sent or cleaned up, the mirror array they are
+linked on is freed, and their folios never leave writeback.
 
-nfs_pageio_complete() also keeps completing the remaining mirrors after one
-of them fails.  A pg_init that fails during completion may have released
-the layout segment, and the next mirror's pg_doio then sends with a NULL
-pg_lseg.  Stop completing mirrors once pg_error is set; error cleanup then
-handles the requests still queued on every mirror.
+ff_layout_pg_init_write() falls back to the MDS from a later pg_init while
+other mirrors still hold requests: when the layout segment is gone, or when
+a mirror's DS cannot be prepared.  In that case return -EAGAIN as for a
+mirror count change, so error cleanup redirties the queued requests, or
+requeues them for an O_DIRECT write, with the flexfiles ops still in place;
+the next pg_init starts from an empty descriptor and can switch safely.
 
-Fixes: 03d5eb65b538 ("NFS: Fix a memory leak in nfs_do_recoalesce")
-Fixes: a7d42ddb3099 ("nfs: add mirroring support to pgio layer")
+ff_layout_write_pagelist() returning PNFS_NOT_ATTEMPTED has the same
+problem through pnfs_write_through_mds().  It does that when a DS of the
+layout is unavailable or when preparing the DS failed fatally.  For a
+mirrored layout, return PNFS_TRY_AGAIN instead and leave the MDS fallback
+to pg_init of the retry.  pg_init now also takes it, through the check
+above, when the DS it would use for a mirror is marked unavailable; a
+failed prepare_ds fails there again.  Other failures, such as creating the
+DS client or finding a credential, are not visible to pg_init, so mark
+that DS unavailable before retrying, unless the failure was a fatal one
+from preparing the DS.  A single-mirror descriptor keeps using
+PNFS_NOT_ATTEMPTED: pnfs_write_through_mds() switches it safely, since its
+only mirror is not freed.
+
+Fixes: d67ae825a59d ("pnfs/flexfiles: Add the FlexFile Layout Driver")
 Cc: stable@vger.kernel.org # v4.0+
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/pagelist.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 48 ++++++++++++++++++++++++--
+ 1 file changed, 45 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index bdf8b7305e61..3bdf3f308c8e 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -1299,6 +1299,8 @@ static int nfs_do_recoalesce(struct nfs_pageio_descriptor *desc)
- 			req = list_first_entry(&head, struct nfs_page, wb_list);
- 			if (__nfs_pageio_add_request(desc, req))
- 				continue;
-+			/* pg_init may have switched to the MDS and freed the mirrors */
-+			mirror = nfs_pgio_current_mirror(desc);
- 			if (desc->pg_error < 0) {
- 				list_splice_tail(&head, &mirror->pg_list);
- 				mirror->pg_recoalesce = 1;
-@@ -1457,8 +1459,12 @@ void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
- {
- 	u32 midx;
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 3adfcc7d0cfc..111662f14524 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1133,6 +1133,22 @@ ff_layout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 	nfs_pageio_reset_read_mds(pgio);
+ }
  
--	for (midx = 0; midx < desc->pg_mirror_count; midx++)
-+	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
-+		/* A failed pg_init may have released what the next mirror needs */
-+		if (desc->pg_error < 0)
-+			break;
- 		nfs_pageio_complete_mirror(desc, midx);
++/*
++ * Switching to the MDS discards the mirror array, so it must not happen while
++ * any mirror still holds requests.
++ */
++static bool ff_layout_pg_mirrors_busy(struct nfs_pageio_descriptor *pgio)
++{
++	u32 i;
++
++	if (pgio->pg_mirror_count == 1)
++		return false;
++	for (i = 0; i < pgio->pg_mirror_count; i++)
++		if (!list_empty(&pgio->pg_mirrors[i].pg_list))
++			return true;
++	return false;
++}
++
+ static void
+ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			struct nfs_page *req)
+@@ -1172,6 +1188,17 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			req_offset(req));
+ 		mirror_ds = ff_layout_get_mirror_ds(pgio->pg_lseg->pls_layout,
+ 						    mirror, dss_id);
++		/*
++		 * A mirrored write cannot fall back to the MDS from
++		 * write_pagelist, so do it here for an unavailable DS.
++		 */
++		if (pgio->pg_mirror_count > 1 &&
++		    !ff_layout_no_fallback_to_mds(pgio->pg_lseg) &&
++		    !IS_ERR_OR_NULL(mirror_ds) &&
++		    nfs4_test_deviceid_unavailable(&mirror_ds->id_node)) {
++			nfs4_ff_layout_put_deviceid(mirror_ds);
++			goto out_mds;
++		}
+ 		ds = nfs4_ff_layout_prepare_ds(pgio->pg_lseg, mirror,
+ 					       mirror_ds, dss_id, OP_WRITE);
+ 		if (IS_ERR(ds)) {
+@@ -1198,6 +1225,8 @@ ff_layout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	pgio->pg_error = -EAGAIN;
+ 	return;
+ out_mds:
++	if (ff_layout_pg_mirrors_busy(pgio))
++		goto out_eagain;
+ 	trace_pnfs_mds_fallback_pg_init_write(pgio->pg_inode,
+ 			0, NFS4_MAX_UINT64, IOMODE_RW,
+ 			NFS_I(pgio->pg_inode)->layout,
+@@ -2455,9 +2484,8 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
+ 	return PNFS_ATTEMPTED;
+ 
+ out_failed:
+-	nfs4_ff_layout_put_deviceid(mirror_ds);
+ 	if (ff_layout_avoid_mds_available_ds(lseg) && !ds_fatal_error)
+-		return PNFS_TRY_AGAIN;
++		goto out_try_again;
+ 	if (ff_layout_no_fallback_to_mds(lseg)) {
+ 		/*
+ 		 * FF_FLAGS_NO_IO_THRU_MDS: force fresh LAYOUTGET,
+@@ -2465,12 +2493,26 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
+ 		 */
+ 		pnfs_error_mark_layout_for_return(hdr->inode, lseg,
+ 						  &mirror->dss[dss_id].devid);
+-		return PNFS_TRY_AGAIN;
++		goto out_try_again;
 +	}
++	/*
++	 * pnfs_write_through_mds() cannot switch a mirrored descriptor.  Mark
++	 * this DS unavailable so pg_init of the retry uses the MDS; a failed
++	 * prepare_ds fails again there.
++	 */
++	if (FF_LAYOUT_MIRROR_COUNT(lseg) > 1) {
++		if (!ds_fatal_error && !IS_ERR_OR_NULL(mirror_ds))
++			nfs4_mark_deviceid_unavailable(&mirror_ds->id_node);
++		goto out_try_again;
+ 	}
++	nfs4_ff_layout_put_deviceid(mirror_ds);
+ 	trace_pnfs_mds_fallback_write_pagelist(hdr->inode,
+ 			hdr->args.offset, hdr->args.count,
+ 			IOMODE_RW, NFS_I(hdr->inode)->layout, lseg);
+ 	return PNFS_NOT_ATTEMPTED;
++out_try_again:
++	nfs4_ff_layout_put_deviceid(mirror_ds);
++	return PNFS_TRY_AGAIN;
+ }
  
- 	if (desc->pg_error < 0)
- 		nfs_pageio_error_cleanup(desc);
+ static struct nfs_fh *
 -- 
 2.53.0
 
