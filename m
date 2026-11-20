@@ -1,97 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.216.98
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.215.225
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795136697;
-	b=wQOC5Ltur0kqKerWRlhrWFRBaJ0c2org1Pi8OsNLpZXI6AEvKb/N7xfeN7glW6LK83nU
-	 c0dyJLCbbR8MvkhSu1MaQ5Z4IGSraDwrj22DYsx1PreiVoQC42m5wQT8rxXMeKNMcI1qt
-	 Ddn/PoLmtuIwbzJ1LQ1L7LJyNCSDA4EyrijoqdjsysogQWSXhj+5HgoCS4G6SMIsDKlZq
-	 2ojUCE1lRhoNkOdd3pQeuSJ9Qx11zwTM70gCaTB0B9jRBj94lIjC8pRteQXAH21IaB2N0
-	 5E8at0SoHorS0om3D8GsD7U6NYATanemELc8tq5Lv5xtcaSiBYEOUey7HSpMV/UGAsQ==
+	t=1795136820;
+	b=new6rquAEzTvB97Rk7wl5SgVGpfXzyRGXKxN43+3CiL4o5E0Jh9EnxJpdkMTO8CUq6tV
+	 shFYOZgi/+wDggdKtzxMorMawQVUtYBICMy83wIGbebkBwv0uJ8ksmZ5M8C18/63FHLmZ
+	 6x02280fbUq3XlxshBetyz1tE7ghPFJW6A1ZnJuBv10CrYbBYiB04PJcvuzizqblDtc/2
+	 wfabCQAgDbaGgaCTBBbHNkLm/tAX117EfD6fBzIIkXczVaRqzZEvFGKYu2JNU+Xd5Gsad
+	 6fsIP9TxgZInk+tQ82pOi/iPGIAWMpEa3eJFzt/GoB/MJ5fIKKjFTB41niCuqHEQsSg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795136697;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795136820;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 X-Relaying-Domain:Received:From:To:Cc:Subject:Date:Message-ID:
 	 X-Mailer:MIME-Version:Content-Transfer-Encoding;
-	bh=14zjSChbGtPtuIEC/eCtCmUR3/Z1H0ubiZMVkNUw7Yg=;
-	b=FW/VKbbPbSb6aLnOKw8K7PNIST3m3Qbren0STrnkDb+74VOiBT18FrwHcmoIVFSFCT/Y
-	 djREqMJM5P01623LC4JDB67xA/fkIuJBR/XA1ODW+sBXN8Pi7yeT7KBFB6gxinw94x139
-	 Ikq6UGAxZg4gh1caaqWv1xf9Ql6lsjFHTM4KgNHcjdEzOMMlBpHCdA7J/iI/05RavtQGO
-	 xlYtH6CAFta+YOTWE0ahKy7Frm1WNK5s8C1f6BIoMqypaW4I34pmfHEnOu7WFeOe8Iqsq
-	 ZAtuzxB56NjdLeMBH1dt/hhP1Qd0DPq9OLhh3lDeV5SH/WQDdqWC3bmu0QYyZVZlr3g==
+	bh=azpbeeR0UmmXKlAwsDU3rTomTiwLhVswnIguSA8HmN4=;
+	b=rbCtA+Y7jh9JBtq3zftbtPGe4USfmAnhcpE8sQVoUabmouNTrbVVbw2gipoWLoIF6+9k
+	 cphi+kAY/pinwqZB43C0m+Frobtsa0mTdcs8GyHUdJLFFxikNR5R6hrDxSvoahJ9Bs+To
+	 p85DR6AJha2gefqulEhYFY8BPeWltNLMNTbuMmGZSo75u7ZLfbYZkgmHn+tsP26eaPq8+
+	 jYZ18B3G+duSTQO4Zpmsmv/07EmBK3AZ2ARzs+ontFIR0lPGZjLPVk91min6pDPz2ZSYf
+	 8OGGOyzgwJBHVLHpGdrtyRKHlhIqH8E0uwsztci7nyD8hGL6PRKF57nTay6gtP99mdA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=everpuredata.com;
 	spf=pass smtp.mailfrom=everpuredata.com;
-	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=i1o4eelO;
-	arc=none smtp.remote-ip=209.85.216.98
-Received: from mail-pj1-f98.google.com (mail-pj1-f98.google.com [209.85.216.98])
+	dkim=pass header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=sNHCMxoK;
+	arc=none smtp.remote-ip=209.85.215.225
+Received: from mail-pg1-f225.google.com (mail-pg1-f225.google.com [209.85.215.225])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB92C606A325
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 01:04:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org EB92C606A325
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43737606A320
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 01:07:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 43737606A320
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=everpuredata.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=everpuredata.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=i1o4eelO
-Received: by mail-pj1-f98.google.com with SMTP id 98e67ed59e1d1-3ae1da332bcso211051a91.2
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:04:56 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=everpuredata.com header.i=@everpuredata.com header.a=rsa-sha256 header.s=google header.b=sNHCMxoK
+Received: by mail-pg1-f225.google.com with SMTP id 41be03b00d2f7-cdb9f760337so855133a12.0
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Nov 2026 17:07:00 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=everpuredata.com; s=google; t=1795136696; x=1795741496; darn=vger.kernel.org;
+        d=everpuredata.com; s=google; t=1795136819; x=1795741619; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=14zjSChbGtPtuIEC/eCtCmUR3/Z1H0ubiZMVkNUw7Yg=;
-        b=i1o4eelOcxxhAremUNpz1jVTTkbHb9fjYyAAI1GwOBG80DImiTshgnqTEGaWDDvPju
-         KVcRJf2HM16eIKYbsplf4q/pLBqBzwIPc406R8rsw3kAaDn/CCtvU3o7ymbdVvBfQ9UE
-         UsjqIvYPJARjRdN6mR9S8kkw9kmNNUBbiz2DxhVeBAzOj4t/tSRuaP2k4S1Q/phBRzin
-         s2vrTvlriAymj5jAuAUARck6dKaC8KMKVLJp+RpFa1X4IOLTY+2YcdpaZmhtWsBULYSq
-         qZBDzvqFk9mJ3jKkBAlxqC5+8+DvaqPSOM0Z6sARqyVJhRL1FH6CNwxZjYN0Bmm9Ubxe
-         R99g==
+        bh=azpbeeR0UmmXKlAwsDU3rTomTiwLhVswnIguSA8HmN4=;
+        b=sNHCMxoKSWnMHqi2heurqFOoJmbYTUZ1ydPiN/uY6pu66Ialos12XUTZNoCNtwVkXq
+         JuZqkFQovQyKNnqtxI6NqsCbkXV29sURHtqFrJpwh6I340bRFH3YlLbSDOwLaSXaZGIi
+         Hug0FY0uPk9Q3ZuXh5MDVtcLu1BdTi78gRSTl8ulOewYo0mj+ja9m1EUFV9WsEleVbbG
+         1f1z0VcRmou3jfj5k39rfexokdBaFu9AmKBhesyPjJ6x/xoX/aVcpeiq5TXxFUwAAHFy
+         B4Yyc3hU5ALZ8tID/p65P/uPpYIYVYD4b0ORWNDdL8I3HWNtp8IfR10LuqpX2tmk81BB
+         UfPA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795136696; x=1795741496;
+        d=1e100.net; s=20260707; t=1795136819; x=1795741619;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=14zjSChbGtPtuIEC/eCtCmUR3/Z1H0ubiZMVkNUw7Yg=;
-        b=sPuBs6O4q4JHkGXQI2L67R9WMmFPiWwhdgxUunG9utL1hbTQiSzIhtGrDeCwXIJLMR
-         7nMpCgIutYzkI+cfaQY6Wj8lxlfxsFNPNvR1ICSJeuoeE/8JiqBAIc8WCUwAQpTpH2H9
-         qD+9zYyQ9R3dT6XTVAXl76LcqaQ6eYmXTAaVdMG5F822t9WfVlI9HwQOfwA20JP9+ISg
-         C0QFW7yoysun/BlS5DjxtKUGhGEFq/+nZogU7C/y9qIzFNZL1oKKsMQlPRvPXfgiNwwy
-         aX046OB3rtq4c35Q3UvDJpfkfzUbBZdWlu1/jxpGuYwQI/4/7gpncVLexOIExUn6f9Oq
-         6zNw==
-X-Forwarded-Encrypted: i=1; AL+hErGyjQMCkDtryZKyZz8RoZYfS0PqxlXjOGgIKHDLMWcuhS4tVEBLwg4vp6MEL2g7nQxHzmqtmW/gzoc=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/OxYRswQ1vUIni5YnQoFwPn5uXrKGU1bxBPHcXTaa77HAtZ/MP
-	Ipvr3Nymsk7R+T0VIuRbIXGIY0npR9ipEV2xfmO5YGrNg887C8KW/Kb2gMWzVN9EnkOJrqYgYMT
-	RTJYU/F09XTC4FV62CFOdKoZSRPSlM8IxlktX
-X-Gm-Gg: AZFdTZdEGV/jCjhpehCXkRx8Gji+exv4CL42xnK8dcVJhWmWMd+TItDTqkamJd86Opk
-	SjVpZO07oP5ShFnnIRTDkjSGdHMafpxZos5DTX9sVI1RqoV56QQ4rCSTjLuVaoz6V1MLHnNv7OB
-	vY/JVlHqEtHl2jFx0YQ3k3beXGE2BKLDjyP44SPEjspHRNOZRiNpLivanWmiR/gJl3OMiELxy2S
-	RGf7T/ABjlDKLv6+AYHdLQ+KgNsG1QQVW9lMsleZkikfcYFHbl0tDgNIf/Qxmw59YIBG/OfDQkm
-	B7cLLjAnVDuQSztP01IunWYnSpryeH9dNQ8n5q1DN/cFcD/rqK/aji99/d0VBb5cuwB+6AUQBFI
-	v3vPVQEtfiw1Rn5e1p8n89Ym79Iia2MMRBbk6K3c=
-X-Received: by 2002:a17:90b:4ec4:b0:3b3:bf8f:9ccb with SMTP id 98e67ed59e1d1-3b41c8ffa94mr1008239a91.18.1795136696119;
-        Thu, 19 Nov 2026 17:04:56 -0800 (PST)
-Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.129])
-        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3b41ae59fa2sm822937a91.8.2026.11.19.17.04.55
+        bh=azpbeeR0UmmXKlAwsDU3rTomTiwLhVswnIguSA8HmN4=;
+        b=t6gRsYOqQgUHJB/71cFzruOeniPTsG8avKDsW+igkWsPYTkEVjYoZlo6b2WzXg3gDG
+         AyQpJD1vb+1Poou98U9gohIlq7X0hjgjUwE9C2nSPHVjcGwrkVg29Vh7KCoWMYsvWYL4
+         ty4AzkbF1aPXhAqbEAKvevE8ELPRwSecZq9JAkLMiNwR5j+AoE4TTS+/EHPhJ/0kvxrs
+         VEFumrkzcKLFrUL6lUIbHhROQvWR+1+R+WGLz9s2jMmIhabpQ5mqRcDKm0QK4wSfk0RX
+         MERHnOBcD8eb+2Q+mcXr+Y3LnFKjvj96xn7cpaypkKCQc1m8FtZdOcHe5XxjEzQ2dXHQ
+         49Pg==
+X-Forwarded-Encrypted: i=1; AL+hErEkKOM+9YZdaWmFPmkZTZvIjplsvI7FJfJmt2Z09FkfBh9ZedlgkgDLS70XzXBkPq9b8EWH+LscUEk=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/LDaY2F/FWzf0ilyeKC3kz35FL7YwFwQQUSamuF3U9LO0HBWKe
+	S+HM3KLEBteNand53LF2+Tq/59gdF0RtAH7ApPtMM8sqU74hj+veJVcyNuNJdSQz6aFia2VeTrO
+	6RGjQxkmuj3zF0cNBQxcUeme7N2VbanCOxQ7a
+X-Gm-Gg: AZFdTZdl+SJMvkMaylkg+8Yp6njM5go6M7hoVF2UTo10eKrsqnK1Jwv9zivcc04mDER
+	icJLrz1sCxaxtH/hzDSWuVKjg5MN9VwTvo1OZd3wSv+rWfBvA9SCCx4YAwhMO0jLT0wYHdCb5UC
+	EeLv7Tphxi+1gUHYOz7t3XXJvwHsj6P3GOi2d1BD0lNYIV95ZVP2mY1504gwqic4jmOTRG4s+ei
+	/MMnIVCUGZhraLZm26qWEWrWZQ8c3LYrik+ad2IFFgBAbjhBus5IoYzXam6u/TvYTH87NQqQcGa
+	a7mdwWdhGycJZ12ikUOU+6tw4EeQPIaXz+7GeB/eLeolAKeB8eLZbG1QhjNkNey+QQNWeILh2ew
+	Wl5e4z9PKsLE0awyB4XN9X4qUe6at9LhcgLdmccE=
+X-Received: by 2002:a17:90b:5546:b0:3b0:a1c6:95ae with SMTP id 98e67ed59e1d1-3b41c941f9amr621799a91.31.1795136819434;
+        Thu, 19 Nov 2026 17:06:59 -0800 (PST)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
+        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3b41cfc5245sm238009a91.0.2026.11.19.17.06.58
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Nov 2026 17:04:56 -0800 (PST)
+        Thu, 19 Nov 2026 17:06:59 -0800 (PST)
 X-Relaying-Domain: everpuredata.com
 Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id E95133400BB;
-	Thu, 19 Nov 2026 17:04:54 -0800 (PST)
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id C9314340382;
+	Thu, 19 Nov 2026 17:06:24 -0800 (PST)
 From: Tim Menninger <tmenninger@everpuredata.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>
-Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
+Cc: Benjamin Coddington <bcodding@hammerspace.com>,
+	Mike Snitzer <snitzer@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
 	Jon Curley <jcurley@everpuredata.com>,
 	Eric Badger <ebadger@everpuredata.com>,
 	Shiva Lingappa <slingappa@everpuredata.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
-Subject: [PATCH] NFSv4/pNFS: Don't cancel I/O when re-checking a deferred layoutreturn
-Date: Fri, 20 Nov 2026 01:04:54 +0000
-Message-ID: <20261120010454.2153387-1-tmenninger@everpuredata.com>
+Subject: [PATCH] NFS/flexfiles: Don't treat a locally aborted read as a DS failure
+Date: Fri, 20 Nov 2026 01:06:24 +0000
+Message-ID: <20261120010624.2154348-1-tmenninger@everpuredata.com>
 X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -104,84 +107,81 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-pnfs_layout_need_return() runs whenever a reference to a layout header
-is put while a return is pending. It marks the segments covered by the
-pending return and, if none of them is still in use, lets the caller
-send the LAYOUTRETURN; otherwise the return stays deferred until they
-drain.
+When a flexfiles read asks for a pNFS resend, ff_layout_resend_pnfs_read()
+treats the failure as a DS problem. It moves to the next mirror and sends
+LAYOUTERROR, or, if no other mirror is usable, marks the layout for
+return.
 
-Since commit b739a5bd9d9f ("NFSv4/flexfiles: Cancel I/O if the layout
-is recalled or revoked"), this re-check also requests cancellation of
-I/O on matching segments still in use. Changed-layout recalls,
-error-driven returns, and file bulk returns already request cancellation
-when initiating the return.
+That is the wrong response when the client aborted the read itself.
+Relevant cases which don't establish a new DS failure, and therefore no
+longer drive another layout return:
 
-As segments drain, the pending return's sequence cutoff can advance,
-so a later re-check can also cover newly acquired segments. Cancelling
-their I/O can perpetuate a cancellation and retry cycle.
+    ECANCELED
+        pnfs_lseg_cancel_io() cancelled the I/O because its layout
+        segment was being returned or invalidated.
 
-Disable cancellation in the deferred re-check, while retaining segment
-invalidation and waiting for outstanding references to drain. Explicit
-cancellation by the initiating paths is unchanged.
+    EAGAIN with the current RPC attempt unsent and hdr->lseg invalid
+        ff_layout_read_prepare_common() found the segment already
+        invalidated and exited the task before transmission.
 
 This was observed on 7.4-rc3 on a one-client one-DS system under
 sustained direct-read I/O over pNFS/RDMA after restarting the nfs
-service on the DS, with "NFS/flexfiles: Don't treat a locally aborted
-read as a DS failure" applied. Once LAYOUTRETURNs were being sent again,
-the re-check kept cancelling the reads of freshly obtained segments, at
-about ten transport reconnects per second. With this change, once the DS
-was back no reads were cancelled and no transports were reconnected.
+service on the DS. Marking the layout for return cancels the reads of
+the segments obtained in the meantime, which then fail the same way. The
+client marked the layout for return from this path about 8,000 times a
+second and reconnected transports about 300 times a second. With this
+change, the layout was no longer marked for return from this path and
+transports reconnected about 10 times a second.
+
+Detect these local aborts before attempting DS failover and resend
+through pNFS using the current mirror index as the starting point.
+Skip the explicit LAYOUTERROR and layout-return requests in this
+resend handler, leaving existing error recording unchanged.
 
 Fixes: b739a5bd9d9f ("NFSv4/flexfiles: Cancel I/O if the layout is recalled or revoked")
 Cc: stable@vger.kernel.org
 Signed-off-by: Tim Menninger <tmenninger@everpuredata.com>
 ---
- fs/nfs/pnfs.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 14f4a4b12ffd3..a60df3bdab921 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -480,15 +480,16 @@ pnfs_mark_layout_stateid_invalid(struct pnfs_layout_hdr *lo,
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 5c289737366f2..31f17d79b270a 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -1313,6 +1313,16 @@ static void ff_layout_reset_write(struct nfs_pgio_header *hdr, bool retry_pnfs)
+ 	}
+ }
  
- static int pnfs_mark_layout_stateid_return(struct pnfs_layout_hdr *lo,
- 					   struct list_head *lseg_list,
--					   enum pnfs_iomode iomode, u32 seq)
-+					   enum pnfs_iomode iomode, u32 seq,
-+					   bool cancel_io)
++static bool ff_layout_read_aborted_locally(const struct nfs_pgio_header *hdr)
++{
++	const struct rpc_task *task = &hdr->task;
++
++	return task->tk_status == -ECANCELED ||
++	       (task->tk_status == -EAGAIN &&
++		!RPC_WAS_SENT(task) &&
++		!pnfs_is_valid_lseg(hdr->lseg));
++}
++
+ static void ff_layout_resend_pnfs_read(struct nfs_pgio_header *hdr)
  {
- 	struct pnfs_layout_range range = {
- 		.iomode = iomode,
- 		.length = NFS4_MAX_UINT64,
- 	};
+ 	u32 idx = hdr->pgio_mirror_idx + 1;
+@@ -1320,6 +1330,15 @@ static void ff_layout_resend_pnfs_read(struct nfs_pgio_header *hdr)
+ 	u32 dss_id = 0;
+ 	struct nfs4_ff_layout_ds *mirror_ds;
  
--	return pnfs_mark_matching_lsegs_return(lo, lseg_list, &range, seq, true,
--					       NULL);
-+	return pnfs_mark_matching_lsegs_return(lo, lseg_list, &range, seq,
-+					       cancel_io, NULL);
- }
- 
- static int
-@@ -903,7 +904,7 @@ pnfs_layout_free_bulk_destroy_list(struct list_head *layout_list,
- 		list_del_init(&lo->plh_bulk_destroy);
- 		if (mode == PNFS_LAYOUT_FILE_BULK_RETURN) {
- 			pnfs_mark_layout_stateid_return(lo, &lseg_list,
--							IOMODE_ANY, 0);
-+							IOMODE_ANY, 0, true);
- 		} else if (pnfs_mark_layout_stateid_invalid(lo, &lseg_list)) {
- 			if (mode == PNFS_LAYOUT_BULK_RETURN)
- 				set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
-@@ -1405,7 +1406,8 @@ pnfs_layout_need_return(struct pnfs_layout_hdr *lo)
- 		return false;
- 	return pnfs_mark_layout_stateid_return(lo, &lo->plh_return_segs,
- 					       lo->plh_return_iomode,
--					       lo->plh_return_seq) != -EBUSY;
-+					       lo->plh_return_seq,
-+					       false) != -EBUSY;
- }
- 
- static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
++	/*
++	 * A local abort is no evidence against the DS, so skip DS failover
++	 * and don't request another layout return.
++	 */
++	if (ff_layout_read_aborted_locally(hdr)) {
++		pnfs_read_resend_pnfs(hdr, hdr->pgio_mirror_idx);
++		return;
++	}
++
+ 	mirror_ds = ff_layout_choose_any_ds_for_read(hdr->lseg, idx, &new_idx,
+ 						     hdr->args.offset, &dss_id);
+ 	if (IS_ERR(mirror_ds)) {
 
 base-commit: aebb7274476403040d582c61478df8f4a7bf9cd3
 -- 
