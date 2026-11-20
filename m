@@ -1,63 +1,108 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=195.135.223.130
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795167522;
-	b=OpkBCQa+hyguvi92icHIP8TNeqUYSEyPd9qN5b0vicJ410LO1LWtvzmfwfb3Ms2JfrAZ
-	 lkwIKRUOYhyDdo/6xvA59eTpurKsOrhIY0dAYgtfWl2UqL453N8sxv9wcOUCYT6hBco5J
-	 TRQr0PCs5WevktPQ52n0TY5TbfESwI0XL1+zzZc+GlyJm0HuyG8+NDFQLFdDQ/B8i4wEH
-	 8OvvKPZMjGrGR/Gy729oyo2Ckqp1XrTi5Z00mnaDPx3PI5f/cd49vcemoJOTKWo6Mj8iH
-	 vZ48N+54b+V24LkV7yWE6kb9oKSlXt0uy3sVZdMBmfMPiCGjFUYb79vf10yDRx1w4RA==
+	t=1795169888;
+	b=pLlO1aJP7r5R/+HovGXPhwfVjM6rS5NrSAbf7PJhgsKrQ4UvHACiOPd52QhK72r6gfUP
+	 KqdBfOkfsqWfhHI/sZvz6sfK8atBhxEHg4v3dYXcvRNB5l+MRozt7GN5hjEJ89wv1iAiv
+	 04vnx+vMbQaq/AMrTDVKLYRVixikrBMjioFRt2dzsB+ZZzxpmPgvuqBqCd46j2cdPx2+f
+	 yio7ejiUDxzIpGJ39xp9OKPCxvwPYU5ipusq00uQvOlJU1Klk2bvfZPPU8gPhKPhoQIJh
+	 p53yF58CHW0mK0J5b9joYNRA9w1U+YVAjTz6b8qT0LMJcBpjCYOz6KUK1AjGu73E0Tg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795167522;
-	h=Received:DKIM-Signature:From:To:Cc:In-Reply-To:References:Subject:
-	 Message-Id:Date:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	 X-Mailer;
-	bh=Afd1H3HLHSzEfHiPoIegI1/ZAbqBna+yrjuMxmwAVis=;
-	b=jm6BIZKBbRd72vwuc+dOpELu7YHRywoTj3Y08SkcighrlOVVW7QS2Y7tjuE+CT/AZPvJ
-	 dAcQv/1sjcPXgtaFsFLI6Q5naMScxS3BNRQ8UoWiBLWsBNnV5VDNTLR8yXzkSBQW1Ujse
-	 TsGUuFDPRr1vRXWdYAOkDO3GgNedGwrY3Y7b/6yQRToTMTnHQbcrlnvLxaaIG2Uc/dNB7
-	 i+xBxEcJy1RqW9iRRpmIL17ldY8T8x5YG3otHAi25ddfCD0MdjPro2Ug9fJFqkUgo+Jx3
-	 yPImE8XKgeTxuuoFpDZKsp9fv5EVOjzTPuQaaEts1zbZ3HXk/F1Nl3zXAyDp7/Sh0qw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795169888;
+	h=DMARC-Filter:Received:DKIM-Signature:DKIM-Signature:DKIM-Signature:
+	 DKIM-Signature:Received:Received:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-Spamd-Result:X-Spam-Score:X-Spam-Level:X-Spam-Flag;
+	bh=cShgqmEjCIaFniANx893GoDW4eS9/ac+wxBefCqedZI=;
+	b=QP7Do5PI9b8M59GF+DWRwrBUbXkBZp9csGWvZ/90JqFGFHBzvT0sRWnvtmBB6mJ0tCdk
+	 3bgivDnQ1vzr3+SmI2EO5gkQv3lAmPgf4v0UdrJ2H8yqZamm7zk9sCzdLdy53f7i7U6+Z
+	 CwXWF5V+lJS73k/XuwfY/PPgVdPFJ5UmDP+BQk2r0Mt0E0Nml1oZ7T2VX0UQaVZptw9R/
+	 L8W18o99eXo9tayWjBRwaii8mUKPuuVJpqiGk6lOHtQgjo+yn5INuxxTO3bkbEh4N70oY
+	 1eEQ1em85xOw9jrK2AVB4oxUznJ9Z5m8Z2WMpGUR9hxdjPivhjvHxxqQFDVKCnDYo4g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=P9BgjAry;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=none header.from=suse.cz;
+	spf=pass smtp.mailfrom=suse.cz;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=S6bDxjvB;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=CnEkxrKg;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=BmnUXvbM;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Mqh1WGjT;
+	arc=none smtp.remote-ip=195.135.223.130
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A995606A33B;
-	Fri, 20 Nov 2026 09:38:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95EB5606A320;
+	Fri, 20 Nov 2026 10:18:07 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 95EB5606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=P9BgjAry
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 243BC1F000D1;
-	Fri, 20 Nov 2026 09:38:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795167522;
-	bh=Afd1H3HLHSzEfHiPoIegI1/ZAbqBna+yrjuMxmwAVis=;
-	h=From:To:Cc:In-Reply-To:References:Subject:Date;
-	b=P9BgjAryBt+3bY5m/SLXSxDvgSE1J5cTrN85T5FlspUqiGiRY+TDcTEQ2pB+Nk2WU
-	 s/l3tIaGXPJB9IOZTFkyiZ/fF365eqlMfnnqd9D0DGZLkjU75jkjP13P+Vod8jrI39
-	 jZfj5MkeQITq6V0NHMDic6D3NOk7jBAj1QlAmaX/Nn3pDgRjqlJSpkvDN475/j2XI/
-	 MOBD20m1QYazNVzMBEAmFRDMGtM5LG2aKs6GgBN0tPDHSP9WcIbF3Hq6WccgG0xPE+
-	 T544xi1ba+5i3xtr7VaobdBha5xS9kHMn/K70pDpAY83IRBB3VM8IhXEWr08NU0OBe
-	 Uln8HSiREyYaA==
-From: Christian Brauner <brauner@kernel.org>
-To: Christian Brauner <brauner@kernel.org>, 
- David Howells <dhowells@redhat.com>
-Cc: Paulo Alcantara <pc@manguebit.org>, 
- Matthew Wilcox <willy@infradead.org>, Namjae Jeon <linkinjeon@kernel.org>, 
- Marc Dionne <marc.dionne@auristor.com>, Stefan Metzmacher <metze@samba.org>, 
- Eric Van Hensbergen <ericvh@kernel.org>, 
- Dominique Martinet <asmadeus@codewreck.org>, 
- Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev, 
- linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org, 
- linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, v9fs@lists.linux.dev, 
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <20261119083851.3306418-1-dhowells@redhat.com>
-References: <20261119083851.3306418-1-dhowells@redhat.com>
-Subject: Re: [PATCH v19 00/17] netfs, iov_iter: Use a chain of bio_vec
- arrays instead of folio_queue
-Message-Id: <20261120-koriander-wohnform-parolen-1f10ac9dbc4e@brauner>
-Date: Fri, 20 Nov 2026 10:38:35 +0100
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=S6bDxjvB;
+	dkim=pass header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=CnEkxrKg;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.a=rsa-sha256 header.s=susede2_rsa header.b=BmnUXvbM;
+	dkim=neutral header.d=suse.cz header.i=@suse.cz header.a=ed25519-sha256 header.s=susede2_ed25519 header.b=Mqh1WGjT
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id D840E2260C;
+	Fri, 20 Nov 2026 10:18:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1795169885; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=cShgqmEjCIaFniANx893GoDW4eS9/ac+wxBefCqedZI=;
+	b=S6bDxjvBi7+R/U4akBuwBpoA4dXLBfKuAtHO6Pr1QL02FTL5imzg5FRcmATdCjQpfaDnPo
+	HHT2rkeZBgOb/98QgcH34lWsFKhjM/3lYqMjEgWhAtTLy8UrzLYt8JTmMwGtbU2TRfoYMM
+	QKfdPaSZF1b/eJ98re111vXMggTXcqE=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1795169885;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=cShgqmEjCIaFniANx893GoDW4eS9/ac+wxBefCqedZI=;
+	b=CnEkxrKg5VdRVSs+ZtqzIm+Jv57L64yBSqtl4nKhsjqCNFfMCkApJbVZAUkh+N/hwLChG+
+	DRrJ1WSJxkvFHDDA==
+Authentication-Results: smtp-out1.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1795169884; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=cShgqmEjCIaFniANx893GoDW4eS9/ac+wxBefCqedZI=;
+	b=BmnUXvbMttNIQUuIdX6FiQK8d8JzJdnXX+R7wj9JTPGWysEcj8LeJsIX9fYFPYaey8+egz
+	e53vmqGbkhzwLEj5MDNYsV6TfLUCoIm2/NQxVb4bU4sRZZvjYyUdA4WMRmDLx+3VciDMK9
+	uroYl+DzcIo4NHoNerfUU7LgWtcMOP4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1795169884;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=cShgqmEjCIaFniANx893GoDW4eS9/ac+wxBefCqedZI=;
+	b=Mqh1WGjTY4av+oDCW45wGueaYhnkD8vSV8ALYCV/G7oy75uKe5rBbE7053g6X0NdwpVL3G
+	YW/U7qx7uT6F2tAw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id AA04E1348F;
+	Fri, 20 Nov 2026 10:18:04 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id eI48IVweAGsXKwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Fri, 20 Nov 2026 10:18:04 +0000
+Received: by quack.suse.cz (Postfix, from userid 1000)
+	id 3A13225F06; Fri, 20 Nov 2026 11:18:04 +0100 (CET)
+Date: Fri, 20 Nov 2026 11:18:04 +0100
+From: Jan Kara <jack@suse.cz>
+To: Dominik Maier <dmnk@google.com>
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	Christian Brauner <brauner@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Jan Kara <jack@suse.cz>, NeilBrown <neil@brown.name>, 
+	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, dmnk+artist@google.com
+Subject: Re: [PATCH 1/2] fs: export may_linkat() for nfsd
+Message-ID: <oulbcydtyizbuup2eu3sigyx7dto7kjlap25sgjodyop2pr3ey@64zs5utv3vry>
+References: <20261119192311.2684978-1-dmnk@google.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -67,73 +112,102 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-Mailer: b4 0.17-dev-04696
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20261119192311.2684978-1-dmnk@google.com>
+X-Spamd-Result: default: False [-11.30 / 50.00];
+	SUSE_INTERNAL_BYPASS(-9.00)[];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[13];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	TO_MATCH_ENVRCPT_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	TAGGED_RCPT(0.00)[artist];
+	RCVD_TLS_LAST(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo]
+X-Spam-Score: -11.30
+X-Spam-Level: 
+X-Spam-Flag: NO
 
-On Thu, 19 Nov 2026 08:38:31 +0000, David Howells wrote:
-> Could you pull these patches please into your vfs-7.5.netfs branch?  This
-> is the third of five batches (two already having gone upstream), in this
-> case replacing the folio_queue struct with a bvecq struct.  It has been
-> rebased on v7.4-rc3.  This was split from v11 of a larger netfslib
-> series[1].
+On Thu 19-11-26 20:23:10, Dominik Maier wrote:
+> vfs_link() expects its callers to enforce protected hardlink policy via
+> may_linkat() prior to creating a hardlink. Move the declaration of
+> may_linkat() from fs/internal.h to include/linux/fs.h and export it with
+> EXPORT_SYMBOL_GPL() so modular in-kernel file servers such as NFSD can
+> invoke it before calling vfs_link().
 > 
-> This series adds a new type, struct bvecq.  This points to a bounded array
-> of bio_vecs with information about how to clean up the memory they point
-> to.  A number of bvecq structs can be linked together to form a chain and
-> an iterator type, ITER_BVECQ, is provided that can be pointed at the chain
-> and can walk it.  Netfslib is then switched to use the new type and
-> folio_queue is removed along with ITER_FOLIOQ.
+> This prepares for fixing missing hardlink restrictions in nfsd_link(),
+> which was discovered by an AI-assisted code review tool (ARTIST),
+> validated in QEMU without kernel modifications or error injection, and
+> verified with kernel builds and checkpatch.pl.
 > 
-> [...]
+> Fixes: 800179c9b8a1 ("fs: add link restrictions")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Dominik Maier <dmnk@google.com>
 
-Applied to the vfs-7.5.netfs branch of the vfs/vfs.git tree.
-Patches in the vfs-7.5.netfs branch should appear in linux-next soon.
+Looks good. Feel free to add:
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
+								Honza
 
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
-
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-7.5.netfs
-
-[01/17] iov_iter: Fix kunit test to remove __init and __refdata marks
-        https://git.kernel.org/vfs/vfs/c/1bce9def76dd
-[02/17] block: Add a function to kmap one page of a multipage bio_vec
-        https://git.kernel.org/vfs/vfs/c/14e2292a9706
-[03/17] iov_iter: Add a segmented queue of bio_vec[]
-        https://git.kernel.org/vfs/vfs/c/5f1dd24265f0
-[04/17] netfs: Add some tools for managing bvecq chains
-        https://git.kernel.org/vfs/vfs/c/b4e0ea3853e5
-[05/17] iov_iter: Add an API document for the bvecq structure
-        https://git.kernel.org/vfs/vfs/c/ca90a27f2d94
-[06/17] iov_iter: Add a bvecq kunit test
-        https://git.kernel.org/vfs/vfs/c/0a2f9551262e
-[07/17] afs: Fix an inconsistency in the symlink code
-        https://git.kernel.org/vfs/vfs/c/44921a81054c
-[08/17] netfs: Explicitly pass tail padding to netfs_writeback_single()
-        https://git.kernel.org/vfs/vfs/c/7a3a80623cca
-[09/17] netfs: Change netfs_writeback_single() to not look inside the iterator
-        https://git.kernel.org/vfs/vfs/c/6703bfa120ef
-[10/17] netfs: Pass the write length to request creation where appropriate
-        https://git.kernel.org/vfs/vfs/c/c7496c6ed431
-[11/17] afs: Use a bvecq to hold dir content rather than folioq
-        https://git.kernel.org/vfs/vfs/c/65752f84cf61
-[12/17] cifs: Use a bvecq for buffering instead of a folioq
-        https://git.kernel.org/vfs/vfs/c/145d329f12ee
-[13/17] smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
-        https://git.kernel.org/vfs/vfs/c/adf3cafd9933
-[14/17] netfs: Switch folioq to bvecq
-        https://git.kernel.org/vfs/vfs/c/5b95afa0aeaf
-[15/17] smbdirect: Remove support for ITER_FOLIOQ from smbdirect_map_sges_from_iter()
-        https://git.kernel.org/vfs/vfs/c/c7879d1a4e06
-[16/17] iov_iter: Remove ITER_FOLIOQ
-        https://git.kernel.org/vfs/vfs/c/3d9d0bbb7fcd
-[17/17] netfs: Remove folio_queue
-        https://git.kernel.org/vfs/vfs/c/d6d5b8979e5d
-
+> ---
+>  fs/internal.h      | 1 -
+>  fs/namei.c         | 1 +
+>  include/linux/fs.h | 1 +
+>  3 files changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/internal.h b/fs/internal.h
+> index 3f2fbac..7c30669 100644
+> --- a/fs/internal.h
+> +++ b/fs/internal.h
+> @@ -54,7 +54,6 @@ extern int filename_lookup(int dfd, struct filename *name, unsigned flags,
+>  			   struct path *path, const struct path *root);
+>  int filename_rmdir(int dfd, struct filename *name);
+>  int filename_unlinkat(int dfd, struct filename *name);
+> -int may_linkat(const struct mnt_idmap *idmap, const struct path *link);
+>  int filename_renameat2(int olddfd, struct filename *oldname, int newdfd,
+>  		 struct filename *newname, unsigned int flags);
+>  int filename_mkdirat(int dfd, struct filename *name, umode_t mode);
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 925aeb6..8f7c2dc 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -1385,6 +1385,7 @@ int may_linkat(const struct mnt_idmap *idmap, const struct path *link)
+>  	audit_log_path_denied(AUDIT_ANOM_LINK, "linkat");
+>  	return -EPERM;
+>  }
+> +EXPORT_SYMBOL_GPL(may_linkat);
+>  
+>  /**
+>   * may_create_in_sticky - Check whether an O_CREAT open in a sticky directory
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 5b3a100..c165f27 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2740,6 +2740,7 @@ int may_delete_dentry(const struct mnt_idmap *idmap, struct inode *dir,
+>  		      struct dentry *victim, bool isdir);
+>  int may_create_dentry(const struct mnt_idmap *idmap,
+>  		      struct inode *dir, struct dentry *child);
+> +int may_linkat(const struct mnt_idmap *idmap, const struct path *link);
+>  
+>  static inline bool execute_ok(struct inode *inode)
+>  {
+> -- 
+> 2.56.1.750.gf70dc682cf-goog
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
