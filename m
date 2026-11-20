@@ -1,55 +1,55 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795200176;
-	b=xpTexIifMQDI8nKpCTu15jNpnK77L2u39Ak8W7fNyybebqvE03nCxdENjh9llUejTiYf
-	 jgx/OkuZx1FO5RnbEP0GR5WH8/nOM5LEgVVY/vImsWQ4M0CHznE/7Q9758n3PK02z1aFH
-	 nQ99cMpnc15V6GE/LBr+sqQy7tJAQ1pe2+VSaYuwqSW4ELC1dJIMB5Kx9w8uWJgJmbvGD
-	 8j73YWS/kZ8zY+eST8XyqIzRvwEnXIkk6G6ENl0ftvycx79guYF3AtTYTgQS3CnG9j6LD
-	 fyVb/ppQF1aB+yPgfZw8OonTJ4xtEDwVB6AZdI0AMo9vd4CTZgedb21+ymFXyLat8hg==
+	t=1795200204;
+	b=pIVTruKntiIFX+KscRX53uIclsDdoSAW22xly30Snv1uSvWIKeBiGVZQLs3/AFYYyF0/
+	 rts+An74Mc3/h/LXJ4b6xOrWsJCGMVlyOPD4JpcbaIOYST3YTSLCqBSrHUy7n321nmC2Q
+	 Kpzg9gmYqpMY5vnaL6k/P/Iwo1RtcCzKAnSaUOvUsr3dqqfLJsT/BLRrLT7s6EBURv/gO
+	 7PHZwlv6qYJ8IVW11VC7jId04/TdTc+bwI/WQLgA3Rwz8dE0fMSi2SJPFBJVlE35TRjrZ
+	 3ejCHIZ5pM5QQ1kSmsokJTJZfP6QP0h0h7YqNQudpw4yA0Ir2gDhMqTfxM4D/w74irA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795200176;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795200204;
 	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
 	 In-Reply-To:References:Autocrypt:Content-Type:
 	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=k+9VqSg1PeJ/jFOVEgcRnbaUj2O1yvHYARgqKBlOzSc=;
-	b=q/k3FrAKPcfw0t3Wl0r0ATYjLGNpYvi5kIdsuKO0YjuBkdD6H8HJd6OXGCUiN47RDBMY
-	 EIgWEPYIAY4kvris3GCwrP7SSxjFAjjKPNB9///jUjxMjh7duWd/7mf+mugfz8q/W4L+8
-	 zKQS7S2lsgTXMH+248xr3VSC9ALEUOwaeayKH8OjxdVDwyD7pQHqciAYPH5vq5fav6GKD
-	 I+i8pe4CSp1h9wTM9Gi/lUHuSjTNxql3JXt8G9KEztUFBLqkjXvcjz5Uk8PyTM8bwxYnZ
-	 BFWC0KqKgonX6z925nMe1kCUqCwvXiQkgHNhFpXeoAWhkljjIPXr7nE5ZKhZF1nMd4Q==
+	bh=IsbXJJZxE6Zy/65ZBIDhIT3gcBBTgPd2548gcKRDNKQ=;
+	b=TnsCxL6lhnjZInWQpsr0521wej8CxmZyVZStqlfT5XXef2fI9QJVJUKePmInWlpn8rKI
+	 9QDBDK8lsooTZJQ2nr1eLKjarUbcFHdJTYP+iWDVjwciCdp9NYeDjIqQj6GleP3cp4S8N
+	 f00Nb37f146J/4euatFyGbp+Shmmv3USAMkJSQ53HYw05LC3goYDTeYI6PUd/jGdvXhwR
+	 N6/7hFkd7dMY2xyfjhvEKY+e9OQRdHBZ3bXtI+FvW6E1xbp/x0xXf0tXWsWq6b8eOfH7b
+	 4Ten6PImwz7M3E4/YSNSaHcm09bC3J3a3N5yYyG/oC7TqPl6MRllvGtFALxbSJs0Sdw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SSulfHMG;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CH8VAqbU;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE8B460A260F
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 18:42:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0825360A260F
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 18:43:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=SSulfHMG
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0FF41F000D0;
-	Fri, 20 Nov 2026 18:42:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=CH8VAqbU
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 565FC1F000C0;
+	Fri, 20 Nov 2026 18:43:23 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795200176;
-	bh=k+9VqSg1PeJ/jFOVEgcRnbaUj2O1yvHYARgqKBlOzSc=;
+	s=k20260515; t=1795200203;
+	bh=IsbXJJZxE6Zy/65ZBIDhIT3gcBBTgPd2548gcKRDNKQ=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=SSulfHMGFNlwYoPZICzGLdZgJGL6fdEUQNVgmCpss3Nhn2qiUf99C7aj7jrWc/r1g
-	 B8q++brsN3hzoOEc6EodwZ6CoSdX2xFbGOKm98nMCNVri4H9fAjap9uwRCYB1AKCrc
-	 y8qRr6BAsLIMdEAWWU2W0yzaASpFqlXEejgde9NU5JiDa5PkYY20gYCzCcHAK/BdYE
-	 gxUdPRMGBNu5GfRdZF/YzIZP+Dzsy1DS3S5pqa1ZevIIhIKUVPuE44Ns7njBpwFzFM
-	 yyQeuREss09tjpG84fSZVfe+qwAAy+MF85oC3aIWlmhVdj/mmzjIKyNNfBCe2AaW40
-	 p5pF6fwbK+0qw==
-Message-ID: <f4af55cdb059b5e9224282a40f32431bcbc3d4ad.camel@kernel.org>
-Subject: Re: [PATCH] pynfs: fix testLeasePeriod sleep with short lease
- periods
+	b=CH8VAqbU1LfrxagxSENCqyQtl0QfIiRaPJ1NSDNVwk7CYN1o4tI4B+ZBNGLfymML1
+	 c05QecaqMlRmcCkA74WJOSXchYW61tWhWb9P+cEvsWmXecDwmqcSBP634KzDMFr4MP
+	 uzYZy7ZMrKWzXX9FdANv15flL7IriR3O3eXVHoCcOwm8+njNXztP2aAhrSbZD23s9x
+	 Z6pk5NT0cdxyvn4Ft4hjsrm0AHd8Zlm5T6H3zVWq2aOTj9FFFmZbzVbpycG1xyeAsS
+	 8Yx2GcN+zJZQ5P0KSffE8Z3nlovx4cEuk03h4qZJ/qXOpFpHsjYKdq2FxdVxmg1Zhb
+	 byKLncftPPI/w==
+Message-ID: <3bd8ec39988ab26d8efaaea80b53788ee4a569b2.camel@kernel.org>
+Subject: Re: [PATCH] pynfs: report xattrs as unsupported instead of failures
+ if the server doesn't support them
 From: Jeff Layton <jlayton@kernel.org>
 To: Scott Mayhew <smayhew@redhat.com>, calum.mackay@cdmnet.org,
  cel@kernel.org
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 20 Nov 2026 10:42:55 -0800
-In-Reply-To: <20261120174838.45668-1-smayhew@redhat.com>
-References: <20261120174838.45668-1-smayhew@redhat.com>
+Date: Fri, 20 Nov 2026 10:43:23 -0800
+In-Reply-To: <20261120183610.55288-1-smayhew@redhat.com>
+References: <20261120183610.55288-1-smayhew@redhat.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -137,34 +137,198 @@ List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
 
-On Fri, 2026-11-20 at 12:48 -0500, Scott Mayhew wrote:
-> testLeasePeriod() computed its in-lease sleep as min(lease - 10, 1),
-> which goes negative when the server's lease period is less than 10
-> seconds, causing time.sleep() to raise "ValueError: sleep length must
-> be non-negative". Clamp the sleep to a non-negative value.
+On Fri, 2026-11-20 at 13:36 -0500, Scott Mayhew wrote:
+> Extended attributes are an optional feature, so a server not supporting
+> them shouldn't be treated as a hard failure.
 >=20
-> Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 > ---
-> Note: knfsd doesn't allow the lease time to be less than 10 seconds, but
-> Hammerspace does.
+>  nfs4.1/server41tests/st_xattr.py | 72 +++++++++++++++++++++++---------
+>  1 file changed, 53 insertions(+), 19 deletions(-)
 >=20
->  nfs4.1/server41tests/st_exchange_id.py | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->=20
-> diff --git a/nfs4.1/server41tests/st_exchange_id.py b/nfs4.1/server41test=
-s/st_exchange_id.py
-> index acb1a93..66053fa 100644
-> --- a/nfs4.1/server41tests/st_exchange_id.py
-> +++ b/nfs4.1/server41tests/st_exchange_id.py
-> @@ -498,7 +498,7 @@ def testLeasePeriod(t, env):
->      # CREATE_SESSION
->      chan_attrs =3D channel_attrs4(0,8192,8192,8192,128,8,[])
->      sec =3D [callback_sec_parms4(0)]
-> -    time.sleep(min(lease - 10, 1))
-> +    time.sleep(max(0, min(lease - 10, 1)))
->      # Inside lease period, create_session will success.
->      res1 =3D c1.c.compound([op.create_session(c1.clientid, c1.seqid, 0,
->                                          chan_attrs, chan_attrs,
+> diff --git a/nfs4.1/server41tests/st_xattr.py b/nfs4.1/server41tests/st_x=
+attr.py
+> index f67df95..f83fa74 100644
+> --- a/nfs4.1/server41tests/st_xattr.py
+> +++ b/nfs4.1/server41tests/st_xattr.py
+> @@ -28,10 +28,10 @@ def testGetXattrAttribute(t, env):
+> =20
+>      bitmask =3D res.resarray[-1].obj_attributes[FATTR4_SUPPORTED_ATTRS]
+>      if bitmask & (1 << FATTR4_XATTR_SUPPORT) =3D=3D 0:
+> -        fail("xattr_support is not included in the set of supported attr=
+ibutes")
+> +        t.fail_support("xattr_support is not included in the set of supp=
+orted attributes")
+> =20
+>      if FATTR4_XATTR_SUPPORT not in res.resarray[-1].obj_attributes:
+> -        fail("Server doesn't support extended attributes")
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+> =20
+>  def testGetMissingAttr(t, env):
+> @@ -48,7 +48,9 @@ def testGetMissingAttr(t, env):
+> =20
+>      fh =3D res.resarray[-2].object
+>      res =3D sess.compound([op.putfh(fh), op.getxattr("user.attr1".encode=
+("UTF-8"))])
+> -    check(res, NFS4ERR_NOXATTR)
+> +    check(res, [NFS4ERR_NOXATTR, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>  def testCreateNewAttr(t, env):
+>      """Server MUST return NFS4_ON on create.
+> @@ -66,10 +68,14 @@ def testCreateNewAttr(t, env):
+>      key =3D "user.attr1".encode("UTF-8")
+>      value =3D "value1".encode("UTF-8")
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_CREATE, k=
+ey, value)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.getxattr(key)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+>      if value !=3D res.resarray[-1].gxr_value:
+>          fail("Returned value doesn't")
+> =20
+> @@ -89,10 +95,14 @@ def testCreateNewIfMissingAttr(t, env):
+>      key =3D "user.attr1".encode("UTF-8")
+>      value =3D "value1".encode("UTF-8")
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_EITHER, k=
+ey, value)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.getxattr(key)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+>      if value !=3D res.resarray[-1].gxr_value:
+>          fail("Returned value doesn't match with expected one.")
+> =20
+> @@ -112,7 +122,9 @@ def testUpdateOfMissingAttr(t, env):
+>      key =3D "user.attr1".encode("UTF-8")
+>      value =3D "value1".encode("UTF-8")
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_REPLACE, =
+key, value)])
+> -    check(res, NFS4ERR_NOXATTR)
+> +    check(res, [NFS4ERR_NOXATTR, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>  def testExclusiveCreateAttr(t, env):
+>      """Server MUST return NFS4ERR_EXIST on create of existing attribute.
+> @@ -130,10 +142,14 @@ def testExclusiveCreateAttr(t, env):
+>      key =3D "user.attr1".encode("UTF-8")
+>      value =3D "value1".encode("UTF-8")
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_CREATE, k=
+ey, value)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_CREATE, k=
+ey, value)])
+> -    check(res, NFS4ERR_EXIST)
+> +    check(res, [NFS4ERR_EXIST, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>  def testUpdateExistingAttr(t, env):
+>      """Server MUST return NFS4_ON on update of existing attribute.
+> @@ -152,13 +168,19 @@ def testUpdateExistingAttr(t, env):
+>      value1 =3D "value1".encode("UTF-8")
+>      value2 =3D "value2".encode("UTF-8")
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_CREATE, k=
+ey, value1)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_REPLACE, =
+key, value2)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.getxattr(key)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+>      if value2 !=3D res.resarray[-1].gxr_value:
+>          fail("Returned value doesn't match with expected one.")
+> =20
+> @@ -178,7 +200,9 @@ def testRemoveNonExistingAttr(t, env):
+>      key =3D "user.attr1".encode("UTF-8")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.removexattr(key)])
+> -    check(res, NFS4ERR_NOXATTR)
+> +    check(res, [NFS4ERR_NOXATTR, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>  def testRemoveExistingAttr(t, env):
+>      """Server MUST return NFS4_ON on remove of existing attribute.
+> @@ -196,10 +220,14 @@ def testRemoveExistingAttr(t, env):
+>      key =3D "user.attr1".encode("UTF-8")
+>      value =3D "value1".encode("UTF-8")
+>      res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_CREATE, k=
+ey, value)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.removexattr(key)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>  def testListNoAttrs(t, env):
+>      """Server MUST return NFS4_ON an empty list if no attributes defined=
+.
+> @@ -216,7 +244,9 @@ def testListNoAttrs(t, env):
+>      fh =3D res.resarray[-2].object
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.listxattrs(0, 8192)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      if not res.resarray[-1].lxr_eof:
+>          fail("EOF flag is not set")
+> @@ -243,10 +273,14 @@ def testListAttrs(t, env):
+>      for key in keys:
+>          value =3D "value".encode("UTF-8")
+>          res =3D sess.compound([op.putfh(fh), op.setxattr(SETXATTR4_CREAT=
+E, key.encode("UTF-8"), value)])
+> -        check(res)
+> +        check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +        if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +            t.fail_support("Server doesn't support extended attributes")
+> =20
+>      res =3D sess.compound([op.putfh(fh), op.listxattrs(0, 8192)])
+> -    check(res)
+> +    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
+> +    if (res.status =3D=3D NFS4ERR_NOTSUPP):
+> +        t.fail_support("Server doesn't support extended attributes")
+> =20
+>      xattrs =3D [key.decode("UTF-8") for key in res.resarray[-1].lxr_name=
+s]
+>      if len(xattrs) !=3D len(keys):
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
