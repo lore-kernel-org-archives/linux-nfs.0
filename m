@@ -1,57 +1,68 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.210
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795177976;
-	b=b/oun2MBBWPQuFmYzpM57TVC7a4fb/3BC4xn7WAngcaE2B6xbJPpxLbcd5y50KZ77SEB
-	 P/l+TQD8ZibqA6bIUzt/Y4ng6RmukZ6KrCHSJelEGTz64kqoGDoJRLQWlN02xgYfOziCT
-	 u+gpTcshy8txkldhRfdBx7hvy06yWsTYIMoOyZGGqAYV3LwNw51TN9HiRRUAa74eFvBTC
-	 VgWwgUCLW9ahHTdgKS5Jl7RHvGtZ93gYZvpCDHGv9Di5rrk1p9wY8UrDT3FycnIbUwnTt
-	 MnL9dxqa3lo+eRdmc/fzbCUYE2U4m6crYY44+DZLVJYcjAAwY5dk3VuiTzN6lL6ER7g==
+	t=1795179089;
+	b=G9d3aLT3O9ico8en4byB9oYAmIpVA7ul1gY0jAF3Z6XY/ctHF8o5+LCBG3vG2n3GWsCK
+	 8MSF/2EcqKCwBocWHVcvC+y0VqxpBBFG4fU1ZaxPy64BxI6X0a24rpC78oNEDWnrJuRuh
+	 8V4tWnwGIw4Bhxra1tn61SiunWU4FN4DKGfIMLICBfBAth2ChAZY8rA48q2VdfaSi3BM8
+	 26Utvq8V9Q0LWXIRKFvBdjAO60zJDCJ435vBCwkREZolHlXYHkuNzyTWZyC7KvG4YiU94
+	 ZTZXZr3Sx+BOM3P8Gp7HkOwbglgIEDKBvY5UOU+DpozrMe7EtDE93NWjHSQrsXHEviA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795177976;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
+	a=rsa-sha256; c=relaxed/relaxed; t=1795179089;
+	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
+	 X-Mizu-Trace-ID:X-Migadu-Flow:Date:From:To:Cc:Subject:Message-ID:
 	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=EDpVY0aGzqBT374TIqs271yPZfzR3UZ/l7e+Hpa3g1Q=;
-	b=5Z6rGYqCrFN79tk6nKb3PbXN1RaWYcs/IB3b4EmLsxSaRxl3hYRymcAG9mIicV/ORSTT
-	 7uwXSbZijYePigqamU0bZLRbV4CtT/nggcmY7Z2R1UQtBfPQoHYUqFvg8OROffhkuMyTo
-	 v3YXhSIxJ2EkitUDCFrNgBkWDV/QS7MOqxPFGX0L9Tc4kktlntPKYNphikzaVnTpf+ZXV
-	 9viP18OsHM5N3Y7MfPETHvxSXagugCFSFFXnhgMjbvTwxtLY0iRcw4WI8y736Em8Xg63j
-	 tHXAYUPPkoP5+LzA+Z279fwqnKYOL9XCfgFvZ9d11vNvcl6evFMW3Ptc89kxzbRb0wQ==
+	bh=RwK+sZmEfro4R2XrALiEL0NIpL3hInhE+mN5nJsjAK8=;
+	b=DaSziPpyf51ChLMmThYsBPDlkYuJj9nsbQoN9+HglAFN+8kxr9/wCjEyjqZKk2e0t8fJ
+	 EjTQ7XAET6o+1RCdNEmQyNxxC1UOH3cz2FRUz/W+DmMu1YRj58KfePAAnmtF6RNs/Yh45
+	 wOjHvxFxseMbbS6G0quEpYZNdwd0nNBdQWBW83tRrx4rbVRcE0MnuVF8RzJqzkrGDyONW
+	 Cwrs3XKHKPZPSW94TpKtBlikzQQfF3tEzhGEkKxvgmJq33aR/ILis9O/g2byz2g58khtK
+	 E+Hal6b+JKFXKK4VXy0DFmFOVlQf6DS11zjCKuYzr0XDePhcB6JMaQBxvygl+oiDfLw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bq1M2Wbl;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=linux.dev;
+	spf=pass smtp.mailfrom=linux.dev;
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=CVboDCpu;
+	arc=none smtp.remote-ip=95.215.58.210
+Received: from mta1.migadu.com (out-210.mta1.migadu.com [95.215.58.210])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 801FD606A325;
-	Fri, 20 Nov 2026 12:32:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51FAD60A261D
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 12:51:28 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 51FAD60A261D
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Bq1M2Wbl
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2CBED1F000D0;
-	Fri, 20 Nov 2026 12:32:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795177975;
-	bh=EDpVY0aGzqBT374TIqs271yPZfzR3UZ/l7e+Hpa3g1Q=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=Bq1M2WblwfHBV1H572oyFU8Jg8cpNSAJSxJ+fEpHf2I7qWHXLU+oasVdkAuIxSJie
-	 jKhfQDH530HH6VBk15LgJCY2pvw7EqF0BhPBatbe+Mn6P5JYsRNDjfHQCBQ80xaMrN
-	 U2DyoIgYFn22O+pcFswK9TSYy6F9ni4krGEUzI81HVk69GwdSouxWMej+SyUBzfGQ3
-	 u96WQnEElHgzQ2njUE7exwQpHgzIhz9wS5q4xXQhMCoXtRR40gHJ3Xg1JbyEVQUg/e
-	 z32TkXC2gNKMuzAk5tiDwPM6bK4O8zP9G83TsIxw7Zf0wQ6rZjejwK3E5rtbRe5eJN
-	 94T9rR8oeckhg==
-Date: Fri, 20 Nov 2026 13:32:49 +0100
-From: Christian Brauner <brauner@kernel.org>
-To: Zhiqi Zhang <zhiqizhangg@gmail.com>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: Jan Kara <jack@suse.cz>, 
-	=?utf-8?Q?Micka=C3=ABl_Sala=C3=BCn?= <mic@digikod.net>, =?utf-8?Q?G=C3=BCnther?= Noack <gnoack@google.com>, 
-	Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
-	"Serge E . Hallyn" <serge@hallyn.com>, David Sterba <dsterba@suse.com>, linux-fsdevel@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, linux-btrfs@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ns: skip namespace_init LSM hook for internal namespaces
-Message-ID: <20261120-karawane-geadelt-jubel-318c60ec1a2e@brauner>
-References: <20261114141323.19029-1-zhiqizhangg@gmail.com>
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=CVboDCpu
+X-Envelope-To: linux-nfs@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=/M71l9OR+PuswlMFy8Wbwhup3v6OafAF4YhJlLt/84U=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1795179086; v=1; x=1795783886;
+ b=CVboDCpuuv2WqQiy/vtf05zSEtSkLQsRJ/djYGgQWt91weN3dja9zelbY5vaAyy3HckRz8nB
+ LTBIz+A0NBi0SxrULdX4yPc6ILwbmx6ofWOwOp9UzoFU9UnVUAYdYhC2d48tOPwt0UJKs6MIxos
+ hQ8bQNPKUm99WaSVdem1tj90=
+X-Envelope-To: linux-nfs@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id 624a9615c12efaf1;
+	Fri, 20 Nov 2026 12:51:26 +0000
+X-Mizu-Trace-ID: 624a9615c12efaf1
+X-Migadu-Flow: FLOW_OUT
+Date: Fri, 20 Nov 2026 13:51:14 +0100
+From: "Pankaj Raghav (Samsung)" <pankaj.raghav@linux.dev>
+To: Jan Kara <jack@suse.cz>
+Cc: Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, 
+	Andreas Gruenbacher <agruenba@redhat.com>, gfs2@lists.linux.dev, Mike Marshall <hubcap@omnibond.com>, 
+	Martin Brandenburg <martin@omnibond.com>, devel@lists.orangefs.org, Dave Kleikamp <shaggy@kernel.org>, 
+	jfs-discussion@lists.sourceforge.net, Carlos Maiolino <cem@kernel.org>, linux-xfs@vger.kernel.org, 
+	David Howells <dhowells@redhat.com>, Marc Dionne <marc.dionne@auristor.com>, 
+	linux-afs@lists.infradead.org, Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.linux.dev, 
+	linux-block@vger.kernel.org, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	linux-nfs@vger.kernel.org, Eric Biggers <ebiggers@kernel.org>, 
+	Jaegeuk Kim <jaegeuk@kernel.org>, linux-fscrypt@vger.kernel.org
+Subject: Re: [PATCH 01/13] bdev: Drop pointless loop from
+ blkdev_flush_mapping()
+Message-ID: <awBAeS9ROaFyOjzB@quentin>
+References: <20261116171044.6938-1-jack@suse.cz>
+ <20261118145941.1063127-14-jack@suse.cz>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -61,19 +72,76 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20261114141323.19029-1-zhiqizhangg@gmail.com>
+In-Reply-To: <20261118145941.1063127-14-jack@suse.cz>
 
-On Sat, Nov 14, 2026 at 10:13:23PM +0800, Zhiqi Zhang wrote:
-> Skip LSM initialization for kernel-internal namespaces.
-> __ns_common_init() gains an lsm parameter, and a new
-> ns_common_init_inum_internal() passes false.  It is used by
-> mount_subtree() only; user-visible namespace allocations (clone,
-> unshare, setns, open_tree, fsmount) keep calling the hook.
+On Wed, Nov 18, 2026 at 03:59:35PM +0100, Jan Kara wrote:
+> bdev_write_inode() is really odd loop calling write_inode_now(). The
+> bdev doesn't have any pages by now and if there are any dirty bits in
+> the inode state, they are stale. Just call write_inode_now() once to
+> clear them.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Thanks for the report! I wrote a different fix that skips both
-namespace_init and namespace_free for such namespaces so the two hooks
-stay paired:
+When I looked at the commit that introduced bdev_write_inode()[1], it says
+to call write_inode_now() on the final put of the block device. At the
+moment, tt looks like we call bdev_write_inode() only when bd_openers is 0.
 
-https://patch.msgid.link/20261120-work-ns-mount_subtree-v1-0-06337377f94a@kernel.org
+Looks good,
+Reviewed-by: Pankaj Raghav (Samsung) <pankaj.raghav@linux.dev>
+
+--
+Pankaj
+
+[1] 564f00f6c03a ("block_dev: only write bdev inode on close")
+> ---
+>  block/bdev.c | 25 ++++++-------------------
+>  1 file changed, 6 insertions(+), 19 deletions(-)
+> 
+> diff --git a/block/bdev.c b/block/bdev.c
+> index f20f91b3176e..9fa72df4f47a 100644
+> --- a/block/bdev.c
+> +++ b/block/bdev.c
+> @@ -60,24 +60,6 @@ struct block_device *file_bdev(struct file *bdev_file)
+>  }
+>  EXPORT_SYMBOL(file_bdev);
+>  
+> -static void bdev_write_inode(struct block_device *bdev)
+> -{
+> -	struct inode *inode = BD_INODE(bdev);
+> -	int ret;
+> -
+> -	spin_lock(&inode->i_lock);
+> -	while (inode_state_read(inode) & I_DIRTY) {
+> -		spin_unlock(&inode->i_lock);
+> -		ret = write_inode_now(inode, true);
+> -		if (ret)
+> -			pr_warn_ratelimited(
+> -	"VFS: Dirty inode writeback failed for block device %pg (err=%d).\n",
+> -				bdev, ret);
+> -		spin_lock(&inode->i_lock);
+> -	}
+> -	spin_unlock(&inode->i_lock);
+> -}
+> -
+>  /* Kill _all_ buffers and pagecache , dirty or not.. */
+>  static void kill_bdev(struct block_device *bdev)
+>  {
+> @@ -755,7 +737,12 @@ static void blkdev_flush_mapping(struct block_device *bdev)
+>  	WARN_ON_ONCE(bdev->bd_holders);
+>  	sync_blockdev(bdev);
+>  	kill_bdev(bdev);
+> -	bdev_write_inode(bdev);
+> +	/*
+> +	 * All data is written out and evicted but inode can have some stale
+> +	 * I_DIRTY bits set. Call write_inode_now() to get rid of them so that
+> +	 * the inode can be evicted.
+> +	 */
+> +	write_inode_now(BD_INODE(bdev), 1);
+>  }
+>  
+>  static void blkdev_put_whole(struct block_device *bdev)
+> -- 
+> 2.53.0
+> 
