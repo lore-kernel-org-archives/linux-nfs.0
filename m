@@ -1,60 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=80.69.43.37
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795214823;
-	b=dCAqQiim6E4SDnxHS4DZUt/OrwUqmqTCWjvZqcWEIVcIPznxpFnvq8IxEFr7WQYH/YTo
-	 UAkvwJo6r+OHMBJxBnqLSpG6hHUYsqBRndEHtavG+mOYmwDHcKi6mZHoEL8yBDYVpWM5k
-	 PRuASogR3BuwKIhggLhvuwMPoRYYTYcN5cB/YMlQE8ecGDcxGoqLWzRl8EsD2YxkpYQUP
-	 jBg5qVHceQCWSdLBhhypZ6uxiWwRSwHoIXd+6xErUv/xOmLzErmAtxolnvUYN4GEq2BMf
-	 hQGdKWOTPdbe1qsVcRcNRCBIzdWfbWAJK0X4zl1JU3x7Z1cr8pY19glGA9zWhDGEy6g==
+	t=1795256938;
+	b=u7vbo37YslqGv1POmPjtOUkOOxMC3pxXibputPG3kh1jWJAZQwI1/Imrt9yQ5idR1UV9
+	 xo2wORkvRQ3hnw1I3cyHtkQzak2E5DlhVkAw1gQsVHVOwj8cOTREN0qpIyd9QGpOjWZoZ
+	 mRviEm13IdkV5MsLUc/1NJlMcv80mRPblMULlHtaNF3ua5SauIr7fXGcV635JieMYVuY/
+	 dOzfL3IyMRviYlcxNqUKD2tXIRIGHyJiNX9j0I1rHizwEffCLmxZQGpR1WfUZ7xSHVgGI
+	 I+wQ8XPdHDizHkdfBtiYmfvA0UMYWX34YZUiFbFELU0DS+99QHMkSPlxc4rVoVIcL1w==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795214823;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=UzoHrg8v8r9LhhJH9bPwZ3E0glE79YH9yAGfODT232w=;
-	b=hYu7pWjhL7fAgv7SnoknMRldTZXG18Jo4gE+fAgb+2pHQh0ohDnJHOiUsJ77iRAk7IDf
-	 3W90SK5O9t7qs97QNeveGKNjNIYpLzwxxCFM41unDQF8IbhOdkThFWKP7IThL8XnmX4EB
-	 TmTXr6bXAAdNo19kEGfuMjo8qQUrJujGSIN54t4HyyRY+VPH21yW5isEo84xY01c7DsJB
-	 RRVTTCSSLhyoXrJYithi1ruFiP++gfh8eWl0560A9fo/2Qdh+aWpwOYCFZe5tcozddElb
-	 +isn0Qmpmb45dvzC9fmAy1cZMQc1ntUw7t+20wo5xW077i42Y3mNcrG1qIuJ+3Kiraw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795256938;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
+	 Subject:Message-ID:References:MIME-Version:Content-Type:
+	 Content-Disposition:In-Reply-To;
+	bh=2Co9x+IoJ8inJ5dNzFWRuM1acq8EeJ2/yY8TmzJbKJk=;
+	b=EfrFQG0YmddebHtEs/SZ+lTRlFdqUCI4pTMlokQk0gGq4SS4S/ufHfZYB7LQ5eHQ/n6H
+	 z4qc8D81Vt+W08yMrxDeWYIQVz0enCuh02fezYmYX3Wjkaxuibislau0TNXOO2s+dpTck
+	 J7xbIhHuonKpG4TFFXm7Bodc775oDoWostDTW1LLyDTTN9hcDVLmKY/rah1viOPF+gqk4
+	 Bk2JKTneHZtOEUasAsPEh6KuDR02hZFTZY0T8SWvv+CQoyOX5SVnydpMIaLZoNuDinmMn
+	 sZO7JFTlr89mXCPrOLoXPLmN76ABsaJtaSpg9VyvgT8Eh+tmknxXncZuqxYcHv/ObbQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JKIoNQrD;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=vozeler.com;
+	spf=pass smtp.mailfrom=vozeler.com;
+	dkim=pass header.d=vozeler.com header.i=@vozeler.com header.a=rsa-sha256 header.s=max-2024-2 header.b=nac0sj86;
+	arc=none smtp.remote-ip=80.69.43.37
+Received: from imap.hinterhof.net (imap.hinterhof.net [80.69.43.37])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A81A3606A68B
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Nov 2026 22:47:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A437606A320;
+	Sat, 21 Nov 2026 10:28:57 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 6A437606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=vozeler.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=vozeler.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=JKIoNQrD
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8ED841F000D0;
-	Fri, 20 Nov 2026 22:47:02 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795214822;
-	bh=UzoHrg8v8r9LhhJH9bPwZ3E0glE79YH9yAGfODT232w=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=JKIoNQrDgv37bzbzODVPmTqWjfsajTL6O/dd5ZnRakNAvbfvlATJgliy1gbICfpiA
-	 PdTw3hPTvhnBf4yC4MRBmFfuPmehLXZ4AnQ1Py6WgO0+BZS1SnD0O71bpzdv3otTnw
-	 FglAPZcCt+EWqzG65QzK1ArwwPfDfr9ULkcL57W3n6n+tm9KOSJS4wgT2BSprXA92K
-	 2RfvpEpuFEG5Lxy79woeQNzk179d+aLw9BoBK2aKULCZ5fKUKJDKvCJczj9khKbT0E
-	 VCizllwRr9fo7h8kRBfoXqOGarXTyIHZ3KOP2OzIvXZLWrlGuE5HkITcV/5XYcUcLK
-	 gL4RXAm1kwFhw==
-From: Chuck Lever <cel@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>,
-	Dominik Maier <dmnk@google.com>
-Cc: NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	linux-nfs@vger.kernel.org,
-	dmnk+artist@google.com
-Subject: Re: [PATCH] nfsd: only set NFSD_MAY_BYPASS_GSS for RPC_AUTH_UNIX in nlm_fopen()
-Date: Fri, 20 Nov 2026 17:47:00 -0500
-Message-ID: <179521481096.62451.7185239326341210292.b4-ty@b4>
-X-Mailer: git-send-email 2.56.0
-In-Reply-To: <20261119192336.2697518-1-dmnk@google.com>
-References: <20261119192336.2697518-1-dmnk@google.com>
+	dkim=pass (2048-bit key) header.d=vozeler.com header.i=@vozeler.com header.a=rsa-sha256 header.s=max-2024-2 header.b=nac0sj86
+Received: from dp.vpn.hinterhof.net (i59F45518.versanet.de [89.244.85.24])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange x25519 server-signature RSA-PSS (4096 bits) server-digest SHA256
+	 client-signature RSA-PSS (4096 bits) client-digest SHA256)
+	(Client CN "x201t.vpn.hinterhof.net", Issuer "Max Vozeler" (not verified))
+	by imap.hinterhof.net (Postfix) with ESMTPS id 94FF08FB872;
+	Sat, 21 Nov 2026 10:28:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=vozeler.com;
+	s=max-2024-2; t=1795256933;
+	bh=cEvO1ZKPKk8kkVr4u3EZ6YwfXYohAzhLkqNt8cz4ajE=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=nac0sj86BiL7wgHJztYzZ4YlLf8F+ouFfWgmoLiPqSrh2hR3TCn1boCukGLEOLSWp
+	 NeXi1suClQWHw/Pg+2dc5no6TmGjLb4Rqdtf3RApSPpv6096H1ib+wsk56gBVPtyFK
+	 ilFCRXEjP81BbaF7dZB8VhtlFwOs3Uwk7Q972ap1F/PcUnMkjI0T+qpjQT51PAZAe0
+	 iuQSs+VqciV3ty42slu9UfR+Q+fKWE9t9ojci7d0SXALpv4yFsGOinXnMlB7ERJqra
+	 PWS36bYynDCGaenxHIGFyvV9xyQvgqrDQN619MvcJDqqFWAtS6ZvbSR4T2lcZepArX
+	 3wEtW9tBO2geQ==
+Received: by dp.vpn.hinterhof.net (Postfix, from userid 1000)
+	id 3724426018A; Sat, 21 Nov 2026 11:28:53 +0100 (CET)
+Date: Sat, 21 Nov 2026 11:28:53 +0100
+From: Max Vozeler <max@vozeler.com>
+To: linux-nfs@vger.kernel.org
+Cc: stable@vger.kernel.org, regressions@lists.linux.dev
+Subject: Re: [Regression linux-6.1.y]: NFSv4 server: sec=krb5p mount fails
+ with EIO in 6.1.192
+Message-ID: <awFyZbQE8pDyOxUy@dp.vpn.hinterhof.net>
+References: <awBIdxOJ4XSXuc7S@dp.vpn.hinterhof.net>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -64,32 +69,24 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <awBIdxOJ4XSXuc7S@dp.vpn.hinterhof.net>
 
-On Thu, 19 Nov 2026 20:23:36 +0100, Dominik Maier wrote:
-> As documented in nlm_fopen(), NFSD_MAY_BYPASS_GSS is intended to let NLM
-> clients using AUTH_SYS (RPC_AUTH_UNIX) lock files on Kerberos NFS
-> exports, whereas NLM clients using AUTH_NULL (RPC_AUTH_NULL) are only
-> meant to bypass authentication when NFSEXP_NOAUTHNLM (no_auth_nlm) is
-> enabled via NFSD_MAY_NLM.
+#regzbot introduced: v6.1.190..v6.1.191
+
+On Fri, Nov 20, 2026 at 02:17:43PM +0100, Max Vozeler wrote:
+> after upgrading an NFS server (Debian bookworm) to 6.1.192
+> (Debian linux-image-6.1.0-55-amd64), NFSv4 clients fail to mount exports
+> using sec=krb5p with EIO.
 > 
-> However, nlm_fopen() has historically passed NFSD_MAY_BYPASS_GSS
-> unconditionally, and check_security_flavor() accepts both RPC_AUTH_UNIX
-> and RPC_AUTH_NULL whenever may_bypass_gss is true on an export with a
-> pseudoflavor >= RPC_AUTH_DES. Since commit bb4f07f2409c ("nfsd: Fix
-> NFSD_MAY_BYPASS_GSS and NFSD_MAY_BYPASS_GSS_ON_ROOT") restricted
-> may_bypass_gss to exports with pseudoflavor >= RPC_AUTH_DES, default
-> auth_nlm rejects RPC_AUTH_NULL NLM requests on sec=sys exports with
-> nfserr_wrongsec while still accepting RPC_AUTH_NULL NLM requests on
-> sec=krb5* exports even when no_auth_nlm is not set.
+> Downgrading the server back to 6.1.190 (linux-image-6.1.0-54-amd64)
+> makes things work again.
 > 
-> [...]
+> Good: 6.1.190 (Debian linux-image-6.1.0-54-amd64)
+> Bad:  6.1.192 (Debian linux-image-6.1.0-55-amd64, linux-image-6.1.0-56-amd64)
 
-Applied to nfsd-testing, thanks!
+Reproduced with vanilla 6.1.191 and 6.1.192
 
-[1/1] nfsd: only set NFSD_MAY_BYPASS_GSS for RPC_AUTH_UNIX in nlm_fopen()
-      commit: 824294e1f20b5dbd8420e77ddb3da230150f96c1
-
---
-Chuck Lever <cel@kernel.org>
+Good: 6.1.190
+Bad: 6.1.191, 6.1.192
