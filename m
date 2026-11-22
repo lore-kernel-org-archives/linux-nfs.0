@@ -1,65 +1,46 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=116.130.217.65
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795306384;
-	b=pGuRA8bbILmYO2TjXlV2dhmhHDnFzMYgckd+dJfxS/ppDuG2LsREDuzyTUWgGFxoEybu
-	 kBK1lmIegVbjg0ZKhsCVDtT2jB8aSgxwC73h6eo67IGIDw8Md7X0L0NiWW6ylPBVaWbDE
-	 4JDM+dwOqCTwf5ibOB3K/tvx7l1i8dXbTJBorDkVJL4dr0aEzhpbRn9sXb6D1CsXwscGH
-	 H/UGtZbJjBajeqOFiQSnT2AMtQry7S01bArVOX6oaZGpxK5CNveBTJH89t8VmFRm4+mMv
-	 0DjJlUiCe56aoscQmsfmJmw23oHjZ62/kPjox/YEi+EbWvOrSUm6I2S6JNruYSwyJJg==
+	t=1795329091;
+	b=kydw6E7xdESOeFK0Ga4fUMHjZnhFPsrx5+G/8n+7BPD5f3K/YSEp5K/fxL+S8WhHj5Qe
+	 SaTEuguXHJCh89EkIvZiHvVSBIkJrMSJS5lbF1cevtrwQElEfZOiAua3tXUyA8kx3LmXs
+	 RgvhY7uc/Ip9BaOFVUFyJ//8y/NL5H2C6wdWcEe0hygRF/FUXjNMG97m/hCS1D8DbmVbh
+	 5dxL5+Z8SN6VDwswPTovZnUw3BOwYEU97uN30mhTnMpQSCJRyy5NzbVwJ3P+BPoF4/bJ5
+	 cAMTMxVPs28YhElT0HUP3Ty0rEuvGXPbE4+IEAaEGBNR8Z0FIRZMLPYbeN6Qw2dELXA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795306384;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 In-Reply-To:References:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=Wme/Jw65vekSkLxpWIsP9GgAmvy1/VZB1ZbshkHKAZw=;
-	b=Uu0V896PQtiDXxz1itY2NbFYr78sGZOA68X7v+YonCCWAWXYDkt1Hvp6JfKo5dUFBb9K
-	 DWd4ET6meo+e7Vafb2Z1gShl3BkRnmKe3q6o6vhXaSa71P3gJclvlgfzkSZrZS8C/8kT2
-	 z0o69LygWNBkouUb+SE/osMq6uWtT6WEiaLdT1GDpOa8apDmZ3Qg6jV2XOGC48qZ3ORVG
-	 NWU8ATlHGn6Sg90yAvz2n8SWQwpJd+SmFmMChf/tlPcNbaVvwrCDizrANP3DW/lzJFB2j
-	 RZP89kNeEQ5n7A2g+UXhIiR+9hZGwHF2bK5vW+lZ66mCbaqGxykE1rGwc4a3zfpBloA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795329091;
+	h=DMARC-Filter:Received:DKIM-Signature:Content-Type:MIME-Version:
+	 Content-Transfer-Encoding:Subject:From:To:Date:Message-ID:
+	 List-Unsubscribe:List-Unsubscribe-Post:Reply-To:X-Sohu-Gateway:
+	 X-Sohu-Antispam-Language:X-Sohu-Antispam-Score;
+	bh=GY6Y8XpjS6LL2SJVfzaU3rdGUGK4ocd7hmzkZmVmcIQ=;
+	b=D1cVJFp5tPn6WHzYkEkYe3gbMHS/7DJ9ISeQAwJFF49oIo8tcfmZ7Bj9uBcG7ZwoKRAD
+	 GObNZRf9coseM7+WKM1Q5xOqewK7oYs479xUUlujBH/D0i3ceyfTegBjTjexOuJebakIH
+	 2WMSFQvKDyk5aE/RYIcbHV9h/PJROmUeg4qszkFKYnQlgjLVz3j5owh0Wxu0EUIR9XFAu
+	 6M7NfJFzN0BS3suPgzlVjHbiKoOVunP9VPjy+psbnYdNEENT4Vpq8efv2imlHuJAgJM/x
+	 RxgSa49l/AJIstqmB8Sl4BcmvtfmdH71ZjezedbcGWKonC84dq5Wgh7tvHIVNovbeOg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X3nYg85n;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 892D7606A320;
-	Sun, 22 Nov 2026 00:13:04 +0000 (UTC)
+	dmarc=pass header.from=sohu.com;
+	spf=pass smtp.mailfrom=sohu.com;
+	dkim=pass header.d=sohu.com header.i=@sohu.com header.a=rsa-sha256 header.s=mail header.b=a4kALmXK;
+	arc=none smtp.remote-ip=116.130.217.65
+Received: from smtp217-65.mail.sohu.com (smtp217-65.mail.sohu.com [116.130.217.65])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id C38B7606A320
+	for <linux-nfs@vger.kernel.org>; Sun, 22 Nov 2026 06:31:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C38B7606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=sohu.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sohu.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=X3nYg85n
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AF7C71F000C0;
-	Sun, 22 Nov 2026 00:13:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795306384;
-	bh=Wme/Jw65vekSkLxpWIsP9GgAmvy1/VZB1ZbshkHKAZw=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=X3nYg85nYhldkdDOD6+IzCzfE+ghiyyrey1IreSL8rUp6l2H08RQeBZGRKYeo9qst
-	 Ny3CaPnleLhvnutoO5GS6D+KPDlYLp/1M2Bbz0beGB1rdV+/yNFjtoA/JXlxKfVe9I
-	 XEG356y+Ut88rKRHvt5Ff7c3qAClO7cQrW0b8Kcr1Nlao9oD+sN5A2M7u4HVLPY2ed
-	 oHilj/rEtoc1tTuPLPjqP/6HU+nTZ7BkqmKFuakpR5FfBPS3l1wMFLwU8pSQvw1qVQ
-	 BmHok3z4HQNQDMuygC7xfEIMMYsTs5WiekDFnKTjKTLhzASQOCqGW2va0jGvgIscRo
-	 7flK77N6TyExw==
-Date: Sat, 21 Nov 2026 16:13:02 -0800
-From: Jakub Kicinski <kuba@kernel.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: Donald Hunter <donald.hunter@gmail.com>, "David S. Miller"
- <davem@davemloft.net>, Paolo Abeni <pabeni@redhat.com>, Simon Horman
- <horms@kernel.org>, John Fastabend <john.fastabend@gmail.com>, Sabrina
- Dubroca <sd@queasysnail.net>, Keith Busch <kbusch@kernel.org>, Jens Axboe
- <axboe@kernel.dk>, Christoph Hellwig <hch@lst.de>, Sagi Grimberg
- <sagi@grimberg.me>, Chaitanya Kulkarni <kch@nvidia.com>, Jeff Layton
- <jlayton@kernel.org>, NeilBrown <neil@brown.name>, Olga Kornievskaia
- <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey
- <tom@talpey.com>, Eric Dumazet <edumazet@kernel.org>,
- kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
- linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org, Hannes Reinecke
- <hare@kernel.org>
-Subject: Re: [PATCH net-next v3 00/10] Deliver TLS session tags to
- upper-layer consumers (NFSD)
-Message-ID: <20261121161302.69f202c8@kernel.org>
-In-Reply-To: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
-References: <20261113-tls-session-tags-v3-0-91271964cdb0@kernel.org>
+	dkim=pass (1024-bit key) header.d=sohu.com header.i=@sohu.com header.a=rsa-sha256 header.s=mail header.b=a4kALmXK
+Received: from [172.25.140.59] (unknown [43.106.14.92])
+	by smtp217-65.mail.sohu.com (Postfix) with ESMTPA id 4jXK3L66HBz6v4F
+	for <linux-nfs@vger.kernel.org>; Sun, 22 Nov 2026 14:31:25 +0800 (CST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=sohu.com; s=mail;
+	t=1795329087; bh=GY6Y8XpjS6LL2SJVfzaU3rdGUGK4ocd7hmzkZmVmcIQ=;
+	h=Subject:From:To:Date:List-Unsubscribe:Reply-To:From;
+	b=a4kALmXKgVHgfV2h4JuQExGROezhxPGngYCEV1lx5NtO6sxosKfFqBsROOQUAeQLZ
+	 YRt9/xJIKtxNbRc88C7d52/li8YMm8Z8YmWTdTvNZReQE1wj2BQgQA0tci/NhxRnB/
+	 JjSvmqEsX95FFf7/g0UpE7GBDSjyNkL34IvlPWM0=
+Content-Type: text/plain; charset="utf-8"
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -69,50 +50,26 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: base64
+Subject: =?utf-8?q?token8341_=E2=80=94_an_API_partner_for_your_project?=
+From: =?utf-8?b?ODM0MVRva2Vu5bel5Y6C?= <wusohu_177_0979@sohu.com>
+To: linux-nfs@vger.kernel.org
+Date: Sun, 22 Nov 2026 14:31:25 +0800
+Message-ID: <179532908547.2759411.12092261385229402226@sohu.com>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Reply-To: wuqiong@token8341.com
+X-Sohu-Gateway: 1
+X-Sohu-Antispam-Language: 0
+X-Sohu-Antispam-Score: 0.01
 
-On Fri, 13 Nov 2026 14:21:58 -0500 Chuck Lever wrote:
-> NFSD controls remote access to its exports today by IP address and
-> hostname. Neither of these are cryptographically secure. For
-> instance, a MitM can replace the response to a server's plaintext
-> DNS query. As a result, a malicious NFS client can pretend to be a
-> client whose hostname matches one that has access to exports it
-> would otherwise be denied access to.
-> 
-> So instead, we want access-control decisions to be based on
-> cryptographically-vetted objects such as TLS peer-certificates.
-> In-kernel x.509 parsing would duplicate work mature userspace
-> libraries already do, so let's make tlshd evaluate peer certificates
-> in user space.
-> 
-> The certificates are evaluated against admin-defined policy, such
-> as whether the certificate's Issuer matches a particular string.
-> tlshd then marks NFS TLS sessions with those policy matches. Admins
-> also provide a set of policy names on each NFSD export (allow_tags).
-> Computing the intersection with these per-export tags is quick and
-> completely separate from the details of parsing x.509 certificates.
-> 
-> A yet-to-be-posted patch series introduces tag set support to the
-> exportfs command in nfs-utils. tlshd 1.5.0, current as of this
-> writing, already implements TLS session tagging.
-
-I submitted this for AI review now, I think due to the problem
-Simon flagged CI didn't just gobble it up automatically.
-The AI review will not be emailed to the list automatically but
-hopefully it will be ready here by the time you read this:
-https://netdev-ai.bots.linux.dev/sashiko/#/patchset/20261113-tls-session-tags-v3-3-91271964cdb0@kernel.org
-
-The patches look reasonable to me, overall. At a high level tho - 
-I don't have any familiarity with "tag" based policies.
-Are you confident it's flexible and convenient enough to survive
-as uAPI?
-
-Naively I'd think it creates unnecessarily wide API on both ends
-(handshake and server). My knee jerk design would be to populate
-the full policy in the server, and only carry some "policy ID"
-thru the handshake. Number of policy IDs would equal to the number
-of tag combinations (which result in different behavior).
-
-Any examples of APIs like the one you're adding working well?
-Anyone willing to review this series, please??
+5L2g5aW977yMCgrmiJHku6zlubPlj7AgdG9rZW44MzQx77yIdG9rZW44MzQxLmNvbe+8ieaPkOS+
+myBBSSDlpKfmqKHlnosgQVBJIOiBmuWQiOacjeWKoe+8jArkuIDkuKoga2V5IOiwg+eUqCBEZWVw
+U2Vla+OAgUtpbWnjgIHmmbrosLEgR0xN44CB6YCa5LmJ5Y2D6Zeu44CBTWluaU1heCDnrYnmqKHl
+novvvIwK5a6M5YWo5YW85a65IE9wZW5BSSBTREvjgIIKCuaDs+i3n+S9oOiBiuiBiuaYr+WQpuac
+ieWQiOS9nOWPr+iDveOAguWbnui/meWwgemCruS7tuWwseiDveaJvuWIsOaIkeOAguiwouiwou+8
+gQoKLS0tCuWQtOeQvAp0b2tlbjgzNDEKaHR0cHM6Ly93d3cudG9rZW44MzQxLmNvbQoKLS0K5LiN
+5oOz5YaN5pS25Yiw5oiR5Lus55qE6YKu5Lu277yf54K55LiL6Z2i6L+Z5Liq6ZO+5o6l5LiA6ZSu
+6YCA6K6i77yM56uL5Y2z55Sf5pWI77yaCmh0dHBzOi8vdG9rZW44MzQxLmNvbS9nby91L2JHbHVk
+WGd0Ym1aelFIWm5aWEl1YTJWeWJtVnNMbTl5WjN3UUFqUjNVWjQK77yI5Lmf5Y+v5Lul55u05o6l
+5Zue5aSN5pys6YKu5Lu244CB5q2j5paH5YaZ44CM6YCA6K6i44CN5Lik5Liq5a2X77yM5oiR5Lus
+5ZCM5qC35Lya5aSE55CG44CC77yJ
