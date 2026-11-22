@@ -1,68 +1,109 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=80.69.43.37
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.49
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795276875;
-	b=jm/mgmVquSxviw06TBsUtudFGFe8oEXIlPi8p63zUKWc9FbC0pxyLkavq0tlqWBP0iXs
-	 Q6vRPyOGWVACUarGR5Hhx6mTCd7AMzWIXhJTg394+9xHmWlBkOYkmzKMp5PAZTow4zc5o
-	 uE2SZKDT9Q0/khhuWC0wWYm2bAhcpW00Rdxx3Aahiq8qbus07ctNEfx96IQ6KhLqKoEAu
-	 jXwH1y58txN4aRjM190M2s3jLDEg5PTBSYWzT+PLQpn4uo0wd5ozwktiAajZHc4yHhbEr
-	 vzwPbOnDJuz+JuuFIMX27OU96i1caUiLitWASbbXodeHZ9cux1SNX5e38RNskV3UIvg==
+	t=1795306154;
+	b=n4L8YkL+2eeHEiAn5ZY7ojIBi7D/JO1fEL8uDHwA41wJMoWYKnBhIB65q77xi3VBiuZV
+	 jHA2yLYb8BNMB/f7O+5cA4VzwQO+kEpVbNVK5gHXvAZD7uHK3jNOzdZskgzVdX8S+k3ia
+	 VN93cMRw0R5OIqGt8KJezMqufTTCFYvFCtNehwbtzaecQVdFwvRLEhYSPdilR4nYu+xos
+	 5A76ZP3IO30GSkAZnzfCf9Q/Eo7UCfcFJVu170KqU/fs+51071Yi2kg8iRLNY2YDBeY7B
+	 FyJECUtD+627P9kzDT0kcpb+GyUiSktoWhGHl9TWwRJ7cjWYdg/pIFn7N7GrxZoUQmw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795276875;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:Cc:
-	 Subject:Message-ID:References:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To;
-	bh=8XYYzlsh0f9rm3uChWU1Gi4MrlVoK3IXaYdzy7oKnec=;
-	b=c7Noo0E5xG6d13jasr3UwNdRWSAplANSNHgeMjap/vr/TiZU+P73Kz2qHsNVPW6NPccm
-	 WjXpW6chKzwumRaAwRTuBVCgITWdXagMtH5j5CVOHdsFkd248LJZEJrM4MdTRHY0ABqOb
-	 n6d0yemy32sxtJZw7vyZ3lqlgbSIOijAJj7bdMNHY3R6AE0N7aA9GYQGAa8X2DNYKAkB+
-	 hhUE3OfMTjzG4MbCo9OX8uxu2IhJQ/pgl+0gkH0HXhIvjsUopH00k9CTq40mx/Y5iX8Iz
-	 D7gLHXgV0EWWwCjbeV1NMhXCYpvf4pdFm1TbNj6E/ZwOhHIujq/mDE2TjxMfyKuAxrQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795306154;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=m+aU85cIm+C4zcua0cgiJZNThrvCIO+uOHsPRDd+6Js=;
+	b=0IyuA9dxTrPPNviSlr7PkgjF8aSPB5GNV5OPNZMaHzjyyszo9E4KLTkFX+N43Fkp+A6g
+	 ZIQ5gJv2o8YF+f3LLE//tKcPWpyREJoArfGrydGtaw8s0Y4qJf6b6nK6Xug1A+77vSCY+
+	 ZJF3t3H8rnU7zXAHW/MpBvMK/E4KKe/lSfi49BVqZPV8zgy11rghETqX5cP1IREpkK9OQ
+	 I3NH34feYgC+jQ71hdF02SYXEQEZKYTPWuMAndNEWpsMUQ/Dg9ewkZzfUjrtxSiTr91CY
+	 nVtouxwi0k5ysTA6q7HoEevxsfaQrktAw4vDaqdf8MEBiGDohe137BHOGXp4H4p0MFQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=vozeler.com;
-	spf=pass smtp.mailfrom=vozeler.com;
-	dkim=pass header.d=vozeler.com header.i=@vozeler.com header.a=rsa-sha256 header.s=max-2024-2 header.b=bLPy87fz;
-	arc=none smtp.remote-ip=80.69.43.37
-Received: from imap.hinterhof.net (imap.hinterhof.net [80.69.43.37])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=uPs1eFKA;
+	arc=none smtp.remote-ip=209.85.221.49
+Received: from mail-wr1-f49.google.com (mail-wr1-f49.google.com [209.85.221.49])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72ACA606A330;
-	Sat, 21 Nov 2026 16:01:12 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 72ACA606A330
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=vozeler.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=vozeler.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 236BE606A320
+	for <linux-nfs@vger.kernel.org>; Sun, 22 Nov 2026 00:09:14 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 236BE606A320
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=vozeler.com header.i=@vozeler.com header.a=rsa-sha256 header.s=max-2024-2 header.b=bLPy87fz
-Received: from dp.vpn.hinterhof.net (i59F45518.versanet.de [89.244.85.24])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange x25519)
-	(Client CN "x201t.vpn.hinterhof.net", Issuer "Max Vozeler" (not verified))
-	by imap.hinterhof.net (Postfix) with ESMTPS id C93098FB862;
-	Sat, 21 Nov 2026 16:01:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=vozeler.com;
-	s=max-2024-2; t=1795276863;
-	bh=HZ/nux6waLNVqMFB19TuqLUpFYE8MBoK+35ghV3BCb8=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=bLPy87fzLAZvA5+3BBFKQrEVf9Xs446er/eldHgEUX2v799dz/NlYkZ2J9yH4C3+C
-	 58NJpHC+tCzJetqdZQ8Qtf+xcfbJHOV7SnwahCmPExG+wNQTYyp9Fu0qogevADF5OG
-	 FQnbQ044AtOgd1wcR3LzAvxBy93b3dP08AJzCKxSZlPMoRGw2SuHm7HodnMYvwOsXa
-	 +UpYNzrl83mFEOvubQp4kheb88WnMMkgZG+CMVIP+3IRaNPQTdX/nY9ySxFVJzaYzZ
-	 3OtkkZ5hdRwLzT1MgE+OPPWJoOj6xTtxCPWuB/Kkfp3VyuWWTgktNlZvbDbbu4d+HW
-	 L533VvkkGlZ4A==
-Received: by dp.vpn.hinterhof.net (Postfix, from userid 1000)
-	id 7475926018A; Sat, 21 Nov 2026 17:01:03 +0100 (CET)
-Date: Sat, 21 Nov 2026 17:01:03 +0100
-From: Max Vozeler <max@vozeler.com>
-To: Sasha Levin <sashal@kernel.org>, Chuck Lever <cel@kernel.org>,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	Chris Mason <mason@kernel.org>, Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org, stable@vger.kernel.org,
-	regressions@lists.linux.dev
-Subject: Re: [Regression linux-6.1.y]: NFSv4 server: sec=krb5p mount fails
- with EIO in 6.1.192
-Message-ID: <awHAP3VW5BgSI3py@dp.vpn.hinterhof.net>
-References: <awFyZbQE8pDyOxUy@dp.vpn.hinterhof.net>
- <2026-11-21-1-daily-reply-0001@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=uPs1eFKA
+Received: by mail-wr1-f49.google.com with SMTP id ffacd0b85a97d-48dee593f18so1963704f8f.3
+        for <linux-nfs@vger.kernel.org>; Sat, 21 Nov 2026 16:09:13 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795306152; x=1795910952; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=m+aU85cIm+C4zcua0cgiJZNThrvCIO+uOHsPRDd+6Js=;
+        b=uPs1eFKARZ3CMN/dT8oiRSxugGoFsYDdKXUnYIxGeix5KMAnxe4Q/d3FUpwvXWQNDW
+         o3jCvaS8IC75goOsIwb2FpTZGzUiWy+pD/MtACLf4+8QxBVD1zUb/CcM10TR+oe7hIC9
+         ju7ZcTGtcQjR3mityRZLNrZ/e9JBOUbyO3B5/RTwvvo9luBkMORWvPlVla22R7BogrFZ
+         HP9hMHhopm0Wdj5qdfeTfiAo6V158aCiuK7tgveO6P9LdGfRfXXr6qiA6kvyFiQQ6kN6
+         rFHku0ETJBqZYY8cG6bhmTTz4YY9ztpesuz0kc57HvDPn26dQ8CY/N7rAhgU5MWJTDT4
+         9x0A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795306152; x=1795910952;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=m+aU85cIm+C4zcua0cgiJZNThrvCIO+uOHsPRDd+6Js=;
+        b=QRBn4sFdPduBg7i8HRRDyT/NgsU6viNtu3CeGcBVo1JIdNhQPTEbvatuW9CEg6XgFf
+         qzlnTjvURiqT5ZFWlx2qDh2Cfpxahbat/2BoBgJaNWOm3tKBHRGQNi2eiWQs8P19Hmi7
+         5aOpaM2L9hviWShtYeUp1GoXHDBrlVUZD00dVtPV8t95TocpqXaxlSIiFBgMQzshJ1a2
+         AaaOhas/QkceH/Tt6AtOy5qBPhGdjLNvTemFtSR4mgzcmer597vsDaIV1Mk8W2XJAHgI
+         hadfH3HnHN+UL58RUUq4Xwk3cfhyy6viB8oLFhC5ugZwxdgvqSM72PKWUb9bJ2IUIpd9
+         sSIg==
+X-Forwarded-Encrypted: i=1; AL+hErHIBE1Y4Kvw776L910Rev902v8ZdklGV0b13V4zAZfwY9xFzKjGs4GSrqfXkk7/FFTd57wT71RCksc=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+tcCXOVBHxYCOcBwHh9RGbHiyQgfguoIdSOVg1KOeavLVzN68p
+	nCYtAa+okj0R/lItUGK/88NaZsFQvt0FTQB65v544AqZOnaR3o+DwqKg
+X-Gm-Gg: AZFdTZfH5BHsR7dcYPWP+t7C6KDyRMi5AK4cfEqal8bwEIenAX6ZNWlAmmfTJ8kB272
+	ZjnTPVOM90wRcyOiW52R00PcCL6f51nWDnCme+Qx1R3ZVn8qJCuJ6TK2p7ZrzLe2On3Kx/cW40w
+	7ZrJA386Hi3cuTyAxWEenNMuujHoR+/O7m8KO0u2RaX4xLOuYlS+qZ6e4ms6w2i75doGSACJrf7
+	PZyIGJ5tiMRRsqBVqTtnPNo3Y7uRwNAmW5wAfCQbMqUR9Kb7aGrdQHXgf0mbGIT3sXc0jVS69c8
+	+OVj6SlVYlrdxPA9i7h0aw6rpmrY99lPOKuyht8UgqVY9p7einjshXa/Z4YCd8OazGhETgikXKr
+	025NAUWwOWePfm5ybP4ArgLOFwaIyLHpeCyHSwDUVi3fS1qYOS5K8RdtW7nZb9GG+9+a43UHfP/
+	vgxIcJl0AyXz5ryPupvEUthFX9UyyLVxQjzkIeCNNPb6skG8LsckAomsF4rhwYt6JRce5WdR3+B
+	aUNfxUbvz6N+aIezmaprD4TBJzWF75PxAwCjGnimc2kWfBAIM5taR766i8gLLB/eN9OflB4N+72
+	h39oqbn9Gx193X/SivwCUlNNBw==
+X-Received: by 2002:adf:e011:0:10b0:48d:f99d:a0d2 with SMTP id ffacd0b85a97d-4abb2168f53mr10514425f8f.15.1795306152315;
+        Sat, 21 Nov 2026 16:09:12 -0800 (PST)
+Received: from infinity ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4ab5ffcad11sm13461872f8f.0.2026.11.21.16.09.09
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 21 Nov 2026 16:09:10 -0800 (PST)
+From: koraynilay <koray.fra@gmail.com>
+To: Namjae Jeon <linkinjeon@kernel.org>,
+	Hyunchul Lee <hyc.lee@gmail.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>
+Cc: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	"Darrick J . Wong" <djwong@kernel.org>,
+	Andrey Albershteyn <aalbersh@kernel.org>,
+	Amir Goldstein <amir73il@gmail.com>,
+	=?UTF-8?q?Pali=20Roh=C3=A1r?= <pali@kernel.org>,
+	Lauri Gates <lauri.gates@gmail.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <dgc@kernel.org>,
+	linux-btrfs@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	ntfs@lists.linux.dev,
+	linux-nfs@vger.kernel.org,
+	linux-api@vger.kernel.org,
+	koraynilay <koray.fra@gmail.com>
+Subject: [PATCH 0/3] Add f*_xflags_{rw,ro}_mask flags to the fileattr API
+Date: Sun, 22 Nov 2026 01:08:53 +0100
+Message-ID: <20261122000856.536902-1-koray.fra@gmail.com>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -72,34 +113,67 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <2026-11-21-1-daily-reply-0001@kernel.org>
+Content-Transfer-Encoding: 8bit
 
-On Sat, Nov 21, 2026 at 10:27:29AM -0500, Sasha Levin wrote:
-> > Reproduced with vanilla 6.1.191 and 6.1.192
-> >
-> > Good: 6.1.190
-> > Bad: 6.1.191, 6.1.192
-> 
-> This looks like 82cf21374fb7 ("SUNRPC: Convert unwrap_priv_data() to use
-> xdr_stream"), which went into 6.1.191 as a prerequisite of 2188232509f1
+This is a follow up patch series stemmed from [1] and [2], splitting the
+_mask change for the fileattr API into its own separate patch.
 
-That matches my bisect result, it points to the same commit.
+The first patch is a preparatory patch so that the code in the patch
+after can be formatted better.
 
-> ("SUNRPC: svcauth_gss: enforce krb5 token minimum length"). On 6.1,
-> nfsd_dispatch() still re-initializes the decode stream from the start of
-> head[0], so after the conversion a krb5p call is decoded starting at the length
-> and sequence number words instead of the arguments. krb5i isn't affected
-> because its path wasn't converted on 6.1.
->
-> I've reverted both for the next 6.1 release and re-applied only the token
-> length check on top of the old unwrap code.
-> 
-> Could you check that 6.1.192 with 2188232509f1 and then 82cf21374fb7 reverted
-> fixes krb5p for you?
+The second patch is the actual implementation, which introduces:
+- fa_xflags_{rw,ro}_mask fields to struct file_attr
+- fsx_xflags_{rw,ro}_mask fields and has_masks selector to struct file_kattr
 
-It does indeed. 6.1.192 with those two reverted works fine.
+These masks have the following semantics:
+- rw_mask:
+  * for filesystems: advertise which xflags they support changing
+  * for userspace: specify which xflags it wants to modify
+- ro_mask:
+  * for filesystems: advertise which xflags they support only reading
+  * for userspace: ignored
 
-Thanks!
-Max
+(ro_mask for userspace was also proposed as a "verification mask"[3] but
+I left out that semantic to keep this patch series more contained, and
+can be added later if needed.)
+
+This allows userspace to not have to do a RMW cycle when using the
+file_[gs]etattr() syscalls, avoiding possible race conditions and
+simplifying their usage.
+
+Patch 2/3 also introduces the missing FS_XFLAG_PROJID flag so that
+programs like chattr can leverage the new mask API.
+FS_XFLAG_PROJID is kept out of the legacy FS_XFLAG_MASK and so it's
+defined as part of a new FS_FILE_ATTR_XFLAGS_MASK group of xflags that
+will be used moving forward for any new xflag (like the one proposed in [2]).
+
+Patch 3/3 converts fs/ntfs to this new API, to show how it can benefit
+filesystem drivers too.
+
+The series has been tested across NTFS, ext4 (with project quotas), XFS
+(project quotas and extent size hints), and Btrfs.
+
+Thanks,
+koraynilay
+
+[1]: https://lore.kernel.org/CAOQ4uxg8aVcWyNiFDk8djdn-M3xJcu_7-kRxVq9jjFsbcGp1ew@mail.gmail.com/
+[2]: https://lore.kernel.org/CAOQ4uxjVQ9cjV=_jBjQtNg9zCuWUEJT9KNYMKV+1jwBkHen5OA@mail.gmail.com/
+[3]: https://lore.kernel.org/CAOQ4uxjCN-ekd18R-soD8tkGFnXjK0S1VdSNhq9b3Ev6y8K9jQ@mail.gmail.com/
+
+koraynilay (3):
+  vfs: use goto out on error in vfs_fileattr_set()
+  vfs: add xflags mask to fileattr API
+  ntfs: switch to the new xflags fileattr API
+
+ fs/file_attr.c           | 179 ++++++++++++++++++++++++++++++++-------
+ fs/ntfs/file.c           |  63 +++++++-------
+ include/linux/fileattr.h |  13 ++-
+ include/uapi/linux/fs.h  |   9 +-
+ 4 files changed, 197 insertions(+), 67 deletions(-)
+
+
+base-commit: 3857587d9d6fa44d40d1c73bde6a39f6f7a5216c
+prerequisite-patch-id: 7af19117a27af492e3e525774310fb3a76700ffa
+-- 
+2.56.0
+
