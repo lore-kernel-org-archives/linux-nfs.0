@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795438765;
-	b=z2GM6YF5s+Sf9hsgDrs/tm/bwMObbGv3ciHzIcslqbqzDKKlVjHNUeWDMRh36KjpW6oY
-	 TyrqCiG2gktPqGRocUAwz4TuGYSHbuUQFdEhZpuWpYin/QeS/UXk37MEQK4SLv1topRG7
-	 jfXdxq2E6Ol9gwzFuejUdAgBHRUm/zJxKaJAT5xnitNBjYohr9UzDlxgsrxm2FhS5Fr1Q
-	 DitssJ42Eoeq4OSe2g2x5mXraG+mN3M83HQKRYAY+NoSNnXtdt/3xr87o+b7mavdtLXAb
-	 xRDD2nms6VeyWXihq3axcPm2hqQWVpsxjZM5ftWtLZ1H9YV8Rb/v6K5q5+VE5LGZo0w==
+	t=1795438766;
+	b=SKNgvlMnQUkI24373Z2iFdcG6wCHP9NR2HL0zIWANORwl1TxvCbTI2D2ZON4hUvgzNmP
+	 ZskmFBLMJaJKsrGarMqSU+JeXM3YpBkK8VfLFLtQNnXhxQlsFgz2mFA6pYlmWbBq4Wech
+	 cGpGfPegMu5wDnSMyTY6KBF/Cd3nNylydW+ZqTPYfTeKUvHvPLnw3tmArArcq7bERleoW
+	 eFZgiryGFoqjtRi2apsm8SX+FU/CXX285E8Pa+alebOBzsp0esEb5mPKFISfY1Vp4b/C1
+	 /tblvyLnTJnhlBq28RuAj0OOtteyiDKiF62KU2PjBJ7pDRyrnegVBBPOQAK5KNNovUQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795438765;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795438766;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=3dcIJsldixuW5oIi/bQJmNzqprHHDcUhGFZj4Bm9sCA=;
-	b=L15Bhv3tB0U9Lufoh5Tdj37rNKS+bbSFjHcKOA9jc0VmNlDK7k1ykQY9JjreT09TuNeq
-	 33viw4ooyQ6Kph0p+TajavhyLM6R/g4xcj7klPtNX3+kO2t64PDY6FlJ5tquwtFmP+pr/
-	 2OdlHBsAAYnTABUJw+JlGOPGRzXhplMJIM0Mo+RyqYvZYq32HEYzqzMUSCit4/ajjdg9v
-	 phTvILgUfpGx8N0B9hRb7N0rg7RnP72+/RCRnUf11nRRWGbJCRlGDMXPaJRY7wbsRDS0y
-	 pjV3DoJP7yEez70DDdBOMHo5I0LLaBxhe1ZNpszxKZzMYU25V4szRk5QQYjxO8w2a9w==
+	bh=o7VUWAvWtX5sGVrRow+zG01aPrQuOXpmeRpIVAuay58=;
+	b=lxD6j+G7264vATC/w9qViTVJMSFBYY+4jQeGhRU+ZKPVbUSFk79dIENmQjyecgYWbgtR
+	 EcaNKC12Q/KWjp7rut2j7G5xbGVjdXNL1ogGN/djjT1qyFk6xs7zxgcVmoQrMis922eXS
+	 ng/cskH1R5Yt9cFcBWXuNGhjP4sL7nfyqjwwwV9rSQRxsyHuUpiCpjC/h2mvHuGG7KTQd
+	 JhscssFV9zftHIxbkiLsPjF7zRwVnwImtrk19zpUAEOgOcpHc6icJCiHYxCDYVRXND8Pe
+	 WxudDSRv7tNCvK1WjhlH1w2+xSHS9y91fd7kEFLILlYo2bQUUkVZGs7p2FjUbYeR62Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kmIf1nwP;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=O6wrHaUx;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F182E606A33B;
-	Mon, 23 Nov 2026 12:59:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DCFF606A6A3;
+	Mon, 23 Nov 2026 12:59:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=kmIf1nwP
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8E171F000C6;
-	Mon, 23 Nov 2026 12:59:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=O6wrHaUx
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 01FD81F0089E;
+	Mon, 23 Nov 2026 12:59:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795438764;
-	bh=3dcIJsldixuW5oIi/bQJmNzqprHHDcUhGFZj4Bm9sCA=;
+	s=k20260515; t=1795438765;
+	bh=o7VUWAvWtX5sGVrRow+zG01aPrQuOXpmeRpIVAuay58=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=kmIf1nwPvx24uQlxoIToMDeF/hnkQbqo3CRBOdtEorLYw9fEp7j3k/1/xKVvUw8dl
-	 F6/Dle+fGasgXl11a+J/bN4882m3DdApRDAlqT+20PjN4TPl2ytQA/tYzy3BGCTzWz
-	 sdcjQbNHMfBWhJq3IY5Uaio4j0w+rd8AEsDgDNQ+BwoDFo5U3x7cAoBz9Q/nsT6We7
-	 N431eITiDfEyhJlpPVKGee0wipmM+87Cs7jkAc9DKgd7JCw4Co7vFQPUeSXmxx02PS
-	 69IFMqY0khbVAGo+PJmqYfnuDM9gyV5K5L3eBtutsOISvUAQ2go2hB93J8bJdkbyeZ
-	 +SZU0jn7f++mw==
+	b=O6wrHaUx/wJ6kUp6a6KJR3VaQMkn3Y86u1AINx9WrZApLm0DOCZqkA9JcwFdVprk5
+	 WV/Y2omZMwyNcDY+n5ANsOuut630frAQjwK3Ui7kUtrEcIu/KjqFaJLF7ppiI6XDj1
+	 2oy0EddbTnCRnBp6f5H1HVUqjHjqJnEJQGJ6/gpjY+rZxcLqj2cKoCU3ALO8H+lxEN
+	 g9+hoO2Cf6GDPDy4H9EfW7CXL2FiiHQD3wI66lFashtqcHvPm0Zig7MUwJvbMR1Ks5
+	 jm8+MNi+4vAUa2XAFp1IQktGgpZV1KR1UxnJzBrTPB7RQNvpdvJVyYoyqocQXYHO/S
+	 L91AfltV2N/ow==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 23 Nov 2026 04:59:07 -0800
-Subject: [PATCH v2 04/11] nfsd: don't grant write delegations to NFSv4.0
- clients on CLAIM_PREVIOUS
+Date: Mon, 23 Nov 2026 04:59:08 -0800
+Subject: [PATCH v2 05/11] nfsd: set ctime when a SETATTR with delegated
+ times changes other attributes
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-delegts-fixes-v2-4-960ce0fb2fed@kernel.org>
+Message-Id: <20261123-delegts-fixes-v2-5-960ce0fb2fed@kernel.org>
 References: <20261123-delegts-fixes-v2-0-960ce0fb2fed@kernel.org>
 In-Reply-To: <20261123-delegts-fixes-v2-0-960ce0fb2fed@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -65,51 +65,58 @@ Cc: =?utf-8?q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>,
  linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1119; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=dCeBuyX4iAFjFAe6/Qhj51iL8hiks5cI+UbCd6LamnA=;
- b=kA0DAAoBAA5oQRlWghUByyZiAGsEOKSg/UxsbsZ8EUsV/wO7A7Orl0dXpdtERCYCZ0k/NrEI+
- YkCMwQAAQoAHRYhBEvA17JEcbKhhOr10wAOaEEZVoIVBQJrBDikAAoJEAAOaEEZVoIVGv8P/1TT
- Y8WZv9WpP3UFGajbYNtTDLrThh9uBnuYi4ZooHi28JqBWWKx/BhLdDPcxSVfngE1fDKza/rqxXE
- Z+A4LivM2VSf4JuAwW3BWGjlHl+8ZVbDEyy7cBKU7S4/QCBcljZrXF1orejNuZmfq8ezww3yykn
- hBA7DliOW6qqm67zBiFu+WY/YJf5F9dJYkOsDAXZnQwG+EpyPOKFPpFDlsJLRxRzFheeqya2zna
- wcUJRx3F3ILnCHRwjuY2G4I5sA22vy5xpjoeLn3YoR6nWXX9KwQ6/D3X8OyvJpSPG1VkCdP45CN
- bcxt/Lb4xOADvr5UIYvwQw4KUMbGh3kJFGTRcPj4dlssR8Sh9hHzTVoPIlgILJWWEd1hMKoMI40
- VvNjUAMDsYA6Qkb9aMwko4kt2YId+i9EP+PhWQG5jRjIxYWQwBHajFmWihbpwIjU584pETG+KAZ
- HVLCss4DV5PYK2KFIw6ZabkPW93WuovaMzfZ1daWdrfF3ZEWH15tRo+6pjXpVHiQsAMQ+NAcTnQ
- 0Q+in24vYNnlOTQKN+8OFyDV84/+6ewPW1FQ8sVQ18sW4e3+9z53Ib37IuLSF7XbBmAEhIRoBWV
- CuClGmCZ4bE3gjiCMt5aD4XjSEK9AXC02Mrs7+GkM+cHfz8CLvg5ZDeu58JuGqm8cx9c/abqvwr
- gp8Iw
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1594; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=h8ugCBOHBA0RP/swXkvD2da7g0RgbCp5NS6vZC524/w=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBrBDil9AJxzi7TK91lCCcPEisEqebkU34zTG3SD
+ GCDjIEANQmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCawQ4pQAKCRAADmhBGVaC
+ FVdnEACRsObR13pS52TrIaN/5r1xFbbMb83GcGZmwaZD8FZVsPBakA1T4yfZezgTQex8f0KYCqL
+ T1Gc5xBXUcotzRBzP7DAc1ElZdFDAYhtFtmO5v0lHYNMVZt9SNg20zXf5A/b6fpq3ERo6PV9M0a
+ 0DjiSpmrg/yCynrF0OhTSX/GlZOaxu2uQV9I8MTq3SBSslIk1f0/QrDdr2DS5ey429wex8CTJ/S
+ qjrpJgw9+O41DPoQsPAxjH+WZ7++KFstEQsJNqP1ikgvsUABUbl5TMjVCcl2AzR2iYPhCAqx5zv
+ 77lLRYFEcdGQClp+IKutknkArEV6pi4EohYway/yhLCSZnv0bsfU+qCp9jGG0uSI7Mas0dXbrx7
+ 4BoI6L92fWuRM/OctHoh/uazGOKrZ6/0slS4cpTJAftJ/GjF+18192JJVU5dxIH80MtJJBCA/pt
+ VpbL9FFTV/yug+LqTxkEAbHTNb/J2jFUq1T28a3vKrNVwEKA/CKfGOIFAwR0N256fEhy1+2QBkf
+ X2OQr84CJN43+YqSJ5wgfgiHxzrEaCPDqXpe5xTFczraOnjHjhOWQaqKDEPhGUXKmSlcr1V/1mT
+ EoOSUdxZuyxW4N8KxjJbJXsmzavEQasJYU15QfIQumR/7TsakNu7SQmFU9yGmLg+VQxUuzmGcp2
+ Z6r2IM6baMAereg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfs4_open_delegation() refuses delegations for NFSv4.0 write opens on
-CLAIM_NULL and CLAIM_FH, as its comment explains, but CLAIM_PREVIOUS
-skips the check. An NFSv4.0 client reclaiming a write open during grace
-can therefore get a write delegation, and NFSD can never complete a
-GETATTR that the client sends before DELEGRETURN in the same compound.
+__nfsd_setattr() adds ATTR_CTIME only when ATTR_DELEG is clear, to keep
+a delegated atime-only update from moving ctime. But ATTR_DELEG is set
+for the whole iattr, so a holder's chmod or chown sent along with a
+delegated atime changes the mode or owner without updating ctime.
 
-Apply the same check to CLAIM_PREVIOUS.
+Add ATTR_CTIME unless the request is a delegated atime-only update. A
+delegated mtime whose ctime fails vetting now moves ctime to the current
+time instead of leaving ctime alone.
 
-Fixes: 1d3dd1d56ce8 ("NFSD: Enable write delegation support")
+Fixes: f9a348e0de19 ("nfsd: don't set the ctime on delegated atime updates")
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/nfsd/vfs.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5c2151b329c4..4b28553efc8d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7533,6 +7533,9 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 	open->op_recall = false;
- 	switch (open->op_claim_type) {
- 		case NFS4_OPEN_CLAIM_PREVIOUS:
-+			if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE &&
-+			    clp->cl_minorversion == 0)
-+				goto out_no_deleg;
- 			if (!cb_up)
- 				open->op_recall = true;
- 			break;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 4a5674e583cc..7bc251d55c3c 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -513,10 +513,12 @@ static int __nfsd_setattr(struct dentry *dentry, struct iattr *iap)
+ 	/*
+ 	 * If ATTR_DELEG is set, then this is an update from a client that
+ 	 * holds a delegation. If this is an update for only the atime, the
+-	 * ctime should not be changed. If the update contains the mtime
+-	 * too, then ATTR_CTIME should already be set.
++	 * ctime should not be changed. Any other attribute change, such as
++	 * a mode or owner change sent along with a delegated atime, must
++	 * update the ctime.
+ 	 */
+-	if (!(iap->ia_valid & ATTR_DELEG))
++	if (!(iap->ia_valid & ATTR_DELEG) ||
++	    (iap->ia_valid & ~(ATTR_DELEG | ATTR_ATIME | ATTR_ATIME_SET)))
+ 		iap->ia_valid |= ATTR_CTIME;
+ 
+ 	return notify_change(&nop_mnt_idmap, dentry, iap, NULL);
 
 -- 
 2.56.1
