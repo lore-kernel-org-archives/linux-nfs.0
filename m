@@ -1,67 +1,73 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=46.4.95.116
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795451218;
-	b=GzlLxY9Wlr1w2f5x/edgLwgjSA39pQTn8XEczjoeZNCHJJVAK+EmthTKIAQT6qK7woY4
-	 tWbXTcbecVpTATEKWwzslATWrX0JcUogHggd+0fslmtZSIXQ28lXgsPzzk96C1IYRvsXI
-	 B2xwrCpCV/XDFwdnMYuVv47KBGizYUi24RoEkUYjVn0yyUW98Kjk2TS+5v8KuLpAWNYAD
-	 AQ+YyR/G3OLoby9zoUcXM+IFtuw+9biUk9zrg7g4WUlbj5KlDDeUIpvdoZO/6156TXqb4
-	 MQBjoVr7J10ScU447wFaRmE1fy4DmEe2qAb2wuCoE+4fHDBcuyz3rTg79nPrAGzITjQ==
+	t=1795456001;
+	b=t7mczSO+jYEtJm/u6aYrsHedxqsMNwAphA5B0Dainn7TT2P76OYZatQX5/zMN1BgMULG
+	 8oosOho5gbsmZPGm7WExBjNhFC/H+aEBHL/XfSgBKPWtDBlQ+LJFBLammgyJs3uvmzALQ
+	 2fBG+O9b+LYy2wrteGRMEsxyeWKbdiT+dM0vcEoLcKnPbwz0/eWYQSsuqWj7r6ZA8tiC1
+	 J1yeoSCNd0LIMIZg6lyBr+/FLTo+Epcfp1fz8YONEPIKgaffDCbiZIZZ6/K/futGjE5bQ
+	 +gUxN+f2YOivaRHWmcOKqcLPyxe8RgZURrm+FoDuMVHseY05RRu9a4A6pW36ITBWxaw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795451218;
-	h=DMARC-Filter:Received:DKIM-Signature:Received:Date:From:To:cc:
-	 Subject:In-Reply-To:Message-ID:References:MIME-Version:Content-Type;
-	bh=PHV6lBrqCPczsVQk1+oW7kxLGeOEGRqD59BaxpJ84GI=;
-	b=Pvk8rSSDV0LvbTOxk3yepQ7I46qBgPEvfrWEpkd+mJltxNdjyaOE857z1qwX9SNiWCLq
-	 JYKSHv4W/1foUeq+c5KmQJ5gZIXRBmJ8tocbOiInfKeNeW/Zxf3JsNKbQkcaCHbHqXRpH
-	 gzUgbLUX7w4xnrLBdHGIpEkY3ZDDVCMHQZd6KXUWs0yNpZ4ijym9VMvxkjzuhXburhq2n
-	 5j+PQrBN0dX4NjzvosN1eVvGgA0P8wLGxorZcg7Mu0bcCErE6avW/YfYwhxgChAyXBU4L
-	 hjfZ422pDBUh2GLiDzo+Sdii3Y2bSz+sXCtyjUnhfSpwG4wYWJkPrdtAqMc+GRCT6Ag==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795456001;
+	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
+	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
+	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
+	 References:Subject:Content-Type:Content-Transfer-Encoding;
+	bh=4nLP39eq4bHx3bOXA1PI54TRX3Ud7vwzTs+mgeRzazU=;
+	b=SKSKS+n1qUMb3c3eU5UrbUJx/N0VMHBxN3RixkgJ0K7YA9Lsgdcz2xZAqfR7UGAJYk1a
+	 traDHifneUWbl6f1Jk5aIerQaO878nfzimReYF7j8EBZRsDT4pGbl2tR0SjztnYt/u2AI
+	 72m1/pxj1BMm3VHIrs92cJU+Ra6qRTIHWdrQKN8I4cb+FtwwL0m6wJWEAT5DmGlHSxKun
+	 CkcCtw+FRktLU87GlscxRKMihoYm+Nub4BopW73RSeXT+AYH20ikYIn1d5RYVBW6NI0o2
+	 AdePVMmYkZMVLv2kHxmm78Qivq7fhUcdLkmgmv1WYXAYl14Q2EreoFf29181lc3LmjA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=dolda2000.com;
-	spf=none smtp.mailfrom=dolda2000.com;
-	dkim=pass header.d=dolda2000.com header.i=@dolda2000.com header.a=rsa-sha256 header.s=dolda header.b=EFSjRk1k;
-	arc=none smtp.remote-ip=46.4.95.116
-Received: from ansgar.seatribe.se (ansgar.seatribe.se [46.4.95.116])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KkM0EjlE;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange ECDHE (prime256v1) server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4045606A31E;
-	Mon, 23 Nov 2026 16:26:56 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E4045606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=dolda2000.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=dolda2000.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE530606A31A
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 17:46:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=dolda2000.com header.i=@dolda2000.com header.a=rsa-sha256 header.s=dolda header.b=EFSjRk1k
-Received: from [2001:9b1:40cc:0:ffff:e9ff:2d3f:febd] (helo=nerv.dolda2000.com)
-	by ansgar.seatribe.se with esmtps  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-	(Exim 4.96)
-	(envelope-from <fredrik@dolda2000.com>)
-	id 1xVWsZ-0004YM-02;
-	Mon, 23 Nov 2026 17:26:55 +0100
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=dolda2000.com;
-	s=dolda; t=1795451214;
-	bh=b8WnSVWZR86BAJmjP2w0UP9N+pVWyNW/CB71luTA9wY=;
-	h=Date:From:To:cc:Subject:In-Reply-To:References:From;
-	b=EFSjRk1kHYIsJI8KVQWXT57l8pocxXSb67XbbUZcBwPmApMN6txuO13ayKxs8ycAv
-	 OFu77g7Coka662KmEeKSJvY8Lz4kHJDTgqd71DPSmkQAmUtenjPvUC0/CjYo9tYKLq
-	 tepf3vIm2VmwXpFOkicst0wcSoS5V5Tsdy6uWNee7XO2y8Qv/ydk1+PIxcuoLsz7mn
-	 HlgU7zIOzxLYDzZbOzoAV5JXgFTvxC/cOFWZY0QMNwmHOwPHtq7QxX+5y7Wa9qozSD
-	 J2osTt8eCUx0DLU15iNsiD3LKCOncRVXcmstuJrymEW8w3U/f5EDIdkvVa+u1/F+oj
-	 Uat/DUjac3ASw==
-Received: from shack.dolda2000.com (shack.dolda2000.com [192.168.1.187])
-	(authenticated bits=0)
-	by nerv.dolda2000.com (8.18.1/8.18.1/Debian-6) with ESMTPSA id 6ANGQr1S011770
-	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NO);
-	Mon, 23 Nov 2026 17:26:53 +0100
-Date: Mon, 23 Nov 2026 17:26:53 +0100 (CET)
-From: Fredrik Tolf <fredrik@dolda2000.com>
-To: Chuck Lever <cel@kernel.org>
-cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Make svcauth_gss sequence-number window size
- tunable
-In-Reply-To: <9f8f700f-a10f-4aff-a385-4300c8164f1b@app.fastmail.com>
-Message-ID: <a09eb43b-3078-d6e8-1529-8aee1eb302b0@dolda2000.com>
-References: <20261123005648.29562-1-fredrik@dolda2000.com> <9f8f700f-a10f-4aff-a385-4300c8164f1b@app.fastmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=KkM0EjlE
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 07CC61F000E1;
+	Mon, 23 Nov 2026 17:46:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795456000;
+	bh=4nLP39eq4bHx3bOXA1PI54TRX3Ud7vwzTs+mgeRzazU=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=KkM0EjlESvm+Edyzj7LJoeMpi9b6WHYmhMjbtTbfsQI3dlZFyer49WsMtFyxgEUsV
+	 TNuZUSkGEmrF/wjd4thR4wBgPs8oVzM/2CkIisynYDm8wkYzE4DRnH62V3f4C2YagY
+	 8SpfyIL1BjQ3/hUEsfZivxqwdQNsNLLhrs8KVWGwnsIKboBAtV2yDikrPVVLh9K0nB
+	 hml9pvdNa/hmtCesWtYtJxPc74l1mdoILo2WLq98MfHPe4BoS8vsXEuB0W8zoJtffE
+	 wQpkx3nzEldnhiDZ2vpNkvSexFYvJZiJZDX7xGMLAIumtcaBJhChSbSudp14rsq50U
+	 HPU5J9NoA1uiA==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 292C5F40066;
+	Mon, 23 Nov 2026 12:46:39 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Mon, 23 Nov 2026 12:46:39 -0500
+X-ME-Sender: <xms:_3sEa26y3Zom9JuTHz2MTxX8x5SlwRb62v0snfdckuWZgvUbU2fSJQ>
+    <xme:_3sEa6ugqtvQ3r6ngz2D00xoRTxQToXlkXOC3bu8o_jIfSpul_UFIYfQJI-htm8Fc
+    aLwPLkFRrYuf0WXfmVyfqBvUCfy-G5hWDs250wdZPsspJ8WVwZfbPM>
+X-ME-Proxy-Cause: dmFkZTGhIDTy2XP9c312iEESSIo05vch7kJHk91EQe1UDP4iT00cyg4D7Cj4y5mWJswrwB
+    vRlQ0BteOaimzucih9X7eTQuu43Z86w/hIyHk5Vg5tSGJlbRYdkcMLoO5OeYqDjdHRyl5s
+    VpRu3QQXtE/nscjIwz/+09uQsbWr8H/JWMENtPeOGzDW2KrILfHoOIupFm9O8XQ78qVViD
+    N0F+Dzl5VZQk4u+KYuKFJDNo9HbX2Ute50EF5fgDrWTMQqKw/4geE/YqA26oyWXSct3AfR
+    K8srqs/j9pRo8f1L3Cfjf9Q3ikjdSsJgiTDemy1bjfV3y5L0gUBRgGXorP5izrEj9LefpB
+    AObQkgY7331g/HqTP3d9kbJfQnaFRWOCiUrPBKdQO16g3CYbhNMNzFGb0lJbN22uytcyTk
+    1nFbb6Ny87IVVB9P0/bJvp+yMJV9f027uwgxBMEnCEUC8q7CO+IIiM+KKdC1CaGO6DMUDI
+    8bXAK9kc6ELAVEyiMjZNRJQ0G5ahQXQjkfUuWmQnCZFYC7lzfMr99JmkF/QarKaENjwtJb
+    T0JvVGPGSng9cmgDPdxa720D3yMakadNEPWw2pOSF7aqNcXJRJ4AOmBVIuaKSmzwgtmrlG
+    frPIzPedQjk1fcVeqGKxgA6Qg3HH/iJIPfml/ZZUHvgj9cocPewW4Y0eUZQA
+X-ME-Proxy: <xmx:_3sEa6IsjHi9_VkssvT_bCzO7Opc3LeZgioEboW1Y_VHY3z5RK1olg>
+    <xmx:_3sEaylDwvaxZEWY9x7-3py-qZSY1gRFrK7MWLochbMlbMA6zUITAA>
+    <xmx:_3sEa7Zq4NlneI502smGvFhvWFw7lUGJw4ihv-Gm0hy6lVscxVcNgA>
+    <xmx:_3sEa2_aABBRZOY4Ccs_gSvbKiZhEwj4rzDSeVBfXmmv0v3Vbqzhfg>
+    <xmx:_3sEayb0lqgTQHlwdu5Isv8MINPnCRkplzD8WiHO37RFVX_33YtGTmVM>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 0B43B780070; Mon, 23 Nov 2026 12:46:39 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -71,50 +77,47 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII; format=flowed
+X-ThreadId: AkB0n0PsGghc
+Date: Mon, 23 Nov 2026 12:46:17 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jeff Layton" <jlayton@kernel.org>
+Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ "Christian Brauner" <brauner@kernel.org>,
+ =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <73ca8e61-2943-4780-9e6e-dc8c70c8401a@slotpi15m67>
+In-Reply-To: <20261123-delegts-fixes-v2-2-960ce0fb2fed@kernel.org>
+References: <20261123-delegts-fixes-v2-0-960ce0fb2fed@kernel.org>
+ <20261123-delegts-fixes-v2-2-960ce0fb2fed@kernel.org>
+Subject: Re: [PATCH v2 02/11] nfsd: take freeze protection before updating delegation
+ timestamps
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Mon, 23 Nov 2026, Chuck Lever wrote:
-> I don't think this is a SunRPC scheduling problem. Rather it's that the
-> crypto handling sometimes takes a while (and I don't know why that is)
-> and that delays one RPC just enough to trigger the sequence number
-> window check.
+On Mon, Nov 23, 2026, Jeff Layton wrote:
+> +	/*
+> +	 * This function also runs from the laundromat and from NFSD
+> +	 * shutdown. Neither path may wait for a frozen filesystem to
+> +	 * thaw, so leave the times alone while the filesystem is frozen.
+> +	 */
+> +	if (!file_start_write_trylock(f)) {
+> +		nfsd_cmtime_notice(file_inode(f), -EBUSY);
+> +		return;
+> +	}
 
-I think that it is. I reckon that, since nfsd handles requests 
-concurrently, there are no particular ordering guarantees on the sequence 
-number checks. While it's true that the particularly long time that the 
-MIC verification can take seems to be the actual cause of the issue in 
-these cases, I don't think making that go away would be an actual 
-root-cause fix.
+DELEGRETURN reaches this trylock too, through destroy_delegation().
+FMODE_NOCMTIME is already clear by then, so nothing sets mtime and
+ctime afterward. A client that writes under a WRITE_ATTRS_DELEG and
+returns it without a SETATTR of the delegated times, while the
+filesystem is frozen, leaves the file with its pre-delegation times
+after the thaw.
 
-As I mentioned, I considered other heuristic solutions -- one of them was 
-to effectively hold a lock during the MIC+seqnum check, or other 
-mechanisms that would compensate for the time the MIC verification might 
-take, but in the end I didn't consider them technically correct either. 
-Again, since the request processing is concurrent, I reckon that, while 
-much more unlikely, there could be other scheduling issues (ECC/MCE 
-hickups, interrupt storms, &c&c) that could delay a particular nfsd thread 
-from even reaching svcauth_gss_verify_header before the window has already 
-excluded it by the work of other, faster-working threads. A *lot* less 
-likely, yes, but still hard to consider technically correct and fixing 
-the root cause, no?
+The laundromat and shutdown can't wait, but DELEGRETURN runs in an
+nfsd thread, and the WRITEs that dirtied the file already block in
+file_start_write(). Can DELEGRETURN wait for the thaw as well, or
+might it be OK to return NFS4ERR_DELAY in this case?
 
-As I said, in a UDP context, I imagine this wouldn't be a problem, since 
-the failing packet would just be considered lost and retransmitted, but 
-that's not how things happen over TCP. Unless a TCP connection can also be 
-made to just consider such requests lost and having them retransmitted 
-later instead of closing the channel, I imagine the only real root-cause 
-fix is to serialize the GSS verifier checks, so that they happen in TCP 
-stream order, and that seems quite difficult to do given the asynchronous 
-nature of the sunrpc servicing implementation, which is why it comes back 
-to a scheduling problem.
-
-Again, since I considered that problem quite difficult to solve, that's 
-why I suggested this solution in the interim, just because I'm sitting 
-with disconnection storms on my home network that sometimes makes it very 
-difficult to get anything done. ;)
-
-At least that's how I analyzed it, but I'm really not familiar with the 
-NFS/sunrpc code; I'm normally just an ordinary home user of it. Thoughts?
 
 --
-Fredrik Tolf
+Chuck Lever
