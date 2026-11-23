@@ -1,99 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.53
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795428261;
-	b=paYlTnPrYWwJ0Sfkdo5ph4BDHpgcvTnOWxYkj+LSH67xrzctjDIwN79gtUUvHnFbesLM
-	 h8T/lgTz26GzCL5YbpHEEk1MN7cE/jbTcOAnKevFlXmvDoiLkTLcYVhdw1283FZ4ecvBL
-	 7xO7jB++hrSL9KzrjnvCrp6m2yrGgqXvPFusMa1zhYyOOUZNuVhgyQS1vpHeTG0OdEU5O
-	 oaJaJSZ3i2/eNlj1D9KV8grZvpYJT0ZZJw8f+3hel16uE6gEIFiYjkTbUEwl2EidjncTz
-	 AwoJXYXMisnjdZ4EkkJnKirTDC+5EnilGWOF4DoATEFHZ6Dc+XuyF4eCtxGykYQTk4Q==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795428261;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:From:Date:
-	 X-Gm-Features:Message-ID:Subject:To:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=9EtYWA20vHFjk3oSjqw1Yh8niIKJUPjCkmcYE9ME8UU=;
-	b=A89lvpe3MKRJVTYf3fTIMdHB50p9B770SwLm0rwgc6hVScujig2FyJsIODDWp958jy1d
-	 hbb0iApWr/pSvFEx73iZPjJ2DembDzpMCKiZTtdYOtXYG2mxJQroqrFyLgLiiJUQ/7NQy
-	 8MjN3usWa8UMvXahmaPj5waHCxNlMWNFBemWYsQM+bYnZ1ikOeiImWl5EKb/+BGr6GIaA
-	 /kQZA2C1sdr8OSUJGdpbe1vonYLydZ9naC9YMzEo5pCy/VtaPZqknQCd6Ty+xOMsyzE9N
-	 aumTzES1sTORZOOoX/WTcOULep2AFsH5xCGUjPgUnzg4swFINJ/2R+9hLObD0BX2oyg==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=JLzvEwoM;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.53
-Received: from mail-ed1-f53.google.com (mail-ed1-f53.google.com [209.85.208.53])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795438761;
+	b=bmk05kCg49Ie/coRpL/AGlkgJLfZaZoeDA1bE/XXissdaJWuQwNnAy/dUKC/x6vzmDUf
+	 YWfwXu25HqHp5vozxIruLJowwK23v4FaZDsCNcw92JkC31ZFF9LCx/98HG23JeN/jx5QM
+	 ZZtuLFWKS1w5KZOVH96qLOaCy1iW7/KtB7fHQcz3Y09cfOTWAQDJtuF7QA46LP3IXxIOB
+	 qaP1SQSiIAZ46Vkc3Hbb4sio4pe8/MZfpZtf3UVAxDQwL88pAqmWRenvLh4n9JH7U1afA
+	 akryiLS2JyY86XWupgyXT1cA2X0cQPU5HCZhv6T6TMYNjjI18CZsyUn56/riYl+6KhA==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795438761;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=gEWQnguPB7hMdARfJ31ISn8RsG2f0AX2Jn3S+xqhW8w=;
+	b=TW2cptaG2mISn/9ulXzXCTbcYGfM0qQGqWqeGpIMu/eZWn1es3Vy3ktTBPwvFEDNKgeA
+	 RED/vOcEosrBkHeRzOZz/8Dbfk+dl5miPjMcIsYOCnwvTPRGhvvxtcHK49G5sHOopjSMs
+	 92A3ggG3iTmxCeitcLCRaQOTNIf1gn5h7kO3a7tnBbX7dWoaZWM1vQpV2InKR5hPng5vw
+	 tGWUX7UKPH43XKUXrXpgGLNcqhiFobJWUvgHe86ftAXI1sxrQGvADDa22HNtoJJYB2g8l
+	 cRRTyRgCqm7ZY4Ecf3j+V6jXHI8MrhSEJOybxGx79zxRzOQ0hu9NctNa2Ol2OTJlyOw==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hkaipYgG;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4229C606A31E
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 10:04:21 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 4229C606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61B58606A321;
+	Mon, 23 Nov 2026 12:59:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=JLzvEwoM
-Received: by mail-ed1-f53.google.com with SMTP id 4fb4d7f45d1cf-6b8b20b2538so3545192a12.3
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 02:04:21 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795428259; cv=none;
-        d=google.com; s=arc-20260327;
-        b=HaGZm+15a3AWl3p9Ou17a0gb8d0QlRVXc2LXLWZFQ6KXvlkPI3PJbolCnNwlGAWDDK
-         3dA+14F3DvcY5/ArmB0xpzA+x9r2ATAD/zP/QE2PQrl4ehf+XwqC9eHemzXN3/0gGIuE
-         lCxYsG3ghZAiIKiaM7trGgyYit2pmWTj+WEWOw6DwlTy15UcmNmiltpkJYbkycNd8ioN
-         r6L9cyqXFUHebImuNr+GGQZk+mFrRL4fV2t5i5zNhX616VHa5zjkuLiRNGM0JCQDf6lY
-         AtOl05D4X0ekmLXVmomY6NjNah8zPKOXoAmO1QYfeJXpmukHsXzqRLcUFW+UnPyn8M5h
-         5DAQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :mime-version:dkim-signature;
-        bh=9EtYWA20vHFjk3oSjqw1Yh8niIKJUPjCkmcYE9ME8UU=;
-        fh=A3pMOUK00huGibGCZBFsLekFLVbB5hHGKjUNNKwO+5E=;
-        b=X1nYl28/cwnBbuRvsiNzhnKY/uEXl0JmyamhhC0becQJcurmdrQLGsGaaoCsWzCny5
-         lPxHh8/92UzV5afTK165Nhb3YRFHNaf1RG4y5rNEhA2sIdSJNVDZg8OjSR7wpUzJoMup
-         Vw6dEcuLyX4V10QDuWzhLGrrG1NHfkY66lbiPY+c2TOqMnG9zexzWEgbpxQrSXK7xojD
-         6MmRQNiAYBMNXoREURVA4qdugWAq6tyVhpcCP6RNOwzrggD7exBeqhqK44LFB62//9So
-         PBJhE2twbsqh59ShKmtG9TKKrVMil3QkonwTBzbS0xTMpJ3xsSy6zAEa2vljSI8NDjnP
-         NvEw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795428259; x=1796033059; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:mime-version:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=9EtYWA20vHFjk3oSjqw1Yh8niIKJUPjCkmcYE9ME8UU=;
-        b=JLzvEwoMV9lx62cIaUBfQr6uHYEveMXDX47SG4diowGirlwuLcOm17YUr46sPLmk3e
-         DmESyl3a5CYnyawyUFlLVr79wWGd981E3YIlTdlWU6KZ/kdQgkq+UnR9v31KT2pAUseQ
-         dx96u4Qa7fKqIhxpMhO0GukvArhPce1hQiTiXxllBGGArbTTOIttlEyhCqfam9zh3CGG
-         neXcYOaVzmRYQRWGVk46EySVnS4o/Ymu+QRJZ//pT+F/k5MdRKkt1bm7NfcNCfpzQE23
-         gTvFkV50YPj6I1pmqRTNEMzJFjsqHU0ua4+EW03OCm8HJYSp9yy7A914xJ8wVow7vRrb
-         UGBA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795428259; x=1796033059;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=9EtYWA20vHFjk3oSjqw1Yh8niIKJUPjCkmcYE9ME8UU=;
-        b=iCUa4m9hL5cYUAKmwF22uoWd+DYiRsbL8asEI2H7DBqC+QeYBZ7CvpZOQqrvjMBZh1
-         JXc25Dv7391yDsLDBQr0OkO7uO/N4AH6+rj/09E6IeXHZygB9ZX6HdMfpLPo6FDe1OUG
-         /w9LOP3r2Sq2ceMdh1h91dHaFE673FqiyaCnJ4PPGtQLOxouFu2q7AwQNc/weFewY5bB
-         qh4sgo7Q1WtMyua0ogO6/FSpYisy0yMZw+pUhuCPsqX1iycRam/4cEFKCzbVgSfpFl4g
-         EJN4CTjeIl4h7gF5A0TVA7AmFFlu/lGomQc/gCb2eYCUPm6jcPaUZZbqTLV6Rte/cN4n
-         saSw==
-X-Gm-Message-State: APuU4Z9lCXMybvix+esANimNns3oukNJMZs8MiOgNfja48iqVbaqjW7+
-	7cWpOFoNCRQlyZOKjeczwXeZ7A3TvaxqWMt9vveytiqCgl19Oz484X6fg1cRZLlzoJYmEvzC2NH
-	Nw6e9GEJ+CjyTsyvqJEYgSX5NHDsnkjwGQ2ZJ
-X-Gm-Gg: AZFdTZd1+sfIzIM9ybj3PNCMYe1aqJUEru9+uhyX6XNwxIjroEnfi95DpdZzS/JAlOF
-	MvDeTD9oxOw/AkYQ8rl2eFpBfE7gMd2j16nOEcojFtL3xhbfLb0UQDIYlcrvfzEJC4pz+twQ812
-	br3kSk8ElSb56F/Ebe3PCYeKl110t3hE5QOEUtlKilHBsrGdvSzFGu8xc61v3vQ8y6p9lqRGmj3
-	ND9L40W3JQtDE+4VqKs6tH7bfNY8REe22uFJiQO/fNd1IkSnsjpF0ghTAv+HRZAZ6WFIKCKvX7Q
-	If9N4xxzjf2//NsnXGCTw3ZUjg5wJTUnka+PFdkY3kM4t2tBh5Lq8Iz2HbsElA/ce290y1BcFo+
-	iJ8/VzkcerZUyVJy0MJx0QImzWtmdqTIztY3Y83houx/Go13K7MsaunXME/nwO3uQqrpXc2CpfC
-	KHmbakFhqc4MPjTsVV
-X-Received: by 2002:aa7:c710:0:b0:6b8:ff75:9b45 with SMTP id
- 4fb4d7f45d1cf-6ba37e8dbcbmr5160510a12.24.1795428259412; Mon, 23 Nov 2026
- 02:04:19 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=hkaipYgG
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4D4A31F000D1;
+	Mon, 23 Nov 2026 12:59:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795438761;
+	bh=gEWQnguPB7hMdARfJ31ISn8RsG2f0AX2Jn3S+xqhW8w=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=hkaipYgG2YTQpKjQgqh0ngFfPCpySP8SskZdYMMhATS91RsLzDWGm/UFwunfJ36P3
+	 2iMHbXPUNZh0TS73gVR3kSt5BhqD9jkXnBiIDaAHrV8QJcxGk2sIhenFnWWStJqyXY
+	 b/xiKnlYBKjRVJYHVs/SBLRp/vwKEbFhw+9Qr2JE9PJRuWql0pPQVivzf+0cPBHZA8
+	 sut4Gk0PC35mBsFQf7aImkfSQpOrogprIfs//wakmA6+3JxlHHQWylw0t6nm80eIcS
+	 VsziaJdw0QZT6vhadi3HWUMpE2i4nKdhRqMzL84LC/0q+oz3BB0Yu9jCn9OyUgB54u
+	 PuDomONGd2VNA==
+From: Jeff Layton <jlayton@kernel.org>
+Date: Mon, 23 Nov 2026 04:59:04 -0800
+Subject: [PATCH v2 01/11] nfsd: don't hold inode_lock while waiting for a
+ delegation in nfsd_setattr()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -103,21 +53,152 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
-Date: Mon, 23 Nov 2026 11:03:41 +0100
-X-Gm-Features: Aa3M54rnIlDV7QhtVK6PZh4U1yTLmzaKYGpYpGEv7jTZXGQs179TTyEennBhuF8
-Message-ID: <CA+1jF5pNXvipBz8Hh3LWn=H07JJGEJPVH_hWZYCE8GhB96kvgg@mail.gmail.com>
-Subject: Which Debian version has working krb5p support in NFS server?
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261123-delegts-fixes-v2-1-960ce0fb2fed@kernel.org>
+References: <20261123-delegts-fixes-v2-0-960ce0fb2fed@kernel.org>
+In-Reply-To: <20261123-delegts-fixes-v2-0-960ce0fb2fed@kernel.org>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, Christian Brauner <brauner@kernel.org>
+Cc: =?utf-8?q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>, 
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4815; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=gfHLApKVxnVRAVhXAlVUqlmSc1b8cj0Xz02L3tCImHo=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBrBDikjIqcBpUUvxaMz8LFt8Dn5TSB7EUB/o89k
+ ++W+xLZIT+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCawQ4pAAKCRAADmhBGVaC
+ FQhBD/4llLbbl62CxAGV3lAPgQORjW3AbIB59GsEjFLFsIQ0O6O1Ca5IMh5+6FRBMXWnNTij1VE
+ SDTJrNSVxgWy2gLCr+8I159KQek66weNj2+vPiGAyvCza+7OU0NtS9mcdtCfcvMXouXknV1Wlw2
+ EVBrQ86uTMwtNHZLJGzi0BumvNx6+RQfw3R4dG5LYxKGgzk12cm1nwT1O00Bp9RNXgEm7uVi5wB
+ Udr9mumj/Xz8CZZkBFuMZxCAhiGqpEV6GhimqyN0pXVOgeLw0PCMw8RtyU7R3BsV5rm3gs6XuVq
+ 0FGyisY/EncyAuE8sLTKyF5bxbLhvLBGpANBorcqMsZ05vm6Up/UhUoNRY1URIlFPDmbURr56pB
+ PdpebDTyW74sboBpuSAnGobsOWx6+BweBff91mdUQ92ir5V89mUN+oIrId2pE1GuY3x4AEOkwY0
+ i5ylw/9+M9QnfZ3NkDRA4M1dQYaaSi3K7vw4rxce5gR7A+BkeENBxjV1JlTU0aIJ65trEwUSpgr
+ qNW/Y2Rj0z+yQV/N+hdwzHAbNKKLtHHWjTYyAYizwEwnpNozZJMUMVbhqXxFm8xAuhe8GQ+tmXU
+ fmSe/4OwXAJfoq1ATKC6Chq/QGmhT5lt8O5aFPMEJkjvw2OFXsLdk+nWjwADEGEz2NR1/c+0AIH
+ xFHuOf6iv9Dxf8w==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Which Debian version has working krb5p support in NFS server? We tried
-to start a test campaign with krb5p, but that project stalled in
-September because neither Debian 12 or Debian 13 seem to have working
-krb5p support.
+When notify_change() breaks a delegation, nfsd_setattr() waits up to
+NFSD_DELEGRETURN_TIMEOUT for the holder to return the delegation and
+then retries once. nfsd_setattr() waits with inode_lock still held, but
+what the holder sends before DELEGRETURN can need that lock. WRITEs that
+flush the holder's dirty data take i_rwsem exclusively on ext4 and xfs,
+and a SETATTR with delegated timestamps in the DELEGRETURN compound goes
+through nfsd_setattr() itself. The wait then always times out, and the
+SETATTR fails with NFS4ERR_DELAY after stalling the DELEGRETURN that the
+wait was for.
 
-Aur=C3=A9lien
---=20
-Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
-Big Data/Data mining expert, chess enthusiast
+Drop inode_lock across the wait, as callers of break_deleg_wait() do.
+The file can change while the lock is dropped, so start over after the
+wait. Check again that the truncate is allowed, take fresh pre-op
+attributes, check the guard again, and sanitize a fresh copy of the
+attributes, since the setid bits that a chown must clear depend on the
+current mode. Redoing these steps under the lock keeps them atomic with
+the attempt that changes the inode. fh_fill_pre_attrs() does nothing
+once pre-op attributes are saved, so restore fh_pre_saved to its value
+on entry.
+
+If the wait times out, still try once more rather than finishing with
+the attributes from before the wait. A lease that is already being
+broken isn't broken again, so the retry just gets -EAGAIN.
+
+Don't start over once the size change is done, though, as when a
+filesystem returns -EAGAIN for the other attributes after the truncate.
+The retry would truncate again, over whatever was written while the lock
+was dropped, and the retry's fresh pre-op attributes would hide the
+first truncate. Return the error instead, as if the wait had failed.
+
+Fixes: 34b91dda7124 ("NFSD: Make nfsd4_setattr() wait before returning NFS4ERR_DELAY")
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/nfsd/vfs.c | 48 +++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 31 insertions(+), 17 deletions(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index e033fbc225cf..4a5674e583cc 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -549,7 +549,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	int		host_err = 0;
+ 	bool		get_write_count;
+ 	bool		size_change = (iap->ia_valid & ATTR_SIZE);
+-	int		retries;
++	bool		pre_saved = fhp->fh_pre_saved;
++	bool		retried = false;
++	struct iattr	attrs;
+ 
+ 	trace_nfsd_vfs_setattr(rqstp, fhp, iap, guardtime);
+ 
+@@ -587,8 +589,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	dentry = fhp->fh_dentry;
+ 	inode = d_inode(dentry);
+ 
+-	nfsd_sanitize_attrs(inode, iap);
+-
+ 	/*
+ 	 * The size case is special, it changes the file in addition to the
+ 	 * attributes, and file systems don't expect it to be mixed with
+@@ -611,6 +611,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		}
+ 	}
+ 
++retry:
+ 	inode_lock(inode);
+ 	if (size_change) {
+ 		err = nfsd_may_truncate(rqstp, fhp, iap);
+@@ -630,20 +631,33 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		}
+ 	}
+ 
+-	for (retries = 1;;) {
+-		struct iattr attrs;
+-
+-		/*
+-		 * notify_change() can alter its iattr argument, making
+-		 * @iap unsuitable for submission multiple times. Make a
+-		 * copy for every loop iteration.
+-		 */
+-		attrs = *iap;
+-		host_err = __nfsd_setattr(dentry, &attrs);
+-		if (host_err != -EAGAIN || !retries--)
+-			break;
+-		if (!nfsd_wait_for_delegreturn(rqstp, inode))
+-			break;
++	/*
++	 * notify_change() can alter its iattr argument, making @iap
++	 * unsuitable for submission multiple times. Pass a copy,
++	 * sanitized under inode_lock, because the setid bits that a
++	 * chown must clear depend on the current mode.
++	 */
++	attrs = *iap;
++	nfsd_sanitize_attrs(inode, &attrs);
++	host_err = __nfsd_setattr(dentry, &attrs);
++	/*
++	 * A delegation was broken. Drop inode_lock while waiting for the
++	 * holder to return the delegation, since what the holder sends
++	 * first, such as WRITEs that flush the holder's dirty data, can
++	 * need the lock. The file can change meanwhile, so start over,
++	 * taking fresh pre-op attributes and checking the guard again.
++	 * Starting over is safe only if this attempt changed nothing. A
++	 * retry would repeat a size change that is already done
++	 * (__nfsd_setattr() clears ATTR_SIZE) over whatever was written
++	 * after the truncate, so return the error in that case.
++	 */
++	if (host_err == -EAGAIN && !retried &&
++	    !(size_change && !(attrs.ia_valid & ATTR_SIZE))) {
++		inode_unlock(inode);
++		retried = true;
++		nfsd_wait_for_delegreturn(rqstp, inode);
++		fhp->fh_pre_saved = pre_saved;
++		goto retry;
+ 	}
+ 	if (attr->na_seclabel && attr->na_seclabel->len)
+ 		attr->na_labelerr = security_inode_setsecctx(dentry,
+
+-- 
+2.56.1
+
