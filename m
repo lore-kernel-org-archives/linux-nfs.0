@@ -1,83 +1,65 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=46.4.95.116
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795394318;
-	b=h3x4N+jQ/U4yi86zbQE08EZrC31/WuaWoLyY09C+OD19jm6RuXBp7IZEFkrj4uO3mcHm
-	 2iRAYUE6PPfqX5nU9fHpuqsTsc47Q61glf92AZe7QUD/wU2eGGa1+7lF+bxufYJh643vN
-	 DDt86zYGw6k0CJPFXJrgRL8WtYyNIcmTc0xsuKCNuAjo1/UFOlM5R8M/WwBAJMHKIGF5T
-	 VGtw4PqJdpYA0Lt6p6Fl4RaHjpt2osy7PI7TzqnVJNEdaXC2/bvtraqkX12LP0U7v+JYC
-	 9KsswmaphjeUhXx0tjMCXRDEmp8ry3FlPxmwEz5pX2MuFU5cSDIJsH2BE8Z4ivZRNDA==
+	t=1795395426;
+	b=qbSh/+DS+0MvVPtoqikGqXGrbLXWKQfb5wgv2jvd3hNFc0AfFIzM0OBraC69DXoWS6wr
+	 9qs6vBiKZCVKkrV2vm2u8MAGJzcbAgEEcN6ZADVx/rSS9HC34aFAWUZ/+Os5+RHTGtTMw
+	 j11v/FUoa1w7IB0wztA6T4dsaNkGew2pkm9BakV7u2cHJ2xT1b8H/ZiN85xO2jCC8jRQK
+	 WuS0LtW5d7+kGFXxllawMPOE3KXQAx21gC4Yh3xQeZRAqtLyAM5w/k1d6I2yYj7jEsdL7
+	 auUmWMb2feChHt0sfuI/tC8rVPaua5Ti2pO8hKIqCXS0rb0E6nsozSzqciFzQNldpQw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795394318;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Mime-Version:Content-Type:Date:Message-Id:Cc:Subject:From:To:X-Mailer:
-	 References:In-Reply-To;
-	bh=HP9zOCOBYYSdBf8b8BfCMeW0ZoB3i2I21hDr8WIDWn4=;
-	b=J/EELMdUIEI66iVq5N17CKsnVo/ylrPE7rWv921kQ1Jm4A0oZrIhcNE2LuMTq7Vc7nsd
-	 +EakdVWEqH0OMlAbqdAMJt0NWOyNub1xTUVSJQGPFruk3UKKlodlkrnvaz6xY+bcBo8GL
-	 GPGwispkvC9pA7jN4y+L4rQfHM42Lj/JRCk+U58m05n5Bfph2kFh7NgKZxos0ONLsrXFw
-	 HegFVzdyqU+cy+6wh8RmPpTbM5wc4Hv2dMR10N292fIA0FmMenmF1ChUCCswISs10zdyP
-	 azqC50zR2irtn//7she0Ua3B5pU4+WjkEyBVdXKtVaWzCSWYpfH3X8p3oNRyLnQULXQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795395426;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=TEsERubr0nxn3V+b4tExa2I4w/jU3AIUXY9+wvk7pSo=;
+	b=yhxTcTvTmMwqoTz498+j++QPTWoz22DqpvKYNpw3QCgSHSWjfDzVaOU6ryN5EC6URjZe
+	 MY9CZ0X3trRGJ43P+2iEyDEvlJnd/kbV5qRrKMcmMt3TteLBgX7PBHVjP9fef9anEG9xi
+	 09ufulcIxDfRIErqO8x5TcXXgjFgZVtZxTcrV081/TTCeoeb23wUPQRoyiJ0JItg1mBpT
+	 DjEoZ7oJC8msSGIq6zPldptwCs0WcOumLRkXKQmDw6Ht8YU3WTLsaB7zS1M72CLJ/b7nE
+	 i6Ago9tBxQElZZgbPc4GmUlaNQztRYPFqESDcG74QhpNbR+p9khLtmwVb1FfXv1juSA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=s2W3jKAm;
-	arc=none smtp.remote-ip=209.85.221.41
-Received: from mail-wr1-f41.google.com (mail-wr1-f41.google.com [209.85.221.41])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dmarc=fail header.from=dolda2000.com;
+	spf=none smtp.mailfrom=dolda2000.com;
+	dkim=fail reason="signature verification failed" header.d=dolda2000.com header.i=@dolda2000.com header.a=rsa-sha256 header.s=dolda header.b=WptCuvrF;
+	arc=none smtp.remote-ip=46.4.95.116
+Received: from ansgar.seatribe.se (unknown [46.4.95.116])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange ECDHE (prime256v1) server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DFFBF606A327
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 00:38:37 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DFFBF606A327
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A441C606A681;
+	Mon, 23 Nov 2026 00:57:03 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A441C606A681
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=dolda2000.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=dolda2000.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=s2W3jKAm
-Received: by mail-wr1-f41.google.com with SMTP id ffacd0b85a97d-4ac109a8a12so1480878f8f.3
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Nov 2026 16:38:37 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795394316; x=1795999116; darn=vger.kernel.org;
-        h=in-reply-to:references:to:from:subject:cc:message-id:date
-         :content-type:mime-version:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=HP9zOCOBYYSdBf8b8BfCMeW0ZoB3i2I21hDr8WIDWn4=;
-        b=s2W3jKAmP/sFUJsVuUvRm0HuRbELyF3pVWS2t67SmmIgzqW9Px3e5RdQ7nRjJA/ws6
-         G3oWIywM8m7mViMiHOcQ8c9+2ZC3fzNk0xw3zQ/gsn5F2zRzXUCNg7qrHZYakrcXDU2y
-         yUcXHRtOkA4YGxQs843exf9afZG/hf+y30N3VrBNLGrRsAg0b/1WRkVeuw33gaxvBEGw
-         wujKERQZF9SnF0YF6ZgznMdoo/Y6qdBP+orEwMAWbf9swgQyU/SARitmcH7JFWfC9vd3
-         flRgzVZ6yDy7p2JCBWSlYZtPO5S5PnncNTgWNNMOsNNNWx7RDko/Z6EqsNFscNGo8Gcj
-         L5UQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795394316; x=1795999116;
-        h=in-reply-to:references:to:from:subject:cc:message-id:date
-         :content-type:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=HP9zOCOBYYSdBf8b8BfCMeW0ZoB3i2I21hDr8WIDWn4=;
-        b=IzG7VJ5hB5CLZYnvZYzOP9ZD0bfJcAyMsG8DNGPmWcrvUfXL0vGdNpYAhu2EvBzihn
-         ng3Is4YLMdiR3yE05985268rLm3jN4a/6t4Z/EOVbusyBiRCAxQOyQsQxFODJku/VWzY
-         6Uu83MC0tUx3RCSVHyD7Yu0ZACow3GYzrYXF6R2F6sl/CZgb7OfOn3EkZmznjpGsRH73
-         4b2BF9lL9A8AQH5QhSd7oMnIpBBh9fmDONlir/CwobMW2uS1/nhyuXWTjq49Yu12Dl7v
-         PlX04uj55NBMhs+lxW1rL/5f5mbjV9jrljT6jE/WeBgTSveNiICLIpWkUfks4SwWcRvI
-         xLng==
-X-Forwarded-Encrypted: i=1; AL+hErFpqqnFVnOQbD7quBYpbIS6aCvinmAFEVv9AgcKreKY0aeHVu5EfkkvQeVs1xkDjMUmoMPAp4+A9K0=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8FFvvcIle18scf/64nnaERwc8NDbkek6GJ4ZN50QRXvC3QhK5a
-	XfBrkoICFopHrn4+YKGFIo0j2dujq02jjtnTFhOWgU8E8Tx3wYkvkQKo
-X-Gm-Gg: AZFdTZcfF716uqAr6XmEWOtZ1ksFDV2LOA73VE/X/r37nOaJuV2rQrhBYNaq8P8svjV
-	XDAOiE4jlA8/UGE/lMr1MXgAXWbAJLxcV0XG+yOdgIOb0yLFQwEagM7k8MGROPzrjTUfCUOmmxO
-	Xu64GVegXgfTSfRtZWeDl7jpA3LvK/E80KtSZl4ofJ7MorRFNjx+we3EibC+AmuBIPZlwi+OZ6h
-	iGhNBvGCgM9xNPuPcgvQ6sGgXpGp79Z3w4XFsNwLOEcKJswxKQMhuQjTVlCRyNUlBTAOoHfQOz3
-	zCEHJSUU1sajS+07cRdMfF2R6xavDn3ltuTns1RzlrJ/y5ogQnNYqmdoKJpYNnTzJ+2f9hgtPAr
-	ets1IXFrwefhVULVjHqtiXaPw901sbkSvIc8Ooy2fJK/4MxO6P8atNQxkg/hpsUClsQ7FyA+jDt
-	u6I1HPrjjF4M6DpA+IgCqcD9URcAczl0xd8KhpOTFBZ0N/eblvoazytuGRuHPZyXOJYG8jd6E02
-	p4mKGCxq8Ih50d2vq4WVOqDzdW5BB6TjFCzHOo+QijW1BCs3UVJtclRg3uKDT8N9lhx5yvDI1us
-	QRycUd0HsL4dhQIhw/HSQGQH0w==
-X-Received: by 2002:adf:ef06:0:b0:4a9:5848:3640 with SMTP id ffacd0b85a97d-4abb5db79e6mr15647617f8f.55.1795394316019;
-        Sun, 22 Nov 2026 16:38:36 -0800 (PST)
-Received: from localhost ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4ab6bb989e3sm19085530f8f.52.2026.11.22.16.38.32
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sun, 22 Nov 2026 16:38:34 -0800 (PST)
+	dkim=fail reason="signature verification failed" (2048-bit key, unprotected) header.d=dolda2000.com header.i=@dolda2000.com header.a=rsa-sha256 header.s=dolda header.b=WptCuvrF
+Received: from [2001:9b1:40cc:0:ffff:e9ff:2d3f:febd] (helo=nerv.dolda2000.com)
+	by ansgar.seatribe.se with esmtps  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+	(Exim 4.96)
+	(envelope-from <fredrik@dolda2000.com>)
+	id 1xVIMZ-0004Z5-1Z;
+	Mon, 23 Nov 2026 01:56:55 +0100
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=dolda2000.com;
+	s=dolda; t=1795395411;
+	bh=ktLwfBjNFkTg+TnjlCy4sYPCk4m1323utcqzfsDZJbo=;
+	h=From:To:Cc:Subject:Date:From;
+	b=WptCuvrF7kmg1Nqbd1o1Wivt2IPd4U0VSjviIhJWIirqVe4nzt1VmmRqiqoWtG/V5
+	 P3goS5BHNQBytSnfce66q377RGHRup5LAPM2+RIl7nJ8MLsZKwMIiAwboGAjqcCjCW
+	 SI/tGuyTlPNFDcjiLCLIkMxPhZQRgtpqFxfxt22qIxhof1CQ9mWPifcWKkAUMZYg+o
+	 VJetRxrxdl5+k0EKR05YqXsQvgW9EZR+lIdxOmrgOLXxWU/ZLnr6AHTNIjxN6fw+YZ
+	 CIJETCoIdeTc8kVbD1SCTDotD7cPLbmikUuIrGJBMC0NStFe3mmYfF96WmroY89sqc
+	 Y7rjUoKYXLftQ==
+Received: from shack.dolda2000.com (shack.dolda2000.com [192.168.1.187])
+	(authenticated bits=0)
+	by nerv.dolda2000.com (8.18.1/8.18.1/Debian-6) with ESMTPSA id 6AN0unRC017457
+	(version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384 bits=256 verify=NO);
+	Mon, 23 Nov 2026 01:56:51 +0100
+From: Fredrik Tolf <fredrik@dolda2000.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Fredrik Tolf <fredrik@dolda2000.com>
+Subject: [PATCH] SUNRPC: Make svcauth_gss sequence-number window size tunable
+Date: Mon, 23 Nov 2026 01:56:48 +0100
+Message-ID: <20261123005648.29562-1-fredrik@dolda2000.com>
+X-Mailer: git-send-email 2.47.3
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -86,236 +68,330 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-Content-Type: multipart/signed;
- boundary=e1fb7fe5361dd0dcfcd46f0aa31ce9f52e225a0a7b5a4d7bd3c717407afa;
- micalg=pgp-sha512; protocol="application/pgp-signature"
-Date: Mon, 23 Nov 2026 01:38:26 +0100
-Message-Id: <DN265Y2EAGQV.1ZD49JSIDMME5@gmail.com>
-Cc: "Chuck Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>, "Jan
- Kara" <jack@suse.cz>, "Darrick J . Wong" <djwong@kernel.org>, "Andrey
- Albershteyn" <aalbersh@kernel.org>, "Amir Goldstein" <amir73il@gmail.com>,
- =?utf-8?q?Pali_Roh=C3=A1r?= <pali@kernel.org>, "Lauri Gates"
- <lauri.gates@gmail.com>, "Christoph Hellwig" <hch@infradead.org>, "Dave
- Chinner" <dgc@kernel.org>, <linux-btrfs@vger.kernel.org>,
- <linux-xfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
- <linux-fsdevel@vger.kernel.org>, <ntfs@lists.linux.dev>,
- <linux-nfs@vger.kernel.org>, <linux-api@vger.kernel.org>
-Subject: Re: [PATCH 3/3] ntfs: switch to the new xflags fileattr API
-From: "koraynilay" <koray.fra@gmail.com>
-To: "liubaolin" <liubaolin12138@163.com>, "koraynilay"
- <koray.fra@gmail.com>, "Namjae Jeon" <linkinjeon@kernel.org>, "Hyunchul
- Lee" <hyc.lee@gmail.com>, "Alexander Viro" <viro@zeniv.linux.org.uk>,
- "Christian Brauner" <brauner@kernel.org>
-X-Mailer: aerc 0.22.0-0-gc2f86b7abde3
-References: <20261122000856.536902-1-koray.fra@gmail.com>
- <20261122000856.536902-4-koray.fra@gmail.com>
- <1ebbb85f-3515-4c45-a850-8039aad93800@163.com>
-In-Reply-To: <1ebbb85f-3515-4c45-a850-8039aad93800@163.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
---e1fb7fe5361dd0dcfcd46f0aa31ce9f52e225a0a7b5a4d7bd3c717407afa
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset=UTF-8
+The concrete problem that I seek to resolve with this is an issue where MIC
+verification, due to being schedulable, may sometimes delay the checking of
+sequence number so long that the sequence window in the meantime has drifted
+beyond the sequence number being verified. This causes the NFS server to
+disconnect the client in question despite it having done nothing wrong, making
+the client do 15-second timeouts before reconnecting and retrying, killing
+performance.
 
-On Sun Nov 22, 2026 at 1:49 PM CET, liubaolin wrote:
->
->
-> =E5=9C=A8 2026/11/22 08:08, koraynilay =E5=86=99=E9=81=93:
->> Switch ntfs_fileattr_[gs]et() from the legacy FS_*_FL flags to the
->> modern xflags (FS_XFLAG_*) fileattr API with masks.
->>=20
->> Introduce FS_XFLAG_COMPR and FS_XFLAG_ENCRYPT and add them to
->> FS_XFLAG_COMMON (and add FS_COMPR_FL and FS_ENCRYPT_FL to FS_COMMON_FL)
->> to be used in this API switch.
->>=20
->> Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.5.11
->> Signed-off-by: koraynilay <koray.fra@gmail.com>
->> ---
->>   fs/file_attr.c           |  8 +++++
->>   fs/ntfs/file.c           | 63 +++++++++++++++++++---------------------
->>   include/linux/fileattr.h |  6 ++--
->>   include/uapi/linux/fs.h  |  2 ++
->
-> Hi koraynilay,
->     One suggestion on the patch split: would it make sense to put the
-> new COMPR/ENCRYPT xflags and their VFS handling in a separate patch
-> before the NTFS conversion?
->     The changes to include/uapi/linux/fs.h, include/linux/fileattr.h
-> and fs/file_attr.c introduce generic fileattr support, and the
-> COMMON mask changes also affect other filesystems.
->     Keeping those changes together in a VFS patch would make the API
-> and compatibility aspects easier to review.
->     The following NTFS patch could then focus on using the new flags=20
-> while preserving the existing NTFS behaviour.
+Now, I would of course like to fix this *properly*, since the client, indeed, is
+doing nothing wrong, but as far as I can tell, I am not sure there is a way to
+fix this properly in a TCP context without serializing the entire authentication
+process, which in turn seems that it would require a full rewrite of the sunrpc
+servicing threading model, since it seems made to be intrinsically asynchronous.
+This makes sense given its past UDP primacy, where also the occasional dropping
+of a packet due to transient authentication failures like these would not be an
+issue since the request would just be treated as lost and retransmitted by the
+client, but in a TCP context, clearly, retransmission is left to the network
+layer and the client just terminates the whole connection on an authentication
+failure instead.
 
-Hi Baolin and thanks for the feedback,
-for now I put them in the same patch since they're not many lines of
-code changes, but I now also had to add NOCOMP, maybe I'll split it in
-the next version.
+Due to this difficulty in developing a proper fix, probably better done by
+someone actually familiar with the NFS/sunrpc code, I'm just making the window
+size tunable, so that I tune myself out of the problem. I considered a number of
+other heuristics along the way, but since they weren't really technically more
+correct, I figured this was the simplest and therefore best.
 
-> Thanks,
-> Baolin.
->
->>   4 files changed, 44 insertions(+), 35 deletions(-)
->> [...]
->>   	if (err)
->>   		return err;
->>  =20
->> -	if (fileattr_has_fsx(fa))
->> -		return -EOPNOTSUPP;
->> -
->> -	/* chattr passes the unchanged read-only flags back to us too. */
->> -	if (NInoCompressed(ni) || NInoWofCompressed(ni))
->> -		readonly |=3D FS_COMPR_FL;
->> -	if (NInoEncrypted(ni))
->> -		readonly |=3D FS_ENCRYPT_FL;
->> -	if ((fa->flags ^ readonly) & (FS_COMPR_FL | FS_ENCRYPT_FL))
->> -		return -EOPNOTSUPP;
->> -	allowed |=3D readonly;
->> -
->> -	/* Case folding is a read-only, mount-wide property. */
->> -	if (!NVolCaseSensitive(ni->vol))
->> -		allowed |=3D FS_CASEFOLD_FL;
->> -	if (fa->flags & ~allowed)
-> Hi koraynilay,
->     There is another case worth keeping in mind when replacing this check=
-:
->     fileattr_fill_flags() only translates a subset of FS_*_FL bits,
-> so some unsupported flags will not appear in fsx_xflags.
->    For example, a direct SETFLAGS request containing only FS_NOCOW_FL=20
-> produces fsx_xflags =3D=3D 0. On a normal file on a case-sensitive mount,
-> the new check would accept that request.
->    If the file already has persistent NODUMP set, the request would also
-> clear it, since the setter rebuilds linuxflags without NODUMP and writes
-> it back to the EA. The current code rejects the request and leaves the
-> existing attributes unchanged.
->
->    Would it be possible to keep validating fa->flags when flags_valid is
-> set, in addition to the xflags check?
+The default window size was also inreased from 128 to 1024, due to 128 being
+clearly too small.
 
-We could, but the objective is to have filesystems that implement the
-new _masks API use only xflags.
+This also relates to <https://bugzilla.linux-nfs.org/show_bug.cgi?id=416>
 
-> Thanks,
-> Baolin.
->
->
->> +	/*
->> +	 * When userspace uses file_[gs]etattr(), VFS already checks and fails
->> +	 * with -EOPNOTSUPP if rw_mask & ro_mask !=3D 0 and rw_mask & ~allowed=
-,
->> +	 * but for FS_IOC_SETFLAGS and FS_IOC_FSSETXATTR VFS can't check for
->> +	 * allowed flags as these ioctls don't support fsx_xflags_{rw,ro}_mask=
-,
->> +	 * so we need to check for unsupported flags anyway.
->> +	 */
->> +	if (!fa->has_masks &&
->> +	    ((fa->fsx_xflags & ~NTFS_RW_XFLAGS) ||
->> +	     fa->fsx_extsize || fa->fsx_projid || fa->fsx_cowextsize))
->>   		return -EOPNOTSUPP;
->
-> Hi koraynilay,
->     Could we keep the existing handling of read-only attributes
-> for legacy SETFLAGS callers here?
->     On a case-insensitive NTFS mount, the VFS carries over=20
-> FS_XFLAG_CASEFOLD from the current attributes, since it is not in=20
-> FS_XFLAG_COMMON.
-> This check would then reject it because CASEFOLD is not in=20
-> NTFS_RW_XFLAGS, so even chattr +d would fail with EOPNOTSUPP.
->     The unchanged COMPR/ENCRYPT bits that chattr reads with GETFLAGS and
-> passes back with SETFLAGS would also be rejected on compressed/encrypted=
-=20
-> files.
->     Allowing those existing read-only attributes to be passed back=20
-> unchanged  would let users continue setting and clearing the persistent=
-=20
-> flags through chattr,as they can today.
->
-> Thanks,
-> Baolin.
+Signed-off-by: Fredrik Tolf <fredrik@dolda2000.com>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 123 ++++++++++++++++++++++--------
+ 1 file changed, 91 insertions(+), 32 deletions(-)
 
-Since I wasn't quite satisfied with this version, I'm working on a
-revisited v2, that is hopefully cleaner and fixes these bugs and the
-ones reported by sashiko.
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 78d30d5dc72f..4d82ecb230e4 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -26,8 +26,8 @@
+  * The content of this cache includes some of the outputs of GSS_Accept_sec_context,
+  * being major_status, minor_status, context_handle, reply_token.
+  * These are sent back to the client.
+- * Sequence window management is handled by the kernel.  The window size if currently
+- * a compile time constant.
++ * Sequence window management is handled by the kernel.  The window size is tunable
++ * via sysctl.
+  *
+  * When user-space is happy that a context is established, it places an entry
+  * in the rpcsec_context cache. The key for this cache is the context_handle.
+@@ -42,6 +42,7 @@
+ #include <linux/types.h>
+ #include <linux/module.h>
+ #include <linux/pagemap.h>
++#include <linux/sysctl.h>
+ #include <linux/user_namespace.h>
+ 
+ #include <linux/sunrpc/auth_gss.h>
+@@ -354,14 +355,35 @@ static struct rsi *rsi_update(struct cache_detail *cd, struct rsi *new, struct r
+ #define	RSC_HASHBITS	10
+ #define	RSC_HASHMAX	(1<<RSC_HASHBITS)
+ 
+-#define GSS_SEQ_WIN	128
++#define GSS_SEQ_WIN_MIN		    0x80
++#define GSS_SEQ_WIN_DEFAULT	   0x400
++#define GSS_SEQ_WIN_MAX		0x100000
++
++static unsigned int gss_seq_win_size = GSS_SEQ_WIN_DEFAULT;
++
++static struct ctl_table_header *sysctl_table_header;
++
++static struct ctl_table gss_tunables_table[] = {
++	{
++		.procname	= "gss_seq_win_size",
++		.data		= &gss_seq_win_size,
++		.maxlen		= sizeof(unsigned int),
++		.mode		= 0644,
++		.proc_handler	= proc_douintvec_minmax,
++		.extra1		= &(unsigned int[]){GSS_SEQ_WIN_MIN},
++		.extra2		= &(unsigned int[]){GSS_SEQ_WIN_MAX}
++	},
++};
++
+ 
+ struct gss_svc_seq_data {
++	/* size of this context's sequence window.: */
++	u32			sd_size;
+ 	/* highest seq number seen so far: */
+ 	u32			sd_max;
+-	/* for i such that sd_max-GSS_SEQ_WIN < i <= sd_max, the i-th bit of
++	/* for i such that sd_max-sd_size < i <= sd_max, the i-th bit of
+ 	 * sd_win is nonzero iff sequence number i has been seen already: */
+-	unsigned long		sd_win[GSS_SEQ_WIN/BITS_PER_LONG];
++	unsigned long		*sd_win;
+ 	spinlock_t		sd_lock;
+ };
+ 
+@@ -390,6 +412,7 @@ static void rsc_free_rcu(struct rcu_head *head)
+ 	struct rsc *rsci = container_of(head, struct rsc, rcu_head);
+ 
+ 	kfree(rsci->handle.data);
++	bitmap_free(rsci->seqdata.sd_win);
+ 	kfree(rsci);
+ }
+ 
+@@ -437,11 +460,13 @@ update_rsc(struct cache_head *cnew, struct cache_head *ctmp)
+ {
+ 	struct rsc *new = container_of(cnew, struct rsc, h);
+ 	struct rsc *tmp = container_of(ctmp, struct rsc, h);
++	struct gss_svc_seq_data *sd = &new->seqdata;
+ 
+ 	new->mechctx = tmp->mechctx;
+ 	tmp->mechctx = NULL;
+-	memset(&new->seqdata, 0, sizeof(new->seqdata));
+-	spin_lock_init(&new->seqdata.sd_lock);
++	sd->sd_max = 0;
++	bitmap_zero(sd->sd_win, sd->sd_size);
++	spin_lock_init(&sd->sd_lock);
+ 	new->cred = tmp->cred;
+ 	init_svc_cred(&tmp->cred);
+ }
+@@ -449,11 +474,24 @@ update_rsc(struct cache_head *cnew, struct cache_head *ctmp)
+ static struct cache_head *
+ rsc_alloc(void)
+ {
+-	struct rsc *rsci = kmalloc_obj(*rsci);
++	struct rsc *rsci = NULL;
++	struct gss_svc_seq_data *sd = NULL;
++
++	rsci = kzalloc_obj(*rsci, GFP_KERNEL);
++	if (!rsci)
++		goto error;
++	sd = &rsci->seqdata;
++	sd->sd_size = READ_ONCE(gss_seq_win_size);
++	sd->sd_win = bitmap_zalloc(sd->sd_size, GFP_KERNEL);
++	if (!sd->sd_win)
++		goto error;
++	return &rsci->h;
++error:
++	if (sd && sd->sd_win)
++		bitmap_free(sd->sd_win);
+ 	if (rsci)
+-		return &rsci->h;
+-	else
+-		return NULL;
++		kfree(rsci);
++	return NULL;
+ }
+ 
+ static int rsc_upcall(struct cache_detail *cd, struct cache_head *h)
+@@ -660,19 +698,19 @@ static bool gss_check_seq_num(const struct svc_rqst *rqstp, struct rsc *rsci,
+ 
+ 	spin_lock(&sd->sd_lock);
+ 	if (seq_num > sd->sd_max) {
+-		if (seq_num >= sd->sd_max + GSS_SEQ_WIN) {
+-			memset(sd->sd_win, 0, sizeof(sd->sd_win));
++		if (seq_num >= sd->sd_max + sd->sd_size) {
++			bitmap_zero(sd->sd_win, sd->sd_size);
+ 			sd->sd_max = seq_num;
+ 		} else while (sd->sd_max < seq_num) {
+ 			sd->sd_max++;
+-			__clear_bit(sd->sd_max % GSS_SEQ_WIN, sd->sd_win);
++			__clear_bit(sd->sd_max % sd->sd_size, sd->sd_win);
+ 		}
+-		__set_bit(seq_num % GSS_SEQ_WIN, sd->sd_win);
++		__set_bit(seq_num % sd->sd_size, sd->sd_win);
+ 		goto ok;
+-	} else if (seq_num + GSS_SEQ_WIN <= sd->sd_max) {
++	} else if (seq_num + sd->sd_size <= sd->sd_max) {
+ 		goto toolow;
+ 	}
+-	if (__test_and_set_bit(seq_num % GSS_SEQ_WIN, sd->sd_win))
++	if (__test_and_set_bit(seq_num % sd->sd_size, sd->sd_win))
+ 		goto alreadyseen;
+ 
+ ok:
+@@ -683,7 +721,7 @@ static bool gss_check_seq_num(const struct svc_rqst *rqstp, struct rsc *rsci,
+ 
+ toolow:
+ 	trace_rpcgss_svc_seqno_low(rqstp, seq_num,
+-				   sd->sd_max - GSS_SEQ_WIN,
++				   sd->sd_max - sd->sd_size,
+ 				   sd->sd_max);
+ 	goto out;
+ alreadyseen:
+@@ -1018,24 +1056,20 @@ svcauth_gss_set_client(struct svc_rqst *rqstp)
+ }
+ 
+ static bool
+-svcauth_gss_proc_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
+-			   struct xdr_netobj *out_handle, int *major_status,
+-			   u32 seq_num)
++svcauth_gss_proc_init_verf(struct rsc *rsci, struct svc_rqst *rqstp,
++			   int *major_status)
+ {
+ 	struct xdr_stream *xdr = &rqstp->rq_res_stream;
+-	struct rsc *rsci;
+ 	bool rc;
+ 
+ 	if (*major_status != GSS_S_COMPLETE)
+ 		goto null_verifier;
+-	rsci = gss_svc_searchbyctx(cd, out_handle);
+ 	if (rsci == NULL) {
+ 		*major_status = GSS_S_NO_CONTEXT;
+ 		goto null_verifier;
+ 	}
+ 
+-	rc = svcauth_gss_encode_verf(rqstp, rsci->mechctx, seq_num);
+-	cache_put(&rsci->h, cd);
++	rc = svcauth_gss_encode_verf(rqstp, rsci->mechctx, rsci->seqdata.sd_size);
+ 	return rc;
+ 
+ null_verifier:
+@@ -1169,11 +1203,13 @@ svcauth_gss_legacy_init(struct svc_rqst *rqstp,
+ {
+ 	struct xdr_stream *xdr = &rqstp->rq_arg_stream;
+ 	struct rsi *rsip, rsikey;
++	struct rsc *rscp;
+ 	__be32 *p;
+ 	u32 len;
+ 	int ret;
+ 	struct sunrpc_net *sn = net_generic(SVC_NET(rqstp), sunrpc_net_id);
+ 
++	rscp = NULL;
+ 	memset(&rsikey, 0, sizeof(rsikey));
+ 	if (dup_netobj(&rsikey.in_handle, &gc->gc_ctx))
+ 		return SVC_CLOSE;
+@@ -1212,18 +1248,23 @@ svcauth_gss_legacy_init(struct svc_rqst *rqstp,
+ 		return SVC_CLOSE;
+ 
+ 	ret = SVC_CLOSE;
+-	if (!svcauth_gss_proc_init_verf(sn->rsc_cache, rqstp, &rsip->out_handle,
+-					&rsip->major_status, GSS_SEQ_WIN))
++	if (rsip->major_status == GSS_S_COMPLETE)
++		rscp = gss_svc_searchbyctx(sn->rsc_cache, &rsip->out_handle);
++	if (!svcauth_gss_proc_init_verf(rscp, rqstp, &rsip->major_status))
+ 		goto out;
+ 	if (!svcxdr_set_accept_stat(rqstp))
+ 		goto out;
+ 	if (!svcxdr_encode_gss_init_res(&rqstp->rq_res_stream, &rsip->out_handle,
+ 					&rsip->out_token, rsip->major_status,
+-					rsip->minor_status, GSS_SEQ_WIN))
++					rsip->minor_status,
++					(rscp != NULL) ? rscp->seqdata.sd_size
++					: READ_ONCE(gss_seq_win_size)))
+ 		goto out;
+ 
+ 	ret = SVC_COMPLETE;
+ out:
++	if (rscp != NULL)
++		cache_put(&rscp->h, sn->rsc_cache);
+ 	cache_put(&rsip->h, sn->rsi_cache);
+ 	return ret;
+ }
+@@ -1305,12 +1346,14 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
+ {
+ 	struct xdr_netobj cli_handle;
+ 	struct gssp_upcall_data ud;
++	struct rsc *rscp;
+ 	uint64_t handle;
+ 	int status;
+ 	int ret;
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	rscp = NULL;
+ 	memset(&ud, 0, sizeof(ud));
+ 	ret = gss_read_proxy_verf(rqstp, gc, &ud.in_handle, &ud.in_token);
+ 	if (ret)
+@@ -1340,18 +1383,23 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
+ 		goto out;
+ 	}
+ 
+-	if (!svcauth_gss_proc_init_verf(sn->rsc_cache, rqstp, &cli_handle,
+-					&ud.major_status, GSS_SEQ_WIN))
++	if (ud.major_status == GSS_S_COMPLETE)
++		rscp = gss_svc_searchbyctx(sn->rsc_cache, &cli_handle);
++	if (!svcauth_gss_proc_init_verf(rscp, rqstp, &ud.major_status))
+ 		goto out;
+ 	if (!svcxdr_set_accept_stat(rqstp))
+ 		goto out;
+ 	if (!svcxdr_encode_gss_init_res(&rqstp->rq_res_stream, &cli_handle,
+ 					&ud.out_token, ud.major_status,
+-					ud.minor_status, GSS_SEQ_WIN))
++					ud.minor_status,
++					(rscp != NULL) ? rscp->seqdata.sd_size
++					: READ_ONCE(gss_seq_win_size)))
+ 		goto out;
+ 
+ 	ret = SVC_COMPLETE;
+ out:
++	if (rscp != NULL)
++		cache_put(&rscp->h, sn->rsc_cache);
+ 	gss_free_in_token_pages(&ud.in_token);
+ 	gssp_free_upcall_data(&ud);
+ 	return ret;
+@@ -2145,11 +2193,22 @@ gss_svc_shutdown_net(struct net *net)
+ int
+ gss_svc_init(void)
+ {
+-	return svc_auth_register(RPC_AUTH_GSS, &svcauthops_gss);
++	int err;
++
++	err = svc_auth_register(RPC_AUTH_GSS, &svcauthops_gss);
++	if (err)
++		return err;
++	if (!sysctl_table_header)
++		sysctl_table_header = register_sysctl("sunrpc", gss_tunables_table);
++	return 0;
+ }
+ 
+ void
+ gss_svc_shutdown(void)
+ {
++	if (sysctl_table_header) {
++		unregister_sysctl_table(sysctl_table_header);
++		sysctl_table_header = NULL;
++	}
+ 	svc_auth_unregister(RPC_AUTH_GSS);
+ }
+-- 
+2.47.3
 
-Thanks,
-koraynilay
-
-
->>  =20
->>   	forced_immutable =3D ntfs_is_forced_immutable(vi);
->> -	if (!(fa->flags & FS_IMMUTABLE_FL) && forced_immutable)
->> +	if (!(fa->fsx_xflags & FS_XFLAG_IMMUTABLE) && forced_immutable)
->>   		return -EPERM;
->>  =20
->> -	if (fa->flags & FS_IMMUTABLE_FL) {
->> +	if (fa->fsx_xflags & FS_XFLAG_IMMUTABLE) {
->>   		new_fl |=3D S_IMMUTABLE;
->>   		/* Do not persist an immutable bit derived from the mount. */
->>   		if (!forced_immutable ||
->>   		    (ni->linuxflags & NTFS_LINUXFLAGS_IMMUTABLE))
->>   			linuxflags |=3D NTFS_LINUXFLAGS_IMMUTABLE;
->>   	}
->> -	if (fa->flags & FS_APPEND_FL) {
->> +	if (fa->fsx_xflags & FS_XFLAG_APPEND) {
->>   		new_fl |=3D S_APPEND;
->>   		linuxflags |=3D NTFS_LINUXFLAGS_APPEND;
->>   	}
->> -	if (fa->flags & FS_NODUMP_FL)
->> +	if (fa->fsx_xflags & FS_XFLAG_NODUMP)
->>   		linuxflags |=3D NTFS_LINUXFLAGS_NODUMP;
->> -	if (fa->flags & FS_NOATIME_FL) {
->> +	if (fa->fsx_xflags & FS_XFLAG_NOATIME) {
->>   		new_fl |=3D S_NOATIME;
->>   		linuxflags |=3D NTFS_LINUXFLAGS_NOATIME;
->>   	}
->> diff --git a/include/linux/fileattr.h b/include/linux/fileattr.h
->> index 4faa40febf11..219e7c8eb601 100644
->> --- a/include/linux/fileattr.h
->> +++ b/include/linux/fileattr.h
->> @@ -7,12 +7,14 @@
->>   #define FS_COMMON_FL \
->>   	(FS_SYNC_FL | FS_IMMUTABLE_FL | FS_APPEND_FL | \
->>   	 FS_NODUMP_FL |	FS_NOATIME_FL | FS_DAX_FL | \
->> -	 FS_PROJINHERIT_FL | FS_VERITY_FL)
->> +	 FS_PROJINHERIT_FL | FS_VERITY_FL | FS_COMPR_FL | \
->> +	 FS_ENCRYPT_FL)
->>  =20
->>   #define FS_XFLAG_COMMON \
->>   	(FS_XFLAG_SYNC | FS_XFLAG_IMMUTABLE | FS_XFLAG_APPEND | \
->>   	 FS_XFLAG_NODUMP | FS_XFLAG_NOATIME | FS_XFLAG_DAX | \
->> -	 FS_XFLAG_PROJINHERIT | FS_XFLAG_VERITY)
->> +	 FS_XFLAG_PROJINHERIT | FS_XFLAG_VERITY | FS_XFLAG_COMPR | \
->> +	 FS_XFLAG_ENCRYPT)
->>  =20
->>   /* Read-only inode flags */
->>   #define FS_XFLAG_RDONLY_MASK \
->> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
->> index e40806b3a69c..09fc7e066485 100644
->> --- a/include/uapi/linux/fs.h
->> +++ b/include/uapi/linux/fs.h
->> @@ -275,6 +275,8 @@ struct file_attr {
->>   #define FS_XFLAG_CASENONPRESERVING 0x00080000	/* case not preserved */
->>  =20
->>   #define FS_XFLAG_PROJID		0x00100000	/* project ID */
->> +#define FS_XFLAG_COMPR		0x00200000	/* Compress file */
->> +#define FS_XFLAG_ENCRYPT	0x00400000	/* Encrypted file */
->>   #define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this	*/
->>  =20
->>   /* the read-only stuff doesn't really belong here, but any other place=
- is
-
-
-
---e1fb7fe5361dd0dcfcd46f0aa31ce9f52e225a0a7b5a4d7bd3c717407afa
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABYKAB0WIQSgVimKafU5DQMcjcDmj22qf5IGXAUCawOLAgAKCRDmj22qf5IG
-XKLxAQCTRtAIOKyKCy1HCPCIGMpDT8mK4MMZQCw2HwUAkHF6dQD/TwpK7+eZCgaK
-R5Ac0/ouAvLeGZs5OiVE22OAY998dQw=
-=V3ow
------END PGP SIGNATURE-----
-
---e1fb7fe5361dd0dcfcd46f0aa31ce9f52e225a0a7b5a4d7bd3c717407afa--
