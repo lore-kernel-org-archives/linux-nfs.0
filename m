@@ -1,83 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.41
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795456741;
-	b=xbX81ZhTieEx6ZbWLFGRHOdwnlqdhfcCHedRaM1UavsE7wvUoIlQMa/qPZUxNd3cBs7N
-	 Q/Js3xlTANNKN4lWYJ8/dnfqab48ivEn85LxGOMxKoMsUnNsDJ7xitWv9OlUXpKd7XRil
-	 z458AOPbb09/IRsSw66xcvxwS37R9EUqSflhysP3LsS4656Ftir9jf/7k2RweZ7iyiI5u
-	 xyVU1XtcTdBmXK7vd3ilN6s5HmimmxhW4Hb+Ym+m1b2b1dpOmv4RmFzuBRPY8bxxF78ld
-	 zHfDawrCp/XShzUCGgSnDxN82vmZOKtgPDbfRz7F123TnfXZr0GmQez0i21otKG5t/g==
+	t=1795460004;
+	b=uYM2kSSBEnQQmHpC427sJWuRJBa8u0DwV9xMW28E1U2pJTSt0ezOZffjVnDFoR5FAq+3
+	 4zpc3O4SZepQiByLVPAKRP4OHnSi49WGnYOx9UbeOxtPlMC0ycUlGJstKPukzHJ0xZO7I
+	 EEQSoLZHucOeYBe+aUX/sFIEM0jQQzcBpIzoN0AmU5azIU1MzyckHJTssxbfGmSBNF/6t
+	 /gYY2EJJ5HWIN++NNbHKxtO5xjcQ5s6GCnE8FsQ5ydFEZwam+u0vk8QKKFSn+evxeLzmg
+	 Ke5ttvfNMyHmfTU2ncgpCulHSYkiu6uK73dJ4nu0D34vQNDdRbFHo+qi+lPglqK2cww==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795456741;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 Mime-Version:Content-Type:Date:Message-Id:From:To:Cc:Subject:X-Mailer:
-	 References:In-Reply-To;
-	bh=MluqPmwvuVO/ECMu3QHES2ezbhuwl2JDe9bOaf165Uo=;
-	b=RLCmSO3VdQi4WTlqMJPjzYhMy8l6EROtTeTOo5xAVblAdSQJoB6Wt6Tiw9etbfSmkh7q
-	 FEf9xDrxdv0hWJ1FaDVQvCexMsZBkl61Fl3nNs5DyQjA+nnnCoLDIBrnmNhJPav1M8Kmf
-	 8PNmF/s3sxOSrylG6dP3PEg8e95cDOM8jdRnU1iH4DdqLASh/W2pekgGC3Pb31qQjd+cg
-	 obRGUYnSiiLmPoPczDrp2gozkYFhijoetAYgmuWBWOY76YcHBjRHE+uwF010BAHxd1JIe
-	 x+SzQUNzrcHhYLYJjutlULSXsqtoUQ3D1GdxFPIfTm4oRA68PoUCFY8S+hmTq5903bA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795460004;
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:X-B4-Tracking:X-Change-ID:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=mDDjyiIlCrdAlF9PzNSdijyzOoIaEQ1PZOUyfYz+Fok=;
+	b=NBi6W3bdb6PdsQbxNuQXqvZAnXi/wDXdqWGO0fjL/hPV+Dgr7V/FZSsKYdbFwG3UAEs9
+	 C93zl4qWCZgA8gLpdGhkgh0ylLMOfda85diOGBB4mrECEkOP70v+pkV2IqmEXnIL8gMCf
+	 GNqpV8Dy61AszJccXHXa5nf6nvmFwn1MVB6fUPLGayAkZ+QL8mAvHI7ZwLscmFqSj0n5f
+	 q7WLd1uloq0h8IT7biukWkIizv7F8rbRIlt/195WGH6zbbdkz3Igz1p6xeEdSRf2cKdt/
+	 QsqLAU3yQS/jtF00sasMOr4+z839LHE2CrJkWFWX0GTV9mt/ikgCvH2WM7vJYkQ24Bg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=LaUWsf80;
-	arc=none smtp.remote-ip=209.85.128.41
-Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EPvyvKzN;
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 26045606A331
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 17:59:00 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 26045606A331
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F1A80606A336;
+	Mon, 23 Nov 2026 18:53:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=LaUWsf80
-Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-4bb68c197c7so45531505e9.1
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 09:59:00 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795456739; x=1796061539; darn=vger.kernel.org;
-        h=in-reply-to:references:subject:cc:to:from:message-id:date
-         :content-type:mime-version:from:to:cc:subject:date:message-id
-         :reply-to:content-type;
-        bh=MluqPmwvuVO/ECMu3QHES2ezbhuwl2JDe9bOaf165Uo=;
-        b=LaUWsf80jU5NPHzr1T3OKDObLFeFS+0XFBRQvkot+h4cuG/Xi/qPHEDAPWEbJdMP18
-         4Ey1dly9U/TamziZGQLSDLTBcCJWD66P6Dxa2LRv5D5KKkyV+Blv/vsXZi8wJZPEcYPk
-         pgDFiYoJ6I7RskRWTWyD4xBd8Q8GgG7opveoSilfGjGRtkpdUTDl5K6wCMKusgHqbiMz
-         SXG/8cPp4uw4N+xb4gPleov+yOCYshiGRkgHHjxU73Zr4xDv0DBDjDaM/10jjrOTBUaf
-         QJfC/jyHrhmUXk+KOusHpxr3gifL49WAAlixY2u6llhPTrqRx2XQnJKxzMBQ2uLOLjLE
-         qkMA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795456739; x=1796061539;
-        h=in-reply-to:references:subject:cc:to:from:message-id:date
-         :content-type:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=MluqPmwvuVO/ECMu3QHES2ezbhuwl2JDe9bOaf165Uo=;
-        b=wRr/Es2zPfc9/MgLaV+fxHbfVr/MjbS1XkmgVK+1Nf/BAyGrvJa6Lqwtp47qRgtxhh
-         qdcZ1oPPwwhBlDUzY+TO37RP7mMoxAqk6HPCg5p/lAEXtbnEmJjQ9Czy5NyJI1uw8Zsp
-         3qp2VN9knmaTNo8BJleLTOW0smfKRLQf7aX69SNVdPXml9YK/xaLcvEs6cy2hEqQjZg5
-         jwd5gPIuXUPWQt7byvTtAxdLm7NjH6kjGd/gOAvraV6CR9ZSEhUW1XuywCuzlt2zCdTU
-         HNmAUqr5HZT/LNsJIHroXSIpt9leaPpKq3I2jwP2K6udYv6ixLRrKnkr/v0rMTq6Jb6l
-         L0Hw==
-X-Forwarded-Encrypted: i=1; AL+hErGcqOQWvO7X8sUkTRg+dKNBHdCBa3QVtJVMWW74KnZJpzdYAutCJIpF6pOspvAfFwkXP2r5vSGeEEk=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+KF76T1W6lcHOQJQtP2hjnuKIRcw/vp5VTXr5Re05plNz0tmRb
-	q8iNZYBoJtXH4JowGM95ZCNfE9VrvyOvDNZrkD/6Z6cBEV4wzgT+0fWW
-X-Gm-Gg: AZFdTZdgD7ft84nozy4ZDJ9zVMBRaWInKdpV+dc/e7NV5/iXqSGWv6Lr89JMlpznnWu
-	1eg4bsYxWP6wcPCPuESH9+PbXS1rzf9RBNOLhDDceTjfz2ZooFNH3/hi2nKYgB0OIjoofiWScbk
-	ktLq8xDGV2xtKATqnBHEhkYjQXtJ/6RtlTaN81bgtAc9/Qu92U/tGVZeg8tRaXnqom+hbKspFJM
-	zCgGAYYk27hYZ29MEOjGk2uso/JEdMdTSjhzdru2DOFzuf/v1L1tv0YIDKLYZEzdz0F0MLr3zPs
-	KMwwGNemwKMjovz4DtYU752teZsOvAHrnMV7ypGciypeHRqQX9+Ioyah2/wh/vRD5RJDGxUs5/f
-	18eckb+7nE8HDi949KAf3zuE4twbprfOj/w4I7Accx4icY3z5B7vuv+XpIP8p+AafzJlfS66y03
-	75r7aOmvJwMZC0kGe3IfXtPRDam8ANJ51JsdJfn4MXVSBdsGRhvKivNHW4f5dKt0osdN7jJux8C
-	2n1vIp0LqJwcHgIalDacN7rifev+iljGmv/8KWmojAym7ASkrum2Dpi87tdUIKDhbCq7xhPeDdd
-	Y3ZA8RoFo24MhUY764oP2X8EBA==
-X-Received: by 2002:a05:600c:4f4a:b0:4bb:6752:8413 with SMTP id 5b1f17b1804b1-4bb8880015bmr286272305e9.8.1795456738947;
-        Mon, 23 Nov 2026 09:58:58 -0800 (PST)
-Received: from localhost ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb90655f5asm200592505e9.1.2026.11.23.09.58.56
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 23 Nov 2026 09:58:57 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=EPvyvKzN
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C449B1F000CA;
+	Mon, 23 Nov 2026 18:53:22 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795460003;
+	bh=mDDjyiIlCrdAlF9PzNSdijyzOoIaEQ1PZOUyfYz+Fok=;
+	h=From:Date:Subject:To:Cc;
+	b=EPvyvKzNVScw3h0xYw3W1Xw2l1RAThG+bvBWWrISfwdHOwOOknoNRWHI8OGQ5tQEz
+	 KX775a2aETYFfLZLI7VwL861MUp+GlD43nb44FrEEkxmRzo5FQiSxX7WRAz0+nQd5e
+	 1NyPCMZz0pdh1wKs7H3rwXHbWP7qb8dTIWcV2EmicDu8v379QhHVM19CAtZPHYI3s4
+	 QsgsJY8thiz1F7z7IB+Wx9PAFkhtuXNE6UnpXBsOIb55I9luVqtIFX15dqy51NZsql
+	 PnK5lAR0G9ZilFlV0iaKQb74ZUC/PvA9Tt9hz1m6ay2MEPSSu/T+0Y8ZpVYWVB/p07
+	 az75WC7rDpyww==
+From: Jeff Layton <jlayton@kernel.org>
+Date: Mon, 23 Nov 2026 13:53:04 -0500
+Subject: [PATCH v3] NFS: don't wait for writeback on close() with a write
+ delegation
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -86,207 +52,168 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-Content-Type: multipart/signed;
- boundary=3dcf8e0a5e9edc0fcf06426a56395e3537d991acfb90470930d0b8ec71c6;
- micalg=pgp-sha512; protocol="application/pgp-signature"
-Date: Mon, 23 Nov 2026 18:58:54 +0100
-Message-Id: <DN2SAKX1A29W.R1HHAXESXKS1@gmail.com>
-From: "koraynilay" <koray.fra@gmail.com>
-To: "Amir Goldstein" <amir73il@gmail.com>, "koraynilay"
- <koray.fra@gmail.com>
-Cc: "Namjae Jeon" <linkinjeon@kernel.org>, "Hyunchul Lee"
- <hyc.lee@gmail.com>, "Alexander Viro" <viro@zeniv.linux.org.uk>, "Christian
- Brauner" <brauner@kernel.org>, "Chuck Lever" <cel@kernel.org>, "Jeff
- Layton" <jlayton@kernel.org>, "Jan Kara" <jack@suse.cz>, "Darrick J . Wong"
- <djwong@kernel.org>, "Andrey Albershteyn" <aalbersh@kernel.org>,
- =?utf-8?q?Pali_Roh=C3=A1r?= <pali@kernel.org>, "Lauri Gates"
- <lauri.gates@gmail.com>, "Christoph Hellwig" <hch@infradead.org>, "Dave
- Chinner" <dgc@kernel.org>, <linux-btrfs@vger.kernel.org>,
- <linux-xfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
- <linux-fsdevel@vger.kernel.org>, <ntfs@lists.linux.dev>,
- <linux-nfs@vger.kernel.org>, <linux-api@vger.kernel.org>
-Subject: Re: [PATCH 0/3] Add f*_xflags_{rw,ro}_mask flags to the fileattr
- API
-X-Mailer: aerc 0.22.0-0-gc2f86b7abde3
-References: <20261122000856.536902-1-koray.fra@gmail.com>
- <CAOQ4uxgf2KE=Ag13EPAu5=KnrFwt7zRH=im-qmLc8+i10Tjd+Q@mail.gmail.com>
- <DN2NFOEO4XGN.1PEF1SWOF7YCQ@gmail.com>
- <CAOQ4uxirKKi=uwyiFWev_5h-LBTLjHgw-FHJ9T2X+JUNSEpf=w@mail.gmail.com>
-In-Reply-To: <CAOQ4uxirKKi=uwyiFWev_5h-LBTLjHgw-FHJ9T2X+JUNSEpf=w@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20261123-nfs-space-limit-v3-1-993945e1a526@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/2XN0QqCMBTG8VeRXbfY2Zq2rnqP6GLMMz1kKpuMQ
+ nz3phAUXv4/OL8zs4iBMLJLMbOAiSINfQ51KJhrbd8gpzo3k0KWAKB47yOPo3XIO3rSxIXUYIx
+ SJ9SS5asxoKfXJt7uuVuK0xDe24ME6/q1yp2VgAP3zoFSGkpjq+sDQ4/dcQgNW7EkfwAp9oDMQ
+ GW1E97Is7D1H7AsywcrshfA8AAAAA==
+X-Change-ID: 20261113-nfs-space-limit-025199334e52
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+Cc: Chuck Lever <cel@kernel.org>, Sagi Grimberg <sagi@grimberg.me>, 
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5484; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=vsLokkaLV6LQUvZbyMcO8yZQxqyRa25A/X9fFWnxpTo=;
+ b=kA0DAAoBAA5oQRlWghUByyZiAGsEi5yjCDeWhow0TNke0rKpTu3qmx4vdbXHfG/G3XMSgBbba
+ 4kCMwQAAQoAHRYhBEvA17JEcbKhhOr10wAOaEEZVoIVBQJrBIucAAoJEAAOaEEZVoIVM0cP/R05
+ tZu4OOcqgrEHLqTmWDeyoXjktoMd1llxbF5uIIy3Dx4LkMy9RFbVHxk5QQtZh566K5+VRCTDjHv
+ QU0q1kfVPhIaR3ekmiBS3OTu5Q6LOS6sF9SagB4B8CHXf0gfl8e2O2R9i8y5UDAqrxbkgakWFnH
+ ZeW/4sNm7n/lOffM5xX5gdSXVQcg9ILPYW6nVsYxEPLG55oKBNJJ5cQbIRoOtOWRy2Mn7G4yNhj
+ s52XkMk2z5/UaniSS9CBEGttg/GPbDpfgpU/tcGN+iEdAIqJNh0obZmBYCJarBrVjaDM7QmveOY
+ bJAJyplo+ye4MCj0X0buUSiRivHytzS2KXcPGtAEUPIdhpqwd/iMGfsYYnnOYtvLNtpNw5UYgXC
+ GaXLxmPbAUuELb7NXwtiPbaZS3B7vaMTOG5ITJUP2VXA3576O+iWYf0yEJXCAW8wwxmbAJjuQu4
+ xW0C1zjoTH4iMA2bEbcYTiyEloZ6+W+RL4G9yk9dB6IK7Yf6rsgfSiJA7rM7ChlIIpKbvyjd+iK
+ BgrzaTr8bLwk6q2WF8qLJ4ZjaOU0iz8UnFSeZOxv/SPdTOPnutlb0mVfKFVKplHUGEvU4DA7Fg9
+ rg4JoYfMk8hbYcJWaP6KRCS/ud575ACEVYOWEWbvCP8q/0lUlgENrdLX3iyC1SoIU8//7rCGPgo
+ MiI5S
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
---3dcf8e0a5e9edc0fcf06426a56395e3537d991acfb90470930d0b8ec71c6
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset=UTF-8
+Commit 5445b1fbd123 ("NFSv4: Respect the server imposed limit on how
+many changes we may cache") made close() write back, COMMIT and wait
+whenever outstanding requests exceed the write delegation's
+space_limit. Servers that send a limit of 0, knfsd included, therefore
+get no close() benefit from write delegations, which knfsd now grants
+even on write-only opens.
 
-On Mon Nov 23, 2026 at 4:42 PM CET, Amir Goldstein wrote:
-> On Mon, Nov 23, 2026 at 3:10=E2=80=AFPM koraynilay <koray.fra@gmail.com> =
-wrote:
->>
->> On Mon Nov 23, 2026 at 2:35 PM CET, Amir Goldstein wrote:
->> > On Sun, Nov 22, 2026 at 1:09=E2=80=AFAM koraynilay <koray.fra@gmail.co=
-m> wrote:
->> >>
->> >> This is a follow up patch series stemmed from [1] and [2], splitting =
-the
->> >> _mask change for the fileattr API into its own separate patch.
->> >>
->> >> The first patch is a preparatory patch so that the code in the patch
->> >> after can be formatted better.
->> >>
->> >> The second patch is the actual implementation, which introduces:
->> >> - fa_xflags_{rw,ro}_mask fields to struct file_attr
->> >> - fsx_xflags_{rw,ro}_mask fields and has_masks selector to struct fil=
-e_kattr
->> >>
->> >> These masks have the following semantics:
->> >> - rw_mask:
->> >>   * for filesystems: advertise which xflags they support changing
->> >>   * for userspace: specify which xflags it wants to modify
->> >> - ro_mask:
->> >>   * for filesystems: advertise which xflags they support only reading
->> >>   * for userspace: ignored
->> >
->> > Nice!
->> > I think this API description is very clear and coherent
->>
->> Nice.
->>
->> >
->> >>
->> >> (ro_mask for userspace was also proposed as a "verification mask"[3] =
-but
->> >> I left out that semantic to keep this patch series more contained, an=
-d
->> >> can be added later if needed.)
->> >
->> > Not so easily added later.
->> > We cannot change the meaning from ignore to verify without any opt-in
->> > later, but we could use the combination of
->> > rw_mask |=3D X
->> > ro_mask |=3D X
->> >
->> > to "verify" (set it as long as it is already set)
->>
->> Isn't this just "preserving"?
->>
->
-> I donno I am confused let's keep this side discussion for another time.
+Dropping that flush breaks close-to-open consistency. The NFS client
+returns a write delegation without waiting for writeback. Since commit
+4816fdadab9f ("NFSv4: Don't use synchronous delegation recall in
+exception handling"), CB_RECALL does not even start writeback.
 
-I agree lmao.
+This is a conscious decision that it's better to break CTO than block
+the DELEGRETURN.
 
->> > all we need to do now is make sure that the API returns -EINVAL
->> > for rw_mask & ro_mask on set.
->>
->> Yes, the current (v2) code does
->>
->> if (fa->has_masks && (rw_user_mask & ~old_ma->fsx_xflags_rw_mask))
->>         return -EOPNOTSUPP;
->>
->
-> This is not the check I was talking about
-> Use should not pass via the new API a flag on both ro_mask and rw_mask
-> This one is definitely EINVAL and not EOPNOTSUPP.
-> It is a basic contradiction of the API definition
+Beyond CTO, the flush buys little:
 
-Hmm, IMO ro_mask on set should just be ignored, so userspace can do a
-get, change rw_mask and then do a set without having to zero out
-ro_mask.
+- Error reporting is pointless. close() is not required to flush, and
+  most filesystems don't, so checking for writeback errors there is
+  unreliable at best: the failing writeback may not have happened yet.
+  Applications that care must fsync(), which this doesn't change;
+  errors are still recorded in the mapping and reported there.
+- RFC 8881 says only that the client "should" abide by space_limit;
+  exceeding it leaves the server's behavior undefined, and knfsd just
+  returns NFS4ERR_NOSPC/NFS4ERR_DQUOT on WRITE or COMMIT.
 
-> it is not a specific flag that can be supported on this fs and not on the=
- other.
->
->> at the start of set_prepare(), I think that is enough, since we assume
->> the filesystems return the masks such that rw_mask & ro_mask =3D=3D 0.
->>
->
-> It needs to be in the vfs before calling the filesystem at all.
-> It is a UAPI definition.
->
->> >>
->> >> This allows userspace to not have to do a RMW cycle when using the
->> >> file_[gs]etattr() syscalls, avoiding possible race conditions and
->> >> simplifying their usage.
->> >>
->> >> Patch 2/3 also introduces the missing FS_XFLAG_PROJID flag so that
->> >> programs like chattr can leverage the new mask API.
->> >> FS_XFLAG_PROJID is kept out of the legacy FS_XFLAG_MASK and so it's
->> >> defined as part of a new FS_FILE_ATTR_XFLAGS_MASK group of xflags tha=
-t
->> >> will be used moving forward for any new xflag (like the one proposed =
-in [2]).
->> >>
->> >> Patch 3/3 converts fs/ntfs to this new API, to show how it can benefi=
-t
->> >> filesystem drivers too.
->> >>
->> >> The series has been tested across NTFS, ext4 (with project quotas), X=
-FS
->> >> (project quotas and extent size hints), and Btrfs.
->> >>
->> >
->> > Judging from the number of bugs reported by Sashiko and by my agent
->> > on the COMMON flags change,
->> > I think this needs test coverage for the old APIs, especially with old=
- binaries
->> > chattt/xfs_io that do the get/set cycle and re-built binaries with new=
- headers
->> > both tested against old and new kernel.
->> > Sorry, but the UAPI issues are fragile...
->>
->> Yeah, I thought about adding some tests to xfstests yesteday after I
->> made my agent test the sashiko issues in my test vm, but I don't want to
->> make it generate them and submit them with minimal oversight.
->>
->> It could still be worth to make it generate them to just test locally,
->> then clean them up and submit them after the vfs design/code is
->> finalized.
->>
->
-> I think that selftest will be easier to check these backward compact
-> issues with a C program that can use its own re-definitions of the struct=
-.
-> Then you can post it as part of the series which is much preferred for
-> visibility of the test coverage in the context of review.
+Go back to just starting writeback on close() whenever we hold a write
+delegation. While we're in here, change to using filemap_flush() so the
+writeback is (mostly) non-blocking.
 
-Ah right, I could copy src/file_attr.c from xfstests and modify that,
-since it defines the structs and XFLAGS in the .c itself.
+In testing against a knfsd patched to send a nonzero space_limit,
+single-threaded create/write/close went from ~92 to ~1,500 files/s.
 
->> > This is one of the changes that would have been very hard to audit wit=
-hout
->> > the LLM agents. Hopefully with the agents it is doable, but need to gu=
-ide
->> > them how to review/test for regressions.
->>
->> Yeah, the amount of edge cases it catches in my code is very high, I
->> manually wrote the main vfs code in this patch series, but I took at
->> least the same amount of time to fix *some* (considering the amount
->> sashiko still reported anyway) of the bugs the robot pointed out.
->>
->
-> My 2c: prompt the robot how can I make this easier for human reviewers
-> to verify - keeps it away from being too creative.
+For now, the pagemod_limit is still decoded but unused.
 
-I usually just ask it why it changed "all that code" and it's usually
-enough, if I can't review it manually it's probably not that correct.
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+One more minor change. The last version's comment was misleading. This
+version should make it clear that we're aware of the potential CTO race
+but consider that less harmful than blocking the DELEGRETURN.
+---
+Changes in v3:
+- Change comment and changelog to better describe the CTO effects.
+- Link to v2: https://lore.kernel.org/r/20261120-nfs-space-limit-v2-1-7a5c0f9280ad@kernel.org
 
-Thanks,
-koraynilay
+Changes in v2:
+- Switch to using filemap_flush() instead of filemap_fdatawrite()
+- Link to v1: https://lore.kernel.org/r/20261116-nfs-space-limit-v1-1-fcc1335169a7@kernel.org
+---
+ fs/nfs/delegation.c | 25 -------------------------
+ fs/nfs/delegation.h |  1 -
+ fs/nfs/nfs4file.c   | 11 +++++++----
+ 3 files changed, 7 insertions(+), 30 deletions(-)
 
-> Thanks,
-> Amir.
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index ad774316f716..3a141d5ee0bd 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -1587,31 +1587,6 @@ bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags,
+ 	return ret;
+ }
+ 
+-/**
+- * nfs4_delegation_flush_on_close - Check if we must flush file on close
+- * @inode: inode to check
+- *
+- * This function checks the number of outstanding writes to the file
+- * against the delegation 'space_limit' field to see if
+- * the spec requires us to flush the file on close.
+- */
+-bool nfs4_delegation_flush_on_close(const struct inode *inode)
+-{
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct nfs_delegation *delegation;
+-	bool ret = true;
+-
+-	rcu_read_lock();
+-	delegation = rcu_dereference(nfsi->delegation);
+-	if (delegation == NULL || !(delegation->type & FMODE_WRITE))
+-		goto out;
+-	if (atomic_long_read(&nfsi->nrequests) < delegation->pagemod_limit)
+-		ret = false;
+-out:
+-	rcu_read_unlock();
+-	return ret;
+-}
+-
+ int nfs4_delegation_hash_alloc(struct nfs_server *server)
+ {
+ 	int delegation_buckets, i;
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index fba4699952b8..75f0edde65ea 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -83,7 +83,6 @@ void nfs_put_delegation(struct nfs_delegation *delegation);
+ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
+ int nfs4_have_delegation(struct inode *inode, fmode_t type, int flags);
+ int nfs4_check_delegation(struct inode *inode, fmode_t type);
+-bool nfs4_delegation_flush_on_close(const struct inode *inode);
+ void nfs_inode_find_delegation_state_and_recover(struct inode *inode,
+ 		const nfs4_stateid *stateid);
+ void nfs4_inode_make_writeable(struct inode *inode);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 9a434f5dda8d..74071c63a786 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -122,11 +122,14 @@ nfs4_file_flush(struct file *file, fl_owner_t id)
+ 		return 0;
+ 
+ 	/*
+-	 * If we're holding a write delegation, then check if we're required
+-	 * to flush the i/o on close. If not, then just start the i/o now.
++	 * Under a write delegation, start the i/o without waiting for it.
++	 * The NFS client also sends DELEGRETURN without waiting for
++	 * writeback, so another client can open the file and read data
++	 * older than this close(). Losing close-to-open consistency is
++	 * preferred over holding the delegation until the WRITEs finish.
+ 	 */
+-	if (!nfs4_delegation_flush_on_close(inode))
+-		return filemap_fdatawrite(file->f_mapping);
++	if (nfs_have_write_delegation(inode))
++		return filemap_flush(file->f_mapping);
+ 
+ 	/* Flush writes to the server and return any errors */
+ 	since = filemap_sample_wb_err(file->f_mapping);
 
+---
+base-commit: 9d66f26fefacebfeed15de31c1123451a17ff119
+change-id: 20261113-nfs-space-limit-025199334e52
 
+Best regards,
+-- 
+Jeff Layton <jlayton@kernel.org>
 
---3dcf8e0a5e9edc0fcf06426a56395e3537d991acfb90470930d0b8ec71c6
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABYKAB0WIQSgVimKafU5DQMcjcDmj22qf5IGXAUCawR+3gAKCRDmj22qf5IG
-XP+1AP43BRF64QEMtEZ533xQB/KRczImKn5mbaKWll5fbt6qZAD+OrjJY0OBmpMe
-mmkvC62iSdxE0n0dXcWsl70+M0KBlw4=
-=xoVq
------END PGP SIGNATURE-----
-
---3dcf8e0a5e9edc0fcf06426a56395e3537d991acfb90470930d0b8ec71c6--
