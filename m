@@ -1,133 +1,95 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795463039;
-	b=iel9RyJCcIPHjLeHtwsdE/0NdQanvMtHyu8Y0d/sAiZ1wwHQpZjThRYtDaIMj6iBqn/Z
-	 hrFfiCXLOjUSUY2uYOPX0N7F3WJCjZdh3fS0FFoZiblxm5tejTsjae9ScRRrPjzxXSXYs
-	 O+X+V13dyU4KwEgGqTS4EoU/44/svWkhTPNuVHrEAx+9ImBgQSf98GdGIngf0eKLIbW1B
-	 +CyrlEjp9eyOYWb10s5vL53Zbo9hGd4VDQTAqNEDnIaeaO0ydEOBy1N6M6D/jJ5iThhUl
-	 i6T2HN+CG+3oQoK3yvXX2KZONQvjIz35LM+4jv2rCfetH/wJQy//f2GQijE6n3J4QHQ==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795463039;
-	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
-	 In-Reply-To:References:Autocrypt:Content-Type:
-	 Content-Transfer-Encoding:User-Agent:MIME-Version;
-	bh=S/wnNi5w/xIKjNhc3JAod1eB55EuCpEGUeDsupQ65Hc=;
-	b=LVeWLQiqf6vTrknXfWOEG58dBusXAmMopfIXrwSWxLHEb748f8B9xHxmgOIhy6tjl+Bo
-	 uCNhTtF3e/935g9l7MUbG68LmVIg446NQAX76IxWReAM2OXcZkoXPGrJD3w5n0RD+i2tu
-	 1jJystRqnbHBcL1sURH8otQVSuSVTIZrkGdap7Y0XLQGAioYSKYJFlKGRAINEagCcV+PO
-	 96MCaXluiBWnQcBjLuP8WCTmOsBavHZlTHacyf91NqgSfsdENgD/re+y3weKz6zualbOn
-	 apbsDU1jrnEuR5XvdOTHvmtLkLlnPc7O3ruMNeew5vdjrR8UyWBv8WRGBfCjXvh6sJQ==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NtFcmUH2;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.224.41
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1795468138;
+	b=cv84deygAdFXxf6Qbd5NEbXfuV7Zzr1/n31eNNUnAL3v/OR5Auc/53xqO52eOKG4sQZO
+	 Mx88woidS/qoFS+fOQciSSEYjEhz7opN+F3NL9pW4Myvm1V9QvV5XBk7T5cCWoA7VFua8
+	 NT75FJebMlInJP+XLpLQFt4+C2EH9UWcqIDlIUh6f8CaTzAO1TMlU5wiHLzcoOSWUoEKe
+	 zjBtpDkLRQhEW2DTqICMTNA5+o0BCNzKVky8Ber3oQRG5kLQPOzzrW8IhSIzb+88DlkFN
+	 DjbBq4GX5V+iE4PMm7dbHi8Gv7yjv7Xm65H//Uy2t9h9Df/llzkN/s8aVtsHjwuHr2g==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795468138;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:From:Date:
+	 X-Gm-Features:Message-ID:Subject:To:Cc:Content-Type;
+	bh=XgkS96fRXa23YjNKmcYL16LZat3djx6n1fYAYGtgNIQ=;
+	b=BhVw8vVJ0U/DOmV8nxmlD/xvE7Kqo+glo2oJ7UOiw4qxFJRuhMD7al9lejXuHbu8aGf+
+	 G3Wv/ywrzUbMwSy/T+g6nI26VLMZwxifh92w77maqoLueIUaDlz3wSkM6HpKSNw4SzTJa
+	 gE51EWic7LhbX1ipKli2TAzyqROYaHxYUvWqhqpXTNxWxneereRn18DvnnppixGa8ooXh
+	 VhwAGUxKM03w7gD/gopJqfxdbetlzkyWSaMIQGqong3pDIet4/7FNEbGKqag7HHeTBLIz
+	 8XSUibw2C+xcMcArAN3jECyCMwQYiJBq1StXSwP7yZbtneChaUnjrNQJ2SkFJ+/X/Mw==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VQryG0fO;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.224.41
+Received: from mail-yx1-f41.google.com (mail-yx1-f41.google.com [74.125.224.41])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCEBD606A330;
-	Mon, 23 Nov 2026 19:43:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5371606A32C
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 21:08:57 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org C5371606A32C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=NtFcmUH2
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F2B721F000C0;
-	Mon, 23 Nov 2026 19:43:57 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795463038;
-	bh=S/wnNi5w/xIKjNhc3JAod1eB55EuCpEGUeDsupQ65Hc=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=NtFcmUH2LLyz72Yy0OBHL2Daebmgjx9rXYN93dz8dhpbz2XcbzlWUVb1s6Af2a7JT
-	 Zg7mD5BoWd3cMyrNOaVgx096nsdVVIGrgMqHMNq7dKYTidrkqY6ltWOKUEARiFxcIQ
-	 08V92TM7eVLRbgy+6ej2SJ4OMRT9e6Xzjc6s9xQSwp3QnVT3PGiaqNh+7Mol7KqcI4
-	 G6siAm4YZxcdJEHeyQ64PCFkp56Q5xVkc5vJ+eVEoUiTETXZZtmU772nBaMRx5Z3WE
-	 KO41FsabrNQZozOszESAtadV7EkvyIyKFCDi3Rvqnq/2XC6AGqqqeeIRnoPF/ZbEqQ
-	 EcC3B1rvLTR6Q==
-Message-ID: <7c31f905f202512fb0ef1cb63f0714fffa24640f.camel@kernel.org>
-Subject: Re: [PATCH RFC] NFS: don't wait for writeback on close() with a
- write delegation
-From: Jeff Layton <jlayton@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Date: Mon, 23 Nov 2026 14:43:56 -0500
-In-Reply-To: <c9d7a4bf79247d7cfcd23460d351412c343d546c.camel@kernel.org>
-References: <20261116-nfs-space-limit-v1-1-fcc1335169a7@kernel.org>
-	 <c9d7a4bf79247d7cfcd23460d351412c343d546c.camel@kernel.org>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-3.fc44) 
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=VQryG0fO
+Received: by mail-yx1-f41.google.com with SMTP id 956f58d0204a3-67990a45e02so3882492d50.3
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Nov 2026 13:08:57 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795468137; cv=none;
+        d=google.com; s=arc-20260327;
+        b=LPMYUSmHCMMTiu5Kz1y7yhtbl+bOJtCVFEs9cJJ6SsOlp5ODuaEg0j/ocp1xkjBX82
+         spYosUgV/14hEMXt3urbbhlcUCUdiQxS6xKYALqRRYfb5AwFlmphkJsiuUCJNOdVRuLV
+         Nuy3PRzess0rwtWYMZVBRpZB46zJ9ZwJrCLteTsTFWVAyn6RS49Da6QY5RaPFS8JUAQx
+         PEFBhWXIJ1kitKBV3h4OXVhs68HsiUzFtoXoKXcV3S1bPG5pfxO0qlaI5exzC+Soc4Oo
+         R58An0yXbZHA6ZlLFGj5NJtg0ma4l4DASr2KM7BL3xYmeRFIYYUZiX9Vg0gKorUjHdK8
+         dWTw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=XgkS96fRXa23YjNKmcYL16LZat3djx6n1fYAYGtgNIQ=;
+        fh=E/FXhmUauEGefm5R+oU9bYmTxswclnb8UjR8wmV9z8I=;
+        b=YxV55egmwbkzfgQ7E5pPZs0KVGWu165/KQPShSPyrnaBe9H5H97tqiZIt9Kgqapg+c
+         UurRQg8Tp47pyZbh9yK6OuI5Fdvtcr+G4fT4AFKBNNgmSMx5/cv0FLSzNhtECHSg+h0p
+         k3SYYxHCpJFASQ7oTnTr3Xj6sVI+YnxD90yqb35k66yVi54EuYx22Y491GGc6vdzQaul
+         L1kM5aDFviqV5pjifpQh8UCNAMj4x8epdI8hX5VYEDDhU6o4Urii103uQskB4VnEKLzw
+         U7+89KB/dWwXEAD+Oe4KiBmz3Ki7LeDF2db2u518va8YCEibCNd1PoBnswtubmIk1gNx
+         +myQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795468137; x=1796072937; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=XgkS96fRXa23YjNKmcYL16LZat3djx6n1fYAYGtgNIQ=;
+        b=VQryG0fO/FTgsAoHhddAa4JpR89usfRXNU149y/W9dkoKuAzGbhnIUxjM0QdXiPcsL
+         cfYV4taqtguRgbbAFs3iFKJljFO6mmc5tmZxR1cNOKD76jAk1KiNy4C0596aR5dkN0qk
+         +nuglzRtOFb5sImxdvabVXz0VuBTsJqCfdCp0SJ59y7s/+oSRg5VqFgMZMpdI1p4m5de
+         l65Ad/CAnd6avdStDcdyoIB4S9OLq8HvzuJGTZ/4TG2dXsZtCWJO3q2TdJyIVERo6t7G
+         gplAuNCbhNfNAm66FE0Y1Rzpdf69yFwCiXBV+I0PQ3Qf3vxKyFTdVr3tHp3A85LKmVGd
+         fVvg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795468137; x=1796072937;
+        h=content-type:cc:to:subject:message-id:date:from:mime-version
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to:content-type;
+        bh=XgkS96fRXa23YjNKmcYL16LZat3djx6n1fYAYGtgNIQ=;
+        b=WbgoOEMZbbYcOF/WjQF5+LgX3YL/b/HHEY034JIMDAZuWtu6HYf9LbNQpyhcipRhzY
+         M13gGGoZpKJ5j9HvdlC9GbQATTmIk9F0ybWwA2eGg7E45gRpUGTnvzY8wkn3PT8PqNXL
+         fPpLUNb6NVJQRkpqr2JCQomAnijFrEXkmrmdNJXnucwd0bCmnvdSRd98vEWYUwWsXen1
+         4xVm3WVsIU/cdSsf2qmR/37PGaU5rKnJ3huBNu7GgD2Z84nQXm95VkF+RgN+cG8ocWhw
+         z3KBYpTNWHS1O5XuzdvgFLvAzDxc2iAJdAnsxwegqKv/jXu9h0glBEYc0rYA4nAIxo/z
+         SG6A==
+X-Gm-Message-State: APuU4Z/DARec9/X7XtiBM1iUNqSssX/efqKRdK52CSHZBhWBq8Okj7kk
+	L/W+k20aH+sB9GOoNgf6edqbqb5/6jzqCJZDRHtDkhkHAZPrM+K3JXeoohfVdKHuOnOdtlkdutz
+	p6Kfftzb/cnDHb7Op18aD9k8piWoVb8YDxAov3u0=
+X-Gm-Gg: AZFdTZfu6khQlG8O0eBVcqMfich6aVxtCK9y80uso43w0ZtrS59uCXd+rOWJIIj9xeE
+	xpay39rOnpCOLU824zSaebzsdneJNqtXwPWGJ7+ODyo5ApI6XXhPa85ZCiuJ/3QE0m12FvU3t51
+	pHjC6xBfkQRnfA12Ff0XD14NRYkgBSxk7GbWV1haI2CfcQJQ2g2lTj0CV5Vd7WB4AEaO477RHWt
+	wylfElWS4enTaNZCeuN20daV27FZfQTEeMQWSaMcwr4YDX9zdpqDoz7pYEKZAq/OT6tHdAJHo3Z
+	9pFRzGhW5FanxJd5JIGYbFGNO0gfX7Qw1ExSjfLPDWr+n3civ0kxSk5Fa0s2BjSFASQa1gzX8KE
+	wGQnLnzPZ4DEyj3iGvLl5frBkBK4673x7F2E=
+X-Received: by 2002:a05:690e:4384:b0:679:2a5f:52e0 with SMTP id
+ 956f58d0204a3-67df4499489mr3874431d50.94.1795468136895; Mon, 23 Nov 2026
+ 13:08:56 -0800 (PST)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -137,165 +99,100 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
+From: Rida Shamasneh <ridahani@gmail.com>
+Date: Mon, 23 Nov 2026 23:08:44 +0200
+X-Gm-Features: Aa3M54q1VDNab3BNcS9Eff9gDetkE9c0cArCNdruQLwbnhVo5b8mpXWUR_d9Zhg
+Message-ID: <CANkg2rNRVyYLYLaVnCz75nYvC0DAKrphNazX1Asacf8MuBnxAg@mail.gmail.com>
+Subject: RFC: RPC-over-RDMA client transport for pynfs (testserver.py --rdma)
+To: calum.mackay@oracle.com
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Fri, 2026-11-20 at 10:04 -0800, Trond Myklebust wrote:
-> On Mon, 2026-11-16 at 15:55 -0500, Jeff Layton wrote:
-> > Commit 5445b1fbd123 ("NFSv4: Respect the server imposed limit on how
-> > many changes we may cache") made close() write back, COMMIT and wait
-> > whenever outstanding requests exceed the write delegation's
-> > space_limit. Servers that send a limit of 0, knfsd included,
-> > therefore
-> > get no close() benefit from write delegations, which knfsd now grants
-> > even on write-only opens.
-> >=20
-> > That flush buys nothing:
-> >=20
-> > - CTO: no other client can open the file until the delegation is
-> > =C2=A0 recalled, and the recall writes back our dirty data first.
-> > - Error reporting is all that's left, and it's pointless. close() is
-> > =C2=A0 not required to flush, and most filesystems don't, so checking f=
-or
-> > =C2=A0 writeback errors there is unreliable at best: the failing writeb=
-ack
-> > =C2=A0 may not have happened yet. Applications that care must fsync(),
-> > =C2=A0 which this doesn't change; errors are still recorded in the mapp=
-ing
-> > =C2=A0 and reported there.
-> > - RFC 8881 says only that the client "should" abide by space_limit;
-> > =C2=A0 exceeding it leaves the server's behavior undefined, and knfsd j=
-ust
-> > =C2=A0 returns NFS4ERR_NOSPC/NFS4ERR_DQUOT on WRITE or COMMIT.
-> >=20
-> > Go back to just starting writeback on close() whenever we hold a
-> > write
-> > delegation. In testing against a knfsd patched to send a nonzero
-> > space_limit, single-threaded create/write/close went from ~92 to
-> > ~1,500 files/s.
-> >=20
-> > User-visible change: ENOSPC/EDQUOT for data written just before
-> > close()
-> > now shows up only via fsync(), not close().
-> >=20
-> > For now, the pagemod_limit is still decoded but unused.
-> >=20
-> > Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> > ---
-> > I started looking at wiring up space_limit for nfsd's write
-> > delegations,
-> > but afrer looking at how the client uses it, I think we're best off
-> > just
-> > not bothering to respect it at all. Thoughts?
-> > ---
-> > =C2=A0fs/nfs/delegation.c | 25 -------------------------
-> > =C2=A0fs/nfs/delegation.h |=C2=A0 1 -
-> > =C2=A0fs/nfs/nfs4file.c=C2=A0=C2=A0 |=C2=A0 7 ++++---
-> > =C2=A03 files changed, 4 insertions(+), 29 deletions(-)
-> >=20
-> > diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> > index ad774316f716..3a141d5ee0bd 100644
-> > --- a/fs/nfs/delegation.c
-> > +++ b/fs/nfs/delegation.c
-> > @@ -1587,31 +1587,6 @@ bool nfs4_copy_delegation_stateid(struct inode
-> > *inode, fmode_t flags,
-> > =C2=A0	return ret;
-> > =C2=A0}
-> > =C2=A0
-> > -/**
-> > - * nfs4_delegation_flush_on_close - Check if we must flush file on
-> > close
-> > - * @inode: inode to check
-> > - *
-> > - * This function checks the number of outstanding writes to the file
-> > - * against the delegation 'space_limit' field to see if
-> > - * the spec requires us to flush the file on close.
-> > - */
-> > -bool nfs4_delegation_flush_on_close(const struct inode *inode)
-> > -{
-> > -	struct nfs_inode *nfsi =3D NFS_I(inode);
-> > -	struct nfs_delegation *delegation;
-> > -	bool ret =3D true;
-> > -
-> > -	rcu_read_lock();
-> > -	delegation =3D rcu_dereference(nfsi->delegation);
-> > -	if (delegation =3D=3D NULL || !(delegation->type & FMODE_WRITE))
-> > -		goto out;
-> > -	if (atomic_long_read(&nfsi->nrequests) < delegation-
-> > > pagemod_limit)
-> > -		ret =3D false;
-> > -out:
-> > -	rcu_read_unlock();
-> > -	return ret;
-> > -}
-> > -
-> > =C2=A0int nfs4_delegation_hash_alloc(struct nfs_server *server)
-> > =C2=A0{
-> > =C2=A0	int delegation_buckets, i;
-> > diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-> > index fba4699952b8..75f0edde65ea 100644
-> > --- a/fs/nfs/delegation.h
-> > +++ b/fs/nfs/delegation.h
-> > @@ -83,7 +83,6 @@ void nfs_put_delegation(struct nfs_delegation
-> > *delegation);
-> > =C2=A0void nfs_mark_delegation_referenced(struct nfs_delegation
-> > *delegation);
-> > =C2=A0int nfs4_have_delegation(struct inode *inode, fmode_t type, int
-> > flags);
-> > =C2=A0int nfs4_check_delegation(struct inode *inode, fmode_t type);
-> > -bool nfs4_delegation_flush_on_close(const struct inode *inode);
-> > =C2=A0void nfs_inode_find_delegation_state_and_recover(struct inode
-> > *inode,
-> > =C2=A0		const nfs4_stateid *stateid);
-> > =C2=A0void nfs4_inode_make_writeable(struct inode *inode);
-> > diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-> > index 9a434f5dda8d..04f4d8967e5b 100644
-> > --- a/fs/nfs/nfs4file.c
-> > +++ b/fs/nfs/nfs4file.c
-> > @@ -122,10 +122,11 @@ nfs4_file_flush(struct file *file, fl_owner_t
-> > id)
-> > =C2=A0		return 0;
-> > =C2=A0
-> > =C2=A0	/*
-> > -	 * If we're holding a write delegation, then check if we're
-> > required
-> > -	 * to flush the i/o on close. If not, then just start the
-> > i/o now.
-> > +	 * A write delegation already provides close-to-open
-> > consistency:
-> > +	 * no other client can open the file until it is recalled,
-> > and the
-> > +	 * recall writes back our dirty data. Just start the i/o.
-> > =C2=A0	 */
-> > -	if (!nfs4_delegation_flush_on_close(inode))
-> > +	if (nfs_have_write_delegation(inode))
-> > =C2=A0		return filemap_fdatawrite(file->f_mapping);
-> > =C2=A0
-> > =C2=A0	/* Flush writes to the server and return any errors */
-> >=20
-> > ---
-> > base-commit: 9d66f26fefacebfeed15de31c1123451a17ff119
-> > change-id: 20261113-nfs-space-limit-025199334e52
-> >=20
-> > Best regards,
->=20
-> Maybe we can call filemap_flush() in order to kick off non-blocking
-> writes in this situation?
+Hi Calum,
 
-This sounds like a good idea, but agentic review came up with this, and
-it seems to be valid, AFAICT:
+(Resending in plain text: my first copy was rejected by the list for
+having an HTML part.)
 
-------------8<-------------
-- filemap_flush() =E2=86=92 WB_SYNC_NONE: it skips folios already in flight=
-,
-but it can block on server-wide congestion caused by other files.
+I've added an RPC-over-RDMA (RFC 8166) client transport to pynfs, so the
+NFSv4.1/4.2 tests can be run against a server over RDMA:
 
-- filemap_fdatawrite() =E2=86=92 WB_SYNC_ALL: it may wait on this file's ow=
-n
-rewritten in-flight folios, which a create/write/close workload rarely
-hits. It never waits on congestion, and a small file gets a FILE_SYNC
-WRITE with no COMMIT.
-------------8<-------------
+    ./testserver.py --rdma SERVER[:PORT]/PATH <tests>
 
-I think we may want to switch this code back to using filemap_fdatawrite()
-like it did before. Thoughts?
---=20
-Jeff Layton <jlayton@kernel.org>
+Before I clean it up for submission, I'd like to know whether you would
+be interested in having this upstream, and how you would like it split.
+
+WHY
+pynfs can only exercise a server over TCP today, so the RDMA transport
+code of a server (svcrdma in nfsd, for one) gets none of the
+protocol-level coverage the tests give it over TCP. This runs the same
+tests over RDMA, including chunks, the backchannel (RFC 8167) and the
+connection setup (RFC 8797).
+
+WHERE
+https://github.com/RidaShamasneh/pynfs/tree/add_rdma
+17 commits on top of master, about 3,000 lines added: ~1,200 for the
+transport (rpc/rdma.py, rpc/rdma_verbs.py), ~1,350 of unit tests
+(nfs4.1/rdmatests), ~150 of README (nfs4.1/README, "RPC over RDMA"),
+and the rest glue in nfs4client.py, nfs4lib.py, rpc.py, testserver.py
+and environment.py.
+
+WHAT IT DOES
+- Pure Python and no new dependency: it talks to librdmacm and
+  libibverbs through ctypes, loaded when the first RDMA connection is
+  made. TCP behaviour is unchanged (apart from the logging fix below).
+- The inline size is negotiated with the RFC 8797 private data (4 KB
+  with nfsd, 1 KB otherwise).
+- Read, Write and Reply chunks. The Reply chunk is sized per call from
+  the session's maximum response size and a bound on the COMPOUND's
+  reply. READ data goes in a Write chunk. The data of a big WRITE is
+  sent from the caller's own memory with a Read chunk at its position,
+  so nothing of it is copied in Python.
+- The backchannel works over the same connection, with separate forward
+  and backward credits.
+- A lost connection fails the waiting calls at once, instead of leaving
+  them to pynfs's 300 s timeout.
+
+TESTING
+Against a Linux nfsd 5.15 over soft-RoCE (rxe), the pass/fail results
+over RDMA are identical to TCP, test for test, as NFSv4.2 sessions
+(testserver.py's default minorversion) and, for the 179-test subset, as
+NFSv4.1 sessions too. That subset is what I used as a regression
+(exchange_id, create_session, sequence, open, rename, file, dir and
+others). The remaining groups (copy, xattr, deleg, pnfs, flex and
+others) and courteous/callback were run as NFSv4.2 and also match TCP.
+The failures are ones nfsd also has over TCP. The reboot group has not
+been run over RDMA. The transport has 80 unit tests of its own (from
+nfs4.1: python3 -m unittest discover -s rdmatests -t .); about half of
+them need no server.
+
+NOT COVERED / LIMITATIONS
+- Only tried against nfsd 5.15 over soft-RoCE: no iWARP, real hardware,
+  other servers or RPCSEC_GSS.
+- Client side only, and NFSv4.1/4.2 only (nfs4.0, nfs3client, the proxy
+  and the data server are not wired).
+- No reconnect: a lost connection stays lost.
+- Some of it is nfsd-specific (5.15 wants the Reply chunk to cover the
+  whole reply even with a Write chunk, and mishandles a Write list with
+  more than one chunk). It is documented in the README.
+
+A SEPARATE IMPROVEMENT FOR TCP TOO
+While measuring I found that rpc.py formats a whole reply with %r for
+its debug logging before checking the log level: 2.6 million characters
+for a 900 KB reply, twice. Passing the arguments to the logger instead
+makes a 900 KB READ over TCP about 2.8 times faster (48.8 ms to
+17.2 ms). It is one small patch (c99c9b2 on the branch) and I am happy
+to send it on its own, whatever you think of the RDMA work.
+
+QUESTIONS
+1. Would you want RDMA support in pynfs at all?
+2. If so, is a separate rpc/rdma.py and rpc/rdma_verbs.py (ctypes)
+   acceptable, or would you rather depend on pyverbs?
+3. Are the tests fine as a unittest package under nfs4.1/rdmatests, or
+   would you prefer them somewhere else?
+4. I would redo the history as a clean series (logging fix; RPC
+   plumbing; transport; NFS-layer changes; tests and docs) with
+   Signed-off-by, and send it as CONTRIBUTING describes, to you and
+   linux-nfs. Does that split work for you?
+
+Thanks,
+Rida Shamasneh
