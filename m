@@ -1,49 +1,134 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795549769;
-	b=jys7uFz5xval5WeesD7sZL/ohjwjVVJyNuzIyJkJq/EmjZmaNwX01jR3sdrNkoUSB4H1
-	 XQ7uqdzWC3oOo3fPsRsKbUZ7k1H2G8h9zN4L65EAciX3kW7EOtaShtCs7u7whbEk+ShIn
-	 iW9KxzGPQ1DPWVM24I8o9u4OXZymZSx5IWlyaivMbpZHD8E1DMJ3Aq5qakauzHPc4Ky0k
-	 dDBSxWpoei7Tt1FyYV7saDMy/Ml8q/0TGWKfnvz6TDPuIWlPOiDCr60bHpU3NiEsb7EYb
-	 O4am6shkelR83i531WrNgVlrbLfg5OqMVA3h3qJZ+xXxef6NSTETkyulKUmBtx2V+Qg==
+	t=1795550555;
+	b=mBVJdvdwk/4/rXHieCyKPSZRx9CM+9cAeXgp0fGa56R3yRve2ndZfCy6eJpQWBIL2uCU
+	 FGotRd3mxwsGYExmH8oaQJV379Ipgmxn9iGkmbHT22TS7NnCDUOKkDba0tqSeJqtxeziz
+	 f0RCSAwtFOOWE4yKsk7Hu3cLsWA9jUf7Px1hoLQg1cl8hGrlntSNjOqd1vIKQRwGCFKSl
+	 hekWJRlB014B+QlGFzVDeuAd/esVgGYewnGnoso9yKnmgLrKrCZrd98/urmHOPspVKffY
+	 lHBiK12kjmXLa94fNDJSOkdcFrWhM1MRoRLkcxmcPm9Iwotr6BN+JVWlbYM8LduWBXw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795549769;
-	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
-	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=zHwfQCfJmb38lEqFT76DaImX1atMSnLcBbVhYr/nfyM=;
-	b=IFJBLRlvpgtWh1STyr/JYkMcl1cQuw/s34tvdoSQfFmksmlJckYOSm3JFgR+wmnTqbxL
-	 nsVJ3OMc8XbHR4ySyqERQLKrOgIGY4a4W07A0lky4JtPrPXRHP/fJBYbUabNiLUalFWLN
-	 G3lrlvxOxKjH8MLU8Aaokars+ovr7gUpl5fQ2f1XwlAgZsL6pjXLxqtW4EAmEASUuxMpL
-	 UUHiMFhUR/0UUO9MygPUr+NeQNJSUk8isUQPMzqukmgZyS3+MaQlSiblcmLjKOaX8+sqh
-	 NjNhKkh0jRCjZUyRQHVvyBVBi9wBZ6NtgbUpOr1AXwTQFYhmBWiNA62ZXD1tEQh1sPw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795550555;
+	h=Received:DKIM-Signature:Message-ID:Subject:From:To:Cc:Date:
+	 In-Reply-To:References:Autocrypt:Content-Type:
+	 Content-Transfer-Encoding:User-Agent:MIME-Version;
+	bh=OIcoEUSHqJJ8vFOM+ytwKANXvt8BypmwQB3wqbSaf48=;
+	b=U6SSuiFU3QjsVMnDbUmPtC5lbTT8kkSNUWM5O55GMI1nPqamGbX4i3fV+jwUdGr+NSXa
+	 1y5qu3f+aKiWqjg1GHcJZLqh0jCt9rSKZOPmG5RpymRIdvs4G7V9GnVq0R1wcZfcfbR8g
+	 EsUWf38njNlQ291ZCpblwbsptEBeoX1m8To7ilKhDzoNvawBNyvhYEjDaVoUGbCQEr+dI
+	 3ePF5UhyjBlMXAJz3eYxttvQIZTjgUstI7a9aYpSLR/oeAM7g7mRqyMkBrdPfrKVFtpYM
+	 vOGkAhWzHp8LjdmhM1BMa4DVeNG05EziH1LqgxJGnytZmTOQo6dedx/OpF9i4s1f/Uw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mJ3UZqMg;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F+0lHjOI;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE58260A2637;
-	Tue, 24 Nov 2026 19:49:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E63C1606A32C
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 20:02:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mJ3UZqMg
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B281D1F000EF;
-	Tue, 24 Nov 2026 19:49:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=F+0lHjOI
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6B6061F000D8;
+	Tue, 24 Nov 2026 20:02:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795549769;
-	bh=zHwfQCfJmb38lEqFT76DaImX1atMSnLcBbVhYr/nfyM=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=mJ3UZqMgGmLdb82o80SR1ozHE88enUbrnt1eX4uBOZ43rQ8H7143TB23+zCQEo+SC
-	 qGTSoJzL/whWgyeQW+wWwjEGzgcL9JyBpO4okIxEblPfJZSe+BIzDrx4tWy1hQVayp
-	 if9tLAZ6rzTXUA6vYxWAJxYGAYtbkpgu5qz+++BeX/9OjUbQFKo0qgRANyHJg78Ol9
-	 M4iX7eMYDUuAhNoytBbgdZwbZ/UG9Rua3+44GUCFndjAiXWj/wNLRU6HJq+uNdYlpt
-	 1Z9p2J3nUg7nzpPMnSS/n1FsFVS+IfqZvakQ4swqmpR34qyxjHgFDTXNGBDl2jr056
-	 52aO44LJcFYHA==
+	s=k20260515; t=1795550554;
+	bh=OIcoEUSHqJJ8vFOM+ytwKANXvt8BypmwQB3wqbSaf48=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=F+0lHjOI5GCNNlcjbF+RtYtLPD5A+A9ptx6C6zZpgHVBvjfsfBN/efR6B+moMTgeR
+	 TZJoQnLam2RUdMs9Ul6Et11IM9x6NbR87walXDKvj9FRibonI3Nkm0boAo+1J2ibwY
+	 UO5VCixgWO8uio/5jh9cuGvuY8eeu6UH5AX17vqQ/Usjd0YGQgR5mgrT4hxxjwW3sQ
+	 CqxTcD+joYAHdVS/HMRfMyvN+8OngVkkAE37TY8QsRWRJyVwM/IFiSTjjeDm1Rbjbn
+	 URpEGTpOfr1rNTLE/eFiaSxNYbXXNhVEKYXSLmSgkDoNU7Ir6BGvsI+Cevly7cnOdT
+	 wiPXT+HWkNv9w==
+Message-ID: <72a6b37071266b50e2f99ef06c1f580f8bc47c61.camel@kernel.org>
+Subject: Re: [PATCH v2 1/2] nfsd: return GDD4_UNAVAIL when
+ nfsd_file_acquire_dir() fails
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 24 Nov 2026 14:48:51 -0500
-Subject: [PATCH v3 12/12] nfsd: move ctime when CB_GETATTR applies a
- delegated mtime
+To: Dominik Maier <dmnk@google.com>, Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org, 	dmnk+artist@google.com
+Date: Tue, 24 Nov 2026 15:02:31 -0500
+In-Reply-To: <20261124180606.73719-2-dmnk@google.com>
+References: <20261124180606.73719-1-dmnk@google.com>
+	 <20261124180606.73719-2-dmnk@google.com>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-3.fc44) 
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -53,68 +138,50 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-delegts-fixes-v3-12-6fe4ba705aef@kernel.org>
-References: <20261124-delegts-fixes-v3-0-6fe4ba705aef@kernel.org>
-In-Reply-To: <20261124-delegts-fixes-v3-0-6fe4ba705aef@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, Christian Brauner <brauner@kernel.org>
-Cc: =?utf-8?q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>, 
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1444; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=1zT3UR8D3JA8M02VhrGNMqquxLfZZpeteUoT2Rr+yYs=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBrBeo3L99VriAkr4qzcnB0Tc1cqC359ivgWAqd6
- /GPFv/DzViJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCawXqNwAKCRAADmhBGVaC
- FaAJEACl395lXbeuYFS0OkikolFouk/IuYDNKKgjir6xFOvFg/vJ1MZfNHUjRTzpl3ZgrN59BZw
- ru0JRZFKQSnXFKfoUhhqdgXurlEoXTN5IrsSZU2cgM0qpktCofGRkyrKhM+mYLFfq1Rqbf+KQpD
- 2oBTZRrsbG2HmgREcpNWZAA2Ks0Fh0k1bsNc185y1nQra6ieb4aJu8Sv97SDEb1/9OpvzIQrY2p
- 2w7nVlUFyYboHJWh2e0/KL9+9SSyzSLaqPmrg0zgLWq4bhTuvFWNhacTssfuGd9Q/lV0iyO04gT
- lXw4rOg0ToG8JqlG8+AXbFFKLj6xOlxpoI8PBHewJE2XwnYXhpYAHeKH1ZsVUXzH22DTy/N9gtA
- dWpbICbYG+26LbsEwt7fpBxgKSt8xV7iP1eoloQXa79AWpxelMmXs2rVUaqb85a6VGYlbYdf5aW
- gJkIaJkPa03SSGcYYSJwcQr5kzxYVHzIob/8NUSrYlLcQqOKQBnFBvmGzvBztKxeH6Rg+6lgiwE
- eXmpyJho6V5OdJxEVGn42EAmflAjuGX7KqF3Ani3O4YnlNdDDIBKpSjDk1cEk0yxUk3gWZvUMWD
- sJudAjGOOylD7Ayde9aCKCb34PYfnDBO/yQrxMnI9Y+ny7dojL1cDECUDN1KN3FNOAWTpOOmwMB
- /TJaz80uVnJNvng==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-cb_getattr_update_times() sets ATTR_CTIME only when the delegated ctime
-passes vetting. When the vetted mtime is applied but the ctime is
-rejected, the inode's mtime changes and its ctime doesn't.
+On Tue, 2026-11-24 at 18:06 +0000, Dominik Maier wrote:
+> The Linux NFS client requests a directory delegation by inserting
+> GET_DIR_DELEGATION between PUTFH and GETATTR in a single COMPOUND, and
+> _nfs4_proc_getattr() does not tolerate -EACCES. When
+> nfsd_file_acquire_dir() fails (for example for a non-owner doing stat()
+> on a mode 0711 directory without read permission), returning the error
+> aborts the COMPOUND before GETATTR and surfaces EACCES to stat().
+>=20
+> Reply NFS4_OK with GDD4_UNAVAIL when nfsd_file_acquire_dir() fails,
+> matching the non-fatal nfsd_get_dir_deleg() path below so the delegation
+> is withheld while the trailing GETATTR still completes.
+>=20
+> Fixes: 8b99f6a8c116 ("nfsd: wire up GET_DIR_DELEGATION handling")
+> Cc: stable@vger.kernel.org
+> Suggested-by: Chuck Lever <cel@kernel.org>
+> Signed-off-by: Dominik Maier <dmnk@google.com>
+> ---
+> Note: matching your snippet, this folds any nfsd_file_acquire_dir()
+> error into GDD4_UNAVAIL; let me know if you prefer narrowing it to
+> status =3D=3D nfserr_acces so errors like NFS4ERR_NOTDIR or NFS4ERR_WRONG=
+SEC
+> still surface directly.
+>  fs/nfsd/nfs4proc.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index b76320c265e1..dd17a6b47222 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -2873,8 +2873,10 @@ nfsd4_get_dir_delegation(struct svc_rqst *rqstp,
+>  	__be32 status;
+> =20
+>  	status =3D nfsd_file_acquire_dir(rqstp, &cstate->current_fh, &nf);
+> -	if (status !=3D nfs_ok)
+> -		return status;
+> +	if (status !=3D nfs_ok) {
+> +		gdd->gddrnf_status =3D GDD4_UNAVAIL;
+> +		return nfs_ok;
+> +	}
+> =20
+>  	/*
+>  	 * Offer no notifications to an order-aware client. RFC8881bis section
 
-Always set ATTR_CTIME with an applied mtime, and ATTR_CTIME_SET only
-when the ctime passes vetting, so a rejected ctime moves to the current
-time. This matches SETATTR with delegated times.
+Nice catch!
 
-Fixes: b40b1ba37ad5 ("nfsd: fix timestamp updates in CB_GETATTR")
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfsd/nfs4state.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6bb3ce974c9c..9ebee4fca9d6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -10910,10 +10910,11 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
- 			attrs.ia_valid |= ATTR_ATIME | ATTR_ATIME_SET;
- 
- 		if (nfsd4_vet_deleg_time(&attrs.ia_mtime, &dp->dl_mtime, &now)) {
--			attrs.ia_valid |= ATTR_MTIME | ATTR_MTIME_SET;
-+			/* A rejected ctime still moves, to the current time */
-+			attrs.ia_valid |= ATTR_MTIME | ATTR_MTIME_SET | ATTR_CTIME;
- 			attrs.ia_ctime = attrs.ia_mtime;
- 			if (nfsd4_vet_deleg_time(&attrs.ia_ctime, &dp->dl_ctime, &now))
--				attrs.ia_valid |= ATTR_CTIME | ATTR_CTIME_SET;
-+				attrs.ia_valid |= ATTR_CTIME_SET;
- 		}
- 	} else {
- 		attrs.ia_valid |= ATTR_MTIME | ATTR_CTIME;
-
--- 
-2.56.1
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
