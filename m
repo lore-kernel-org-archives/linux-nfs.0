@@ -1,70 +1,49 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.226
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795485202;
-	b=NNoBpEfe/L5DrsZ83aB+jA53iYhPeSFPd38sbRiZpf5vp2jJrvGWYPrYrn4aDv5ohO1H
-	 f7375irn9xAFnDyGKZS8wIlHm6AkyIcuqWab6zi2W5qmsh+X3S15sO+JvoZcMyHlQEZyi
-	 HZTox+Tm3EC7/w1kkJ2jwqM0xe8GvYV6coiolzcI5CBpbnItdH31B9+bUC1djEdEwzd11
-	 n165jG7wtkTAOQ+q47QWLD7Iu4a9gpN1XPbvFIumFo/G9e+nUWIGaNrqmA250eoyZOcmi
-	 Ojwwjpfs55kp2OwEebRGPxYl1DEs+CtnK+S0RwI/8xoV+2zUS4t2QLYbw+1hV864TZg==
+	t=1795490532;
+	b=IZXco3nEnvIbIoVnCIN/4ByhH+tQCvUzEp++KWDMTrz6Z72YC69IQlWj2OsZzd9KIUI5
+	 6JXjHOBsGsoEjAi5Nx8KSbGFYpRq2MlDHhXELvSRQ6evXZimziXUAh2614UZ1I5OxOoLN
+	 n7QFd9zdm/Ge+B7IO322hpFwTFQras+mU9yDidtqjzf/HxkQKiIJwIyCS57KBnqIHTckG
+	 uuBFGWySlI3Hjz2y4eJSqprjWqKAPu7Bem2+QYadHidy65lGCX+phdzgxfrALUixncswq
+	 bzwaOqM7UQ4NblJMP8g7WuFWbBm9kvuGNRhfceJuyJuZO/70tH24tI+ajKIVMd/+z4A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795485202;
-	h=DMARC-Filter:dkim-signature:Received:Received:Received:From:To:CC:
-	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
-	 Content-Transfer-Encoding:Content-Type:X-Originating-IP:
-	 X-ClientProxiedBy;
-	bh=zAqFGycKt+sXzoK2zBRu2dD4BEPGTNT00Ykt9AWpuqA=;
-	b=x0kaFU88L7TWsAw2myIdAeAZzeTPWTNKEjpNCqSeHJD0so+dEEFx6uo7G4zUQkgz2iIr
-	 YLwdE80LgAnNrBdvWdTcr5isdtu7G1a3kKQIqiS3l9St79+rmR2SU0IjpvcCsIQJziyza
-	 INMHjtLvud9ufthlWfZQjsf7/Hi8prcnm/GxNVEPv3oxQPDXDKTXjiLxF6OrUgPVJttCu
-	 +7/JkpKpPWIsNZB/JclEZ1p/bUBuwPU27nYZ2z0bkHgspVHLGzvMAFOlwJ+Lr5LFsYEhz
-	 GS4dzcFN1rmmD4W3Z5iish/5xkkJdssPFmawygUWz8B58zCmRVDb/w2Fc62srU6DlVQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795490532;
+	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
+	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=UF/vrNKdeCXscBU4U717Ao0uSBj8CV2Xxs94+V1pjhc=;
+	b=FkxMC65jwaigiPmQFEgnYsU6+AAJmy/ZTxdGqXQR9lkiMkrCJgAu1VpOEv+qKfqew2FX
+	 fxIlU6cnEBIhzeqQr9371u76UjH2NZ9oocGBcaSMe9qHaQGlDanJYQVgFsw05s1H7j8aQ
+	 g65efCT9JG6YoK8Ql773zVIhhkox7fm+7BBFclJnFNW4Fyee8sHCNh+WxzW3Ao0JT0tej
+	 vZGReKzAA29LzW/r8RjLmrzk+d9dfpkPyLCVKKFvVTJdH3lXSjC+JKaQ08hsrUHVPCkKu
+	 0wJrISy7vMzp1FyM3LfCPBaMTvsKrYBky/Pg07GUjABGug+XC0lhcPDH9FvG1jnGG9g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=huawei.com;
-	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=hhgyZDNK;
-	arc=none smtp.remote-ip=113.46.200.226
-Received: from canpmsgout11.his.huawei.com (canpmsgout11.his.huawei.com [113.46.200.226])
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="T+YrSS/5";
+	arc=none smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0E16A606A326;
-	Tue, 24 Nov 2026 01:53:20 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0E16A606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 525A9606A31E
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 03:22:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=hhgyZDNK
-dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
-	c=relaxed/relaxed; q=dns/txt;
-	h=From;
-	bh=zAqFGycKt+sXzoK2zBRu2dD4BEPGTNT00Ykt9AWpuqA=;
-	b=hhgyZDNKEM9lw6LZoIwsmGiAQobKIUlUv650fE/iMX3OAu54kQYI6+CHXFzayuaOD/J8MyH49
-	Cg2Wc1sFo8MdzGa+ljtYvY+Wpv2jC9AnQrCN3ILIdLge4tBn0cmvnEqOC+IvTQZ+IXLfBWmy4gl
-	gJnh8s1Sr0qY5xTzoKrBx8s=
-Received: from mail.maildlp.com (unknown [172.19.163.163])
-	by canpmsgout11.his.huawei.com (SkyGuard) with ESMTPS id 4jYQn85S8yzKm4Z;
-	Tue, 24 Nov 2026 09:53:00 +0800 (CST)
-Received: from whupemk300014.china.huawei.com (unknown [7.152.185.8])
-	by mail.maildlp.com (Postfix) with ESMTPS id A0CAB40563;
-	Tue, 24 Nov 2026 09:53:18 +0800 (CST)
-Received: from huawei.com (10.50.85.128) by whupemk300014.china.huawei.com
- (7.152.185.8) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.45; Tue, 24 Nov
- 2026 09:53:17 +0800
-From: Li Xiasong <lixiasong1@huawei.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown
-	<neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
-	<Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Trond Myklebust
-	<trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-CC: <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
-	<stable@vger.kernel.org>, <yuehaibing@huawei.com>,
-	<zhangchangzhong@huawei.com>, <weiyongjun1@huawei.com>
-Subject: [PATCH v3 3/3] xprtrdma: Wake connect worker on device removal
-Date: Tue, 24 Nov 2026 10:18:42 +0800
-Message-ID: <20261124021842.130141-4-lixiasong1@huawei.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20261124021842.130141-1-lixiasong1@huawei.com>
-References: <20261124021842.130141-1-lixiasong1@huawei.com>
+	dkim=pass (2048-bit key, unprotected) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=T+YrSS/5
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 02A781F000CA;
+	Tue, 24 Nov 2026 03:22:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795490531;
+	bh=UF/vrNKdeCXscBU4U717Ao0uSBj8CV2Xxs94+V1pjhc=;
+	h=From:Subject:Date:To:Cc;
+	b=T+YrSS/5zKL9ZdOELEG52yIUa6uFk1iOBiSK7E22Y6ITVtdfy3u8mNIga7BLe0YCG
+	 5XyNcHzNuxNtDgOJnIKinqhpx1FVVMgPDsVM4Yxg6QGUi4E0L7pLD3gUCFqCr3FJml
+	 8YxS4arDbQKOwPhbenk6a0p4JotseLtyZqm+yjIg6kz6WtnjOfGfGpHLVaHSZLwYj3
+	 O6zKvAfBWOeo4uQdvhiTyfnbG479mpdiOq1U6gPmFersipg4tNEwP0eJbIxtMBfyqT
+	 0Ld+1oac9vBytdeyFW1V1yptd1VREo6U6LecMJwMRykgSk3d7ABnrFU6oMWrBf35F+
+	 mqPeg7nfubpAg==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH 0/7] SUNRPC: Harden the server-side RPC-with-TLS transition
+Date: Mon, 23 Nov 2026 22:22:01 -0500
+Message-Id: <20261123-xprtsec-recv-snapshot-v1-0-90564efc4cff@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -74,299 +53,76 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
- whupemk300014.china.huawei.com (7.152.185.8)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMywrCMBBFf6XM2kETNaK/UlzkMW0ikpaZWAql/
+ 26iy3O552wgxIkEHt0GTEuSNOUK6tCBjzaPhClUBn3SRil9xnXmIuSRyS8o2c4Sp4IXY65a3YI
+ KdwXVnZmGtP66/fPP8nEv8qXF2sNZIXRss49t8vQ+5kECFpKS8gj7/gXDIqUbnAAAAA==
+X-Change-ID: 20261123-xprtsec-recv-snapshot-4665217d1d91
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, sashiko-bot <sashiko-bot@kernel.org>
+X-Mailer: b4 0.17-dev-9c833
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2210; i=cel@kernel.org;
+ h=from:subject:message-id; bh=H3sxHLjfffanbQT82BuxuPuP73B/mtFSGvXnP6JElR8=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBrBQLb01xF4d2pABGjhCU1p1y0rdQYZBj/nMu+a
+ lPKb2/eHqSJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCawUC2wAKCRAzarMzb2Z/
+ l/c2EACOBJnxauUHGERRhXNZzSmlkUgzPqp7PdJi+cZVODpPASUGcTCaJelXGf9hDYvG9Y/y4bh
+ fXfO58mm0o/R8ivK5sBJHPOLdNvnZc6nVvz3QHD7+7bS3szKyvoVijtTewB3y7yykSGJ6hD+ro9
+ JPOBGbUCg+Jw54MgEutVyIZoA3Qdh68iuH39NFsBcqVysppkWcBYh7uI7PkWewHpuXUaafXPqdH
+ cWGwjtpZkiJn2y4wnI5UdBWzt89Qka8yUhdoGrI3U6wKYuLZ7X2LeaBMeEprDY8Z+65z0lzkujt
+ HwcKkXKFMGSSdJ9vG8gc5hKtoevQoy5QRkDsoOCGZzeCZbXf7zU7nSy8eA+VCwheqTZ5GAiaP6w
+ eoumlIEY6Rwb1MM2bi39zmv0IxHfr3ghX+2kX34bf98hvejNS7qT7B1hZ6HmOF+60VzdPzuw2q/
+ a7pe96YfAJJLHV/S7sGFQH4gVRfi6anPskiJQE7TzWN6p5Qfw2iKCKApO0fnvQZRa2gE3EyP2iO
+ u/WvdybfMR21YEQU9oE0JFPFS/B2SHdBrwI88719Z5CXpqNTwPlpy8TwBFbJGlXCarV1U1FRg/2
+ TFR9Hoik/j9PJpYyaMq9KLCJnta30qdmyae1IxmGNOgr1mWx9fdY7o/6JtWsSiuMoiox0/LALOL
+ tcYMBvOPk+A3dlg==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Device removal only forces a transport disconnect, leaving a connect
-worker asleep while re_connect_status is zero and blocking endpoint
-cleanup.
+svc_tcp_recvfrom() reads an AUTH_TLS probe and re-queues the transport
+before svcauth_tls_accept() sets XPT_HANDSHAKE. In the meantime,
+another nfsd thread can read the plaintext record that follows the
+probe. If the request in that record is deferred until after the
+handshake, check_xprtsec_policy() tests the request against the new TLS
+session and grants access to an xprtsec=tls or xprtsec=mtls export. A
+partial record read in the same window is completed from the decrypted
+stream once the handshake finishes. Either way, an on-path attacker who
+appends bytes to a client's probe can run a request under that client's
+TLS identity.
 
-Set -ENODEV and wake pending connects on removal. Give -ENODEV
-precedence over other failures so late CM events cannot mask device
-removal. Force established connections to disconnect and use atomic
-transitions to prevent late ESTABLISHED events from overwriting errors.
-Handle REJECTED with an atomic status update. Wake the connect worker
-if the connection is still pending, or force an established connection
-to disconnect without relying on CQ flushes.
+Tested over loopback on arm64 with KASAN: NFSv3 and NFSv4.2 mounts in
+each xprtsec mode against exports of each policy, 200 mount cycles each
+with tls and mtls, and a CB_RECALL over an mTLS backchannel. A raw RPC
+client sent a plaintext CREATE, a partial record, or a second probe
+behind an AUTH_TLS probe nearly 1,800 times in all. NFSD never executed
+the CREATE and closed every one of those connections.
 
-The final endpoint put can free id->context before rdma_destroy_id()
-synchronizes with CM callbacks. Destroy the CM ID in the endpoint
-destructor before freeing its context to close this window. Remove the
-CM callback get/put pairs so final puts occur outside CM callbacks.
-Initialize the connect waitqueue before notification registration.
-
-If transport pinning fails, fail and wake a pending connect under the
-device mutex before skipping the notification. The final transport put
-can be waiting for that worker to release XPRT_LOCKED.
-
-Translate -ENODEV from the connection status to -ENOTCONN so pending
-RPCs retry on a hard mount when the device disappears during setup.
-
-Fixes: 3f4eb9ff9234 ("xprtrdma: Handle device removal outside of the CM event handler")
-Signed-off-by: Li Xiasong <lixiasong1@huawei.com>
 ---
- net/sunrpc/xprtrdma/transport.c |   2 +-
- net/sunrpc/xprtrdma/verbs.c     | 120 ++++++++++++++++++++------------
- 2 files changed, 75 insertions(+), 47 deletions(-)
+Chuck Lever (7):
+      SUNRPC: Do not read the socket once a TLS handshake is pending
+      SUNRPC: Check for the backchannel first in svcauth_tls_accept()
+      SUNRPC: Close the transport when a handshake finds a partial record
+      NFSD: Check xprtsec policy against the state at receive time
+      SUNRPC: Drop replies to plaintext requests on a TLS transport
+      SUNRPC: Discard plaintext records that follow an AUTH_TLS probe
+      SUNRPC: Reject an AUTH_TLS probe within an existing TLS session
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index e38637c2ec78..88bf9c9d9cf5 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -488,7 +488,7 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- 	WARN_ON_ONCE(!xprt_lock_connect(xprt, task, r_xprt));
- 
- 	delay = 0;
--	if (ep && ep->re_connect_status != 0) {
-+	if (ep && READ_ONCE(ep->re_connect_status)) {
- 		delay = xprt_reconnect_delay(xprt);
- 		xprt_reconnect_backoff(xprt, RPCRDMA_INIT_REEST_TO);
- 	}
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b8dfdabd8a5a..1f2a3cea073f 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -75,7 +75,7 @@ static void rpcrdma_reps_unmap(struct rpcrdma_xprt *r_xprt);
- static void rpcrdma_mrs_create(struct rpcrdma_xprt *r_xprt);
- static void rpcrdma_mrs_destroy(struct rpcrdma_xprt *r_xprt);
- static void rpcrdma_ep_get(struct rpcrdma_ep *ep);
--static int rpcrdma_ep_put(struct rpcrdma_ep *ep);
-+static void rpcrdma_ep_put(struct rpcrdma_ep *ep);
- static struct rpcrdma_regbuf *
- rpcrdma_regbuf_alloc_node(size_t size, enum dma_data_direction direction,
- 			  int node);
-@@ -124,6 +124,23 @@ void rpcrdma_force_disconnect(struct rpcrdma_ep *ep)
- 		xprt_force_disconnect(ep->re_xprt);
- }
- 
-+/* Device removal takes precedence over other connection failures. */
-+static void rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, int status,
-+				  bool force_disconnect)
-+{
-+	int old = READ_ONCE(ep->re_connect_status);
-+
-+	do {
-+		if (old == -ENODEV || (old < 0 && status != -ENODEV))
-+			return;
-+	} while (!try_cmpxchg(&ep->re_connect_status, &old, status));
-+
-+	if (!old)
-+		wake_up_all(&ep->re_connect_wait);
-+	else if (old == 1 && force_disconnect)
-+		rpcrdma_force_disconnect(ep);
-+}
-+
- /**
-  * rpcrdma_flush_disconnect - Disconnect on flushed completion
-  * @r_xprt: transport to disconnect
-@@ -222,13 +239,14 @@ static void rpcrdma_update_cm_private(struct rpcrdma_ep *ep,
-  * @id: rdma_cm_id on which an event has occurred
-  * @event: details of the event
-  *
-- * Called with @id's mutex held. Returns 1 if caller should
-- * destroy @id, otherwise 0.
-+ * Called with @id's mutex held. Always returns 0: the endpoint owner
-+ * destroys @id and waits for these callbacks before freeing @id's context.
-  */
- static int
- rpcrdma_cm_event_handler(struct rdma_cm_id *id, struct rdma_cm_event *event)
- {
- 	struct rpcrdma_ep *ep = id->context;
-+	int status;
- 
- 	might_sleep();
- 
-@@ -247,41 +265,32 @@ rpcrdma_cm_event_handler(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 		complete(&ep->re_done);
- 		return 0;
- 	case RDMA_CM_EVENT_ADDR_CHANGE:
--		switch (xchg(&ep->re_connect_status, -ENODEV)) {
--		case 0:
--			goto wake_connect_worker;
--		case 1:
--			/* The later DISCONNECTED event balances the
--			 * ESTABLISHED get; do not put here.
--			 */
--			rpcrdma_force_disconnect(ep);
--			return 0;
--		}
-+		rpcrdma_ep_disconnect(ep, -ENODEV, true);
- 		return 0;
- 	case RDMA_CM_EVENT_ESTABLISHED:
--		rpcrdma_ep_get(ep);
--		ep->re_connect_status = 1;
-+		if (READ_ONCE(ep->re_connect_status))
-+			return 0;
- 		rpcrdma_update_cm_private(ep, &event->param.conn);
-+		if (cmpxchg(&ep->re_connect_status, 0, 1))
-+			return 0;
- 		trace_xprtrdma_inline_thresh(ep);
- 		wake_up_all(&ep->re_connect_wait);
--		break;
-+		return 0;
- 	case RDMA_CM_EVENT_CONNECT_ERROR:
--		ep->re_connect_status = -ENOTCONN;
--		goto wake_connect_worker;
-+		rpcrdma_ep_disconnect(ep, -ENOTCONN, true);
-+		return 0;
- 	case RDMA_CM_EVENT_UNREACHABLE:
--		ep->re_connect_status = -ENETUNREACH;
--		goto wake_connect_worker;
-+		rpcrdma_ep_disconnect(ep, -ENETUNREACH, true);
-+		return 0;
- 	case RDMA_CM_EVENT_REJECTED:
--		ep->re_connect_status = -ECONNREFUSED;
-+		status = -ECONNREFUSED;
- 		if (event->status == IB_CM_REJ_STALE_CONN)
--			ep->re_connect_status = -ENOTCONN;
--wake_connect_worker:
--		wake_up_all(&ep->re_connect_wait);
-+			status = -ENOTCONN;
-+		rpcrdma_ep_disconnect(ep, status, true);
- 		return 0;
- 	case RDMA_CM_EVENT_DISCONNECTED:
--		ep->re_connect_status = -ECONNABORTED;
--		rpcrdma_force_disconnect(ep);
--		return rpcrdma_ep_put(ep);
-+		rpcrdma_ep_disconnect(ep, -ECONNABORTED, true);
-+		return 0;
- 	default:
- 		break;
- 	}
-@@ -308,11 +317,18 @@ static void rpcrdma_ep_removal_done(struct rpcrdma_notification *rn,
- 	 * for the connect worker, which may need the mutex to unregister.
- 	 */
- 	xprt = xprt_get(ep->re_xprt);
--	if (!xprt)
-+	if (!xprt) {
-+		/*
-+		 * The final xprt_put() can be waiting for the connect worker's
-+		 * XPRT_LOCKED bit. The device mutex protects @ep until
-+		 * unregister. Wake pending connects without using the transport.
-+		 */
-+		rpcrdma_ep_disconnect(ep, -ENODEV, false);
- 		return;
-+	}
- 	release->release = rpcrdma_xprt_removal_put;
- 	release->data = xprt;
--	rpcrdma_force_disconnect(ep);
-+	rpcrdma_ep_disconnect(ep, -ENODEV, true);
- }
- 
- static struct rdma_cm_id *rpcrdma_create_id(struct rpcrdma_xprt *r_xprt,
-@@ -369,6 +385,7 @@ static struct rdma_cm_id *rpcrdma_create_id(struct rpcrdma_xprt *r_xprt,
- static void rpcrdma_ep_destroy(struct kref *kref)
- {
- 	struct rpcrdma_ep *ep = container_of(kref, struct rpcrdma_ep, re_kref);
-+	struct ib_device *device = ep->re_id->device;
- 
- 	if (ep->re_id->qp) {
- 		rdma_destroy_qp(ep->re_id);
-@@ -386,7 +403,14 @@ static void rpcrdma_ep_destroy(struct kref *kref)
- 		ib_dealloc_pd(ep->re_pd);
- 	ep->re_pd = NULL;
- 
--	rpcrdma_rn_unregister(ep->re_id->device, &ep->re_rn);
-+	/* Removal callbacks also access re_id, including from tracepoints. */
-+	rpcrdma_rn_unregister(device, &ep->re_rn);
-+
-+	/*
-+	 * All puts occur outside CM callbacks. Fence queued and running
-+	 * callbacks before freeing the context, even if no connection formed.
-+	 */
-+	rdma_destroy_id(ep->re_id);
- 
- 	kfree(ep);
- 	module_put(THIS_MODULE);
-@@ -397,13 +421,10 @@ static noinline void rpcrdma_ep_get(struct rpcrdma_ep *ep)
- 	kref_get(&ep->re_kref);
- }
- 
--/* Returns:
-- *     %0 if @ep still has a positive kref count, or
-- *     %1 if @ep was destroyed successfully.
-- */
--static noinline int rpcrdma_ep_put(struct rpcrdma_ep *ep)
-+/* Must not be called from an RDMA CM event handler. */
-+static noinline void rpcrdma_ep_put(struct rpcrdma_ep *ep)
- {
--	return kref_put(&ep->re_kref, rpcrdma_ep_destroy);
-+	kref_put(&ep->re_kref, rpcrdma_ep_destroy);
- }
- 
- static int rpcrdma_ep_create(struct rpcrdma_xprt *r_xprt)
-@@ -419,6 +440,7 @@ static int rpcrdma_ep_create(struct rpcrdma_xprt *r_xprt)
- 		return -ENOTCONN;
- 	ep->re_xprt = &r_xprt->rx_xprt;
- 	kref_init(&ep->re_kref);
-+	init_waitqueue_head(&ep->re_connect_wait);
- 
- 	id = rpcrdma_create_id(r_xprt, ep);
- 	if (IS_ERR(id)) {
-@@ -446,7 +468,6 @@ static int rpcrdma_ep_create(struct rpcrdma_xprt *r_xprt)
- 
- 	ep->re_send_batch = ep->re_max_requests >> 3;
- 	ep->re_send_count = ep->re_send_batch;
--	init_waitqueue_head(&ep->re_connect_wait);
- 
- 	ep->re_attr.send_cq = ib_alloc_cq_any(device, r_xprt,
- 					      ep->re_attr.cap.max_send_wr,
-@@ -514,7 +535,6 @@ static int rpcrdma_ep_create(struct rpcrdma_xprt *r_xprt)
- 
- out_destroy:
- 	rpcrdma_ep_put(ep);
--	rdma_destroy_id(id);
- 	return rc;
- }
- 
-@@ -550,12 +570,17 @@ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt)
- 
- 	if (xprt->reestablish_timeout < RPCRDMA_INIT_REEST_TO)
- 		xprt->reestablish_timeout = RPCRDMA_INIT_REEST_TO;
--	wait_event_interruptible(ep->re_connect_wait,
--				 ep->re_connect_status != 0);
--	if (ep->re_connect_status <= 0) {
--		rc = ep->re_connect_status;
-+	rc = wait_event_interruptible(ep->re_connect_wait,
-+				      READ_ONCE(ep->re_connect_status));
-+	if (rc)
-+		goto out;
-+	/* The ESTABLISHED cmpxchg publishes the negotiated CM parameters. */
-+	rc = smp_load_acquire(&ep->re_connect_status);
-+	/* Let pending RPC tasks retry after the device disappears. */
-+	if (rc == -ENODEV)
-+		rc = -ENOTCONN;
-+	if (rc < 0)
- 		goto out;
--	}
- 
- 	rc = rpcrdma_sendctxs_create(r_xprt);
- 	if (rc) {
-@@ -622,8 +647,11 @@ void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
- 	rpcrdma_reqs_reset(r_xprt);
- 	rpcrdma_mrs_destroy(r_xprt);
- 
--	if (rpcrdma_ep_put(ep))
--		rdma_destroy_id(id);
-+	/*
-+	 * The destructor destroys the CM ID, fencing any callback still
-+	 * returning before the endpoint context is freed.
-+	 */
-+	rpcrdma_ep_put(ep);
- 
- 	r_xprt->rx_ep = NULL;
- 
-@@ -920,7 +948,7 @@ void rpcrdma_mrs_refresh(struct rpcrdma_xprt *r_xprt)
- 	/* If there is no underlying connection, it's no use
- 	 * to wake the refresh worker.
- 	 */
--	if (ep->re_connect_status != 1)
-+	if (READ_ONCE(ep->re_connect_status) != 1)
- 		return;
- 	queue_work(system_highpri_wq, &buf->rb_refresh_worker);
- }
--- 
-2.34.1
+ fs/nfsd/export.c                | 12 +++----
+ include/linux/sunrpc/svc.h      |  6 ++++
+ include/linux/sunrpc/svc_xprt.h |  1 +
+ include/trace/events/sunrpc.h   | 11 ++++--
+ net/sunrpc/svc.c                |  1 +
+ net/sunrpc/svc_xprt.c           | 18 ++++++++--
+ net/sunrpc/svcauth_unix.c       | 21 ++++++-----
+ net/sunrpc/svcsock.c            | 78 ++++++++++++++++++++++++++++++++++++++---
+ 8 files changed, 125 insertions(+), 23 deletions(-)
+---
+base-commit: 194069b5ff38d82d302c33a4dd280d948c96cfe6
+change-id: 20261123-xprtsec-recv-snapshot-4665217d1d91
+
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
 
