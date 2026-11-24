@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795490534;
-	b=2vQwvSiBAKu8OgjdrFZxVr4QOwWJSXtIz7Ey6gDDJgovueyHsZ8Bg60CqteE74ul/qrH
-	 MndP8ZkkcRCw9tDl2mmIa/MGZoZ4XREm5v6xZvqeUQtmedO1PAceGJfutXeJV5CoxfEUb
-	 DQfrws5S1l3Ml4rtT7418PndKkRx8IOLYgRLXyQbImnMWk02p4rDd4CHsr8WrdhZ3uPlI
-	 0nZBIaYUBM6KPgyRrMr+Y0HkR264KQkM3ny17v27L9mI7d9FhAQyclg7TS6SV/94DuPeK
-	 qQRuAdG2EyyGc6bRcCWmvTAITNvQtz9ZFi6zTyl6I5H/LEueR79WJKhWE2ba0HH5ekA==
+	t=1795490535;
+	b=ADkjIItmbL/imZh+aQoeW9KI2K9zqXfbDSdyFiZquDNn06GMuMA0C9SnFRLgqryxw9mD
+	 8Je87QRMqs1ASioMB2/n3tT6T99EIE9qkwh+nlvQA3AXlN5Bh/BTwYkCMEdbYwfdfYzdq
+	 YYQbQwwBNuJeJQRMQeEeVPi1k+zeCots4Re7dsPR2u83ww/RqYnJ2YoaGsKUKHfg01vom
+	 zsmMAYh9FDqgOHv2m6A5UIbhZWD64Q5CrMWhoJQEs+X2+3L4HkJ3sldZ8FeTtn6v9kCjW
+	 qT2AQMQ2TpV4NU/6Wn7iMA5QuCc4EgCqPKzMIpEgJukRDCPXfW6u8GbHSQ6q5y5gmOQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795490534;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795490535;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=rSQ/WIUTmk4ZQR770AfGm3SEOx5tkSq/DJ5PFNUgKVE=;
-	b=aYLj1sRrtbRMBy4wLgB+pDJOehiCxE0sXhBpaNpsN+frIYgR6Jmvj/XX71xnFkhGA08E
-	 SanGMdz8q64RG4oFkPzGY57T+VXWZEcSkh8f0AJerJWSlSl7y1nzkyGknlXrSbSDPL7WI
-	 MA7EDu6bO+OLVCyGpGemAch1qRElxwpUu6++zRHBgc9SBD+HU9Lkzaz8P5RkOkvdN+9Du
-	 DWhVzlySeplNApt8RY9e29Myy/cd8evwtFfvTBmQpzVTpJEWG1yB4Rr3AgqjP3hWGNeHG
-	 tuAgLm3VAak0E3HXgq8I37MoOl1mDnFwDLq8VjSNSnd/ddokPmOHVQiLlkzUNEU8zmA==
+	bh=5ksqjsvE6TG7slVQTeN+mGgQEe9gIBPWHjqw+DhIogk=;
+	b=A0B3GPnkCRYnOng9BPOwMfMANgTxQXEfKgJfdMM0AH9tEvdNtBhMyvLFKUmnDWA4Tjad
+	 EoykMEnbMjj1xGhioiSPBst08cdxXzkR73IGmcspwBjQrmp50FqPsxVeYNfUcnQ38sypw
+	 MRlhSlXrpZ7BVn+8rp5pp3yhS27cdvmGZew6qlRb8W7oLJzVoM1CZ4NXcQ6TGB5j+9XD3
+	 RVJt7T0hPHjufvW6il0ahGB6n+qgZwQapkUiJaYAYwy4M248TzR6YOsynGE0pOsUcvPxo
+	 WnjE5OfPHiADKsIjfw1Byoln7UhEuYpYg1KGWLJKtEeeMpoD3japVmlybCJk0dEkE7g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="bAMOgII/";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LdQSRFID;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BCFC606A31E
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 03:22:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C3C5606A31E
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 03:22:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=bAMOgII/
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8634F1F000D2;
-	Tue, 24 Nov 2026 03:22:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LdQSRFID
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 14EC21F000C0;
+	Tue, 24 Nov 2026 03:22:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795490533;
-	bh=rSQ/WIUTmk4ZQR770AfGm3SEOx5tkSq/DJ5PFNUgKVE=;
+	s=k20260515; t=1795490534;
+	bh=5ksqjsvE6TG7slVQTeN+mGgQEe9gIBPWHjqw+DhIogk=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=bAMOgII/TjJzrcjdo4SUGomMmwcu3QI5jZBb/Qm0UQunQ+pRvkCROFdApVSbueJ8b
-	 KofkordyQextyJhMh9IebrBh2RP4XZQJb9b2CH0UDLCHF070UGwsZPcreo+z7Ue3k8
-	 jhlajcwuvjt1qMYYKhfjJfeHcSWRAFHR37k4jKzyvVTX/cuzRTcmy+LaoGhr/vs4Da
-	 hrHV7drEoX59e7aZJJ5E03rp1warRosuJYklZSjo8P2dTvSauotmAOEU6dkINhQh5d
-	 DoU+AFrcSJ9vT/opN7N7EiqxyjDs937bidLe6T3+R+nOjqoMsi6CS9Y3w79JVQK/f/
-	 wHAVdHTTvVbEw==
+	b=LdQSRFIDRFqnz7DD/vvsaLukt5DRkba15isXMZ1oIwCykvF1LW8XRZlCMnhzz3TJB
+	 ktnSa1+hSf3gkXO1hLzoncDOi9Aaou/M+OlMo/BhypbeGlVbN0Dfp4rbrxOmbdaTb3
+	 smzN/I7LGgcybiHxy94JLhoyiVq1SS6WU2wk1gMLjKQQB3UEevMIHOV/gX2p8xVw0l
+	 BCjAcRj6Q8h4M9Z0GXnJwxuOV/gfGpsu22vuFLkAodcNIngS9PsPeBj5c2g9GVKw0S
+	 +HOx7tcx5V4gAzYazfFoFWD2ex5pXDg4Bo9zfYaggk5rbSp2QlT/fxSWbqKkt4Pewu
+	 0F5YRSkEQ2AuA==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 23 Nov 2026 22:22:02 -0500
-Subject: [PATCH 1/7] SUNRPC: Do not read the socket once a TLS handshake is
- pending
+Date: Mon, 23 Nov 2026 22:22:03 -0500
+Subject: [PATCH 2/7] SUNRPC: Check for the backchannel first in
+ svcauth_tls_accept()
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261123-xprtsec-recv-snapshot-v1-1-90564efc4cff@kernel.org>
+Message-Id: <20261123-xprtsec-recv-snapshot-v1-2-90564efc4cff@kernel.org>
 References: <20261123-xprtsec-recv-snapshot-v1-0-90564efc4cff@kernel.org>
 In-Reply-To: <20261123-xprtsec-recv-snapshot-v1-0-90564efc4cff@kernel.org>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
@@ -63,69 +63,78 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev-9c833
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2119; i=cel@kernel.org;
- h=from:subject:message-id; bh=XLQpBdJgwNXYqohxxp2Glg5duQ+HgP9WDRZwK1LEeM0=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBrBQLhR9GOoWIrGffKhyus3sLApPtv+nzRi0oSH
- cL1wv5kNveJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCawUC4QAKCRAzarMzb2Z/
- lz69D/9Au3Klu+nwsrm9r/qjBBZUgL2EsmcY0/9Joy6XXT8aCD1qe8+vaOtMOThQI1gYGQZE6+J
- baEqGJ366h4ITZvOf6MTEWE3Bw1XZfznxS74CRnK9bdcgf3kpQBuXmrrutVCUBqWcDycCHoq9oa
- yyP1bMu+2QOrFXPBWr/F0BaOE4p972drl+PILpOiVy8X0dwdTt/xbFOyKokKUk1Hd6Nx32eK5jq
- d27WjScWofO6iLE0ADqDyS7hwPLh85zoeuaZ1HWgU3UaHrTSs2HaWfSLUIrZCCMsv3JFvVA+Yez
- kFlkiIK8OQMmy8MlfIGJu+5CXO+Fj3tK+r9aEWEKVOgrNspLyBRlSy4YYGK47P0WpEqz4/toNoF
- X2MnbxGWwMP77KCCWlt4GCfQH+8ue/E7uQGazuMXQu2LqI7R1AO+wM1XaSaXPHoecMLW+a8ETo8
- ysBkKysJ33e1LYKisTSElfyNl2hQaAxYbUh+xEgZ1f6lTVhRk2o/jTzScPKeP9PFMSRdomFoIIT
- WlNxfpWbcfXHtlViE5TSqBbMFy2GtxGOZ9oPBlkE01XJ0WBRe+uTQuSLQKFGhq2gg1/V09JrQvE
- /mFYtqJo5yh1clKely3r+nC6e3gzGzt8cZbrYNUpD9RKtHWnqEz/6WSoTikHhv6AzVcroOKXCwT
- omxM5O1j+PxRbEA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2017; i=cel@kernel.org;
+ h=from:subject:message-id; bh=3RpepyWiLgXTbn8vOSEyacS4HptXrdp7FllZm5LdWhc=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBrBQLhAvNvK+7i0TxIt9SOzHzPzAuFw7AfJsgQU
+ F1UOXVUfRuJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCawUC4QAKCRAzarMzb2Z/
+ l1Z6EACGeB3FjcYOlnS2yaB/1mP7tMJP4XdN9mFLP6or4aC/6TQZUzdyRldayGNJvPIiMewC/zn
+ OAsYnPM4aWAB2t6dCQYaNVkbmUU0sPLF3yCHVUUWA3OkcU0okkK3cOslezxzcNbD4ZK6ktaojSa
+ 0VwEwI1ppVnKRzXnpyamgeCNOr8e32i9c4152NNLsDtxdwOKLaKDQRW8HWx3F3Dge1lfjnTJojS
+ aSNM09KcXNajNeYQBOlWdSesKVraNQ436eMKXlbZvlaxMl1yHucv2p2Dr19WxfMlfeSSG0WOq+b
+ d5khDlR8AMcSK7DlK47r9mDk8w94F6o4/mBuw4VOYR19Mq0JGNuMQQ6hB/P4pQ8g+2n7vfsLOp7
+ kXFJWBFjGyXEHhQGsZNVKGa+lxpzeETEk6sHPnpiWff0iY54JwNoi64QjLfTXmBSXfN/Bwi8Su5
+ +FyfQ9E21RPsd9BRpZktE0rcfHteAm29Lh8O+dNGW9H7HLH1w3EGpnqKTSXo0odsD4+PVeQckIF
+ 2ZlvCt899aC7gKoQxHzYvri3cOAo2OkAfxdw5sAKEhtlgByDvnzeBerlgrZzKCs9pEGJIIK72+D
+ JSSoeqsDglLiJss36Y5b6dmGzavXp9hTF7wjdaakV9XaxMabBFjCtgJDi8KtahjgEoafsLSJ+AC
+ 2BuOZ7C9PI4uh/w==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-When svc_tcp_recvfrom() completes a record, it sets XPT_DATA, and
-svc_xprt_received() enqueues the transport again. A second thread
-can then enter svc_tcp_recvfrom() while the thread that received an
-AUTH_TLS probe is still processing it. If the second thread passes
-the XPT_HANDSHAKE test in svc_handle_xprt() before
-svcauth_tls_accept() sets the bit, nothing stops its ->read_sock
-call. When that call runs after the client has received the STARTTLS
-reply and sent its ClientHello, svc_tcp_recvfrom() consumes the
-ClientHello as an RPC record. The record marker decodes to an
-oversized length, NFSD closes the connection, and the TLS mount
-fails.
+svcauth_tls_accept() recognizes the NFSv4.1 backchannel by testing
+rq_xprt for NULL, after it has decoded the credential and verifier.
+The test is correct only because svc_process_bc() never sets rq_xprt.
+Nothing at the check names that dependency.
 
-Test XPT_HANDSHAKE again after taking the socket lock, and leave the
-socket unread when it is set. svcauth_tls_accept() sets the bit
-before the STARTTLS reply is sent, and tcp_sendmsg() takes the same
-socket lock. A read that misses the bit therefore finishes before
-the reply leaves. svc_tcp_handshake() sets XPT_DATA once the session
-is up, so receiving resumes after the handshake.
+Call svc_is_backchannel() before decoding the credential, and remove
+the NULL rq_xprt test. svc_xprt.c and the NFS client's callback code
+already use svc_is_backchannel() to recognize the backchannel. RFC
+9289 Section 5.1.1 specifies that reverse-direction operation uses
+the TLS session already on the connection, so an AUTH_TLS probe on
+the backchannel never starts a handshake.
 
-Fixes: 8962291142cd ("SUNRPC: Receive RPC records with ->read_sock")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- net/sunrpc/svcsock.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ net/sunrpc/svcauth_unix.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 1586c8f3c78f..d187674ca6ee 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1156,6 +1156,16 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	svc_tcp_restore_pages(svsk, rqstp);
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index eeb8972ed654..0c4654c2f6c9 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -6,6 +6,7 @@
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/svcauth.h>
++#include <linux/sunrpc/bc_xprt.h>
+ #include <linux/sunrpc/gss_api.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/err.h>
+@@ -1116,6 +1117,12 @@ svcauth_tls_accept(struct svc_rqst *rqstp)
+ 	void *body;
+ 	__be32 *p;
  
- 	lock_sock(sock->sk);
-+	/* svcauth_tls_accept() sets XPT_HANDSHAKE before the STARTTLS
-+	 * reply goes out, and sending the reply takes the socket lock.
-+	 * Testing XPT_HANDSHAKE under that lock leaves the ClientHello
-+	 * for tlshd.
-+	 */
-+	if (test_bit(XPT_HANDSHAKE, &svsk->sk_xprt.xpt_flags)) {
-+		release_sock(sock->sk);
-+		len = -EAGAIN;
-+		goto err_incomplete;
++	/* A backchannel cannot start a TLS session (RFC 9289 Section 5.1.1) */
++	if (svc_is_backchannel(rqstp)) {
++		rqstp->rq_auth_stat = rpc_autherr_badcred;
++		return SVC_DENIED;
 +	}
- 	len = sock->ops->read_sock(sock->sk, &desc, svc_tcp_recv_actor);
- 	/* ->read_sock stops at urgent data and consumes none of it.
- 	 * Only recvmsg() clears the condition, and this path calls
++
+ 	/* Length of Call's credential body field: */
+ 	if (xdr_stream_decode_u32(xdr, &len) < 0)
+ 		return SVC_GARBAGE;
+@@ -1138,12 +1145,6 @@ svcauth_tls_accept(struct svc_rqst *rqstp)
+ 		return SVC_DENIED;
+ 	}
+ 
+-	/* AUTH_TLS is not valid on backchannel (rq_xprt is NULL) */
+-	if (!xprt) {
+-		rqstp->rq_auth_stat = rpc_autherr_badcred;
+-		return SVC_DENIED;
+-	}
+-
+ 	/* Signal that mapping to nobody uid/gid is required */
+ 	cred->cr_uid = INVALID_UID;
+ 	cred->cr_gid = INVALID_GID;
 
 -- 
 2.56.0
