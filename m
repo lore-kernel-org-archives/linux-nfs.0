@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795549768;
-	b=hoF0yMcMKUBDC8hCYQenixY/KWVPsyLrDm3uSA8nhaOKfXlhWlFtlbrCU8y/CBIbd/yR
-	 fZJqXOeRkSYaZW79SvAQLdk3bNxg2JmB9Z5VLKaWTLMMgSP18w54bOrzD349OVJr8cKmJ
-	 KH3IP+0XNCrN+bbTcm0nmKrfc0vRAj2A3H5GqHiGTDVJGRFsiBYp62mOEHXzP03/CFdGF
-	 d5Y2PrZEBFgs7SfZb/Yk9YA/EUccny9r1QRYTK6NYCx82/CiHDm49MjREY/C/E0x2Edzn
-	 gSn7+dW7jRIUhZxGJf4LuY2wEMD9AYOTOOsGb1jt0JVPWb541JkvY4rri0KCL59ryWg==
+	t=1795549769;
+	b=jys7uFz5xval5WeesD7sZL/ohjwjVVJyNuzIyJkJq/EmjZmaNwX01jR3sdrNkoUSB4H1
+	 XQ7uqdzWC3oOo3fPsRsKbUZ7k1H2G8h9zN4L65EAciX3kW7EOtaShtCs7u7whbEk+ShIn
+	 iW9KxzGPQ1DPWVM24I8o9u4OXZymZSx5IWlyaivMbpZHD8E1DMJ3Aq5qakauzHPc4Ky0k
+	 dDBSxWpoei7Tt1FyYV7saDMy/Ml8q/0TGWKfnvz6TDPuIWlPOiDCr60bHpU3NiEsb7EYb
+	 O4am6shkelR83i531WrNgVlrbLfg5OqMVA3h3qJZ+xXxef6NSTETkyulKUmBtx2V+Qg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795549768;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795549769;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=w765RhlKEmCXpEzT8vMU4vI+1OfdgcEXrElMay742ug=;
-	b=bKeN+/LUS3mqPvloh0pQ4rUxMxtrEY2gJjGJsbqAZCovpa3UaRe9JF4BAvVYIzO47PBK
-	 cHbJZ1VU2FYkYB4PxG3/j22VarucGx748rs6pfUP0KOSoFv+kdhZNmNwKEczEdwGKi0Hq
-	 Z/HmD6RXg6yoFKXkVy6wsab6smETjT/jGb24EUE3kx0hEv1dsNN+OWWH8gAdxmZVcdTDx
-	 FGSICohzpiujNXlX4pS8KwLsOHTGqFYVk3D5LgY2w/ype7e36/XzFeF24Vz7sg6bCK/ff
-	 GSScTXVLPEvZtgIP41ahh7csWS7MLkAGqbMk4l/YtK0i5+HKqS9VBGIx7ywuxIuc9og==
+	bh=zHwfQCfJmb38lEqFT76DaImX1atMSnLcBbVhYr/nfyM=;
+	b=IFJBLRlvpgtWh1STyr/JYkMcl1cQuw/s34tvdoSQfFmksmlJckYOSm3JFgR+wmnTqbxL
+	 nsVJ3OMc8XbHR4ySyqERQLKrOgIGY4a4W07A0lky4JtPrPXRHP/fJBYbUabNiLUalFWLN
+	 G3lrlvxOxKjH8MLU8Aaokars+ovr7gUpl5fQ2f1XwlAgZsL6pjXLxqtW4EAmEASUuxMpL
+	 UUHiMFhUR/0UUO9MygPUr+NeQNJSUk8isUQPMzqukmgZyS3+MaQlSiblcmLjKOaX8+sqh
+	 NjNhKkh0jRCjZUyRQHVvyBVBi9wBZ6NtgbUpOr1AXwTQFYhmBWiNA62ZXD1tEQh1sPw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YV+HCMps;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mJ3UZqMg;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6197E60A2627;
-	Tue, 24 Nov 2026 19:49:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE58260A2637;
+	Tue, 24 Nov 2026 19:49:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=YV+HCMps
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8774D1F000EF;
-	Tue, 24 Nov 2026 19:49:27 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=mJ3UZqMg
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B281D1F000EF;
+	Tue, 24 Nov 2026 19:49:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795549768;
-	bh=w765RhlKEmCXpEzT8vMU4vI+1OfdgcEXrElMay742ug=;
+	s=k20260515; t=1795549769;
+	bh=zHwfQCfJmb38lEqFT76DaImX1atMSnLcBbVhYr/nfyM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=YV+HCMpsRkRRHlZlQMa4BVjkHNR/NS3wCCQDCposdggL1AyudNiWUv+vlOwjlt1dx
-	 uCOCQkwruzWe3Lypu/HMXBpEY7NdMds9y5YoB/mE2mNKM5DYfUZV5x8QLBp/ysmxKD
-	 hQQOo8eFvjrgBY7/KyzVwkGf6hMKDHUeK/VU7ibCOyX048nRUelbtl+oWTuKUorbeK
-	 dlhEkQSqJ8dksFV7TiZHxCVw37lvTCq/epBBB288rZ0CuUPgOJHUwSFHMhDZxFO4Yf
-	 HZD1WF3RQSwtJBQQXQ0VPLE/gDJ6YRbEd/0fas9rLa0Ueg5dBdTX3QDw0QFgQQr5qV
-	 1Pl64+LFCRQnQ==
+	b=mJ3UZqMgGmLdb82o80SR1ozHE88enUbrnt1eX4uBOZ43rQ8H7143TB23+zCQEo+SC
+	 qGTSoJzL/whWgyeQW+wWwjEGzgcL9JyBpO4okIxEblPfJZSe+BIzDrx4tWy1hQVayp
+	 if9tLAZ6rzTXUA6vYxWAJxYGAYtbkpgu5qz+++BeX/9OjUbQFKo0qgRANyHJg78Ol9
+	 M4iX7eMYDUuAhNoytBbgdZwbZ/UG9Rua3+44GUCFndjAiXWj/wNLRU6HJq+uNdYlpt
+	 1Z9p2J3nUg7nzpPMnSS/n1FsFVS+IfqZvakQ4swqmpR34qyxjHgFDTXNGBDl2jr056
+	 52aO44LJcFYHA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 24 Nov 2026 14:48:50 -0500
-Subject: [PATCH v3 11/12] nfsd: take the write delegation grant stat before
- hashing
+Date: Tue, 24 Nov 2026 14:48:51 -0500
+Subject: [PATCH v3 12/12] nfsd: move ctime when CB_GETATTR applies a
+ delegated mtime
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,7 +55,7 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261124-delegts-fixes-v3-11-6fe4ba705aef@kernel.org>
+Message-Id: <20261124-delegts-fixes-v3-12-6fe4ba705aef@kernel.org>
 References: <20261124-delegts-fixes-v3-0-6fe4ba705aef@kernel.org>
 In-Reply-To: <20261124-delegts-fixes-v3-0-6fe4ba705aef@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -65,199 +65,55 @@ Cc: =?utf-8?q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>,
  linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6691; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=Vr/BMOfSSWkxdXeTqrQFN4dfXAVHjfDWDW+MDNe8ZNo=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBrBeo376Ivjn9OW3V0F8eTbuf/Ho+uH/gpszqnZ
- BXAgA8E8rGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCawXqNwAKCRAADmhBGVaC
- FVdLD/4xQsBM/s0gUy+RO09Go2V6XIfJzJig8ZN0rF30mSS/I/2fxgN6/DpmS9Q6igVJe1q0fJb
- DDbSGMIuSlg1FKKDXIqben2gZzWrWd3vrD4aqzs0Y1LM+oOGCsrspE1DemRT4eD+4X95cdfoxQH
- n2jK4iZqDYR+4mnhyss5l6uOrIgwmPH9Z1nt3Ubu0TqMGqeY+HVVwubnHZ8keOQaRErke8mtV/K
- jbOfAnwD+4p66BtsLZeyPRRueUd/d2cF5m0ohzA1o3S5vBo3Z2pATyHlim5mNsmlmSAkVm25gai
- Q4unCpzJq+d/CvXZ6Kn41U3ZrlFpuaDLn3GME8Rq3iNXp6zSIJNBE5bbGRNCrTU4qqzBa5rorZ2
- vQ3pO2S91d085xoTNuqmA/EHxjC0Kmos9YWZdHksWAtOKefXGP3KMX/BR8AeQ/AeXKLpej8UY8z
- 4ik1hjqbLnfjTBwPJq9DSU2ye2NigC3l08faqZItvAJnAltlC+2keJePWFlYbgEL4AAeENiMEe7
- 5rx/qPy5yDmlhMsTrApVQCYma/fI15VG4D4/dNHbU0fFciPr8AyctOaSDb0lC5ULzjfP2l6FycA
- D8uZapNCGTU5e58ZbUNvR8hq60sd7yGwysU+VVn4hnS46YPBwcfOlu/2o45ut9BO7Oq6SldJAzZ
- hjqgTV/GzBUmjmw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1444; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=1zT3UR8D3JA8M02VhrGNMqquxLfZZpeteUoT2Rr+yYs=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBrBeo3L99VriAkr4qzcnB0Tc1cqC359ivgWAqd6
+ /GPFv/DzViJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCawXqNwAKCRAADmhBGVaC
+ FaAJEACl395lXbeuYFS0OkikolFouk/IuYDNKKgjir6xFOvFg/vJ1MZfNHUjRTzpl3ZgrN59BZw
+ ru0JRZFKQSnXFKfoUhhqdgXurlEoXTN5IrsSZU2cgM0qpktCofGRkyrKhM+mYLFfq1Rqbf+KQpD
+ 2oBTZRrsbG2HmgREcpNWZAA2Ks0Fh0k1bsNc185y1nQra6ieb4aJu8Sv97SDEb1/9OpvzIQrY2p
+ 2w7nVlUFyYboHJWh2e0/KL9+9SSyzSLaqPmrg0zgLWq4bhTuvFWNhacTssfuGd9Q/lV0iyO04gT
+ lXw4rOg0ToG8JqlG8+AXbFFKLj6xOlxpoI8PBHewJE2XwnYXhpYAHeKH1ZsVUXzH22DTy/N9gtA
+ dWpbICbYG+26LbsEwt7fpBxgKSt8xV7iP1eoloQXa79AWpxelMmXs2rVUaqb85a6VGYlbYdf5aW
+ gJkIaJkPa03SSGcYYSJwcQr5kzxYVHzIob/8NUSrYlLcQqOKQBnFBvmGzvBztKxeH6Rg+6lgiwE
+ eXmpyJho6V5OdJxEVGn42EAmflAjuGX7KqF3Ani3O4YnlNdDDIBKpSjDk1cEk0yxUk3gWZvUMWD
+ sJudAjGOOylD7Ayde9aCKCb34PYfnDBO/yQrxMnI9Y+ny7dojL1cDECUDN1KN3FNOAWTpOOmwMB
+ /TJaz80uVnJNvng==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfs4_open_delegation() sets ncf_initial_cinfo and dl_[amc]time from a
-stat taken after nfs4_set_delegation() has hashed the delegation. The
-window between hashing and the stat is not reachable today. A CB_GETATTR
-sent in that window does not carry a referring call, so the client
-replies with NFS4ERR_BADHANDLE and the waiter never compares the zero
-ncf_initial_cinfo. But an upcoming per-delegation timestamp record must
-be initialized before anything can reach the delegation.
+cb_getattr_update_times() sets ATTR_CTIME only when the delegated ctime
+passes vetting. When the vetted mtime is applied but the ctime is
+rejected, the inode's mtime changes and its ctime doesn't.
 
-- Pass the current filehandle into nfs4_set_delegation() for the stat's
-  export, and move nfs4_delegation_stat() above nfs4_set_delegation().
-- Take the grant stat after kernel_setlease() and the conflict checks,
-  just before hashing. Don't grant the delegation if the stat fails.
-- The stat can sleep and so widens the window between the unlocked
-  fi_had_conflict check and hashing. The check under deleg_lock that the
-  previous patch added still catches a break in that window.
-- Stat again after hashing, and decline the delegation if the change
-  attribute moved. The holder's WRITE through an earlier open doesn't
-  break its own lease and can land between the stats, as can a foreign
-  write whose break raced past the fi_had_conflict check. A plain write
-  delegation synthesizes change as ncf_initial_cinfo + 1, so a stale
-  ncf_initial_cinfo could report a change attribute below a value that
-  clients already saw. Compare with the grant stat's change attribute,
-  which nfs4_set_delegation() returns, rather than with
-  ncf_initial_cinfo. Once the delegation is hashed, a GETATTR whose
-  CB_GETATTR reports a modified file can advance ncf_initial_cinfo.
+Always set ATTR_CTIME with an applied mtime, and ATTR_CTIME_SET only
+when the ctime passes vetting, so a rejected ctime moves to the current
+time. This matches SETATTR with delegated times.
 
+Fixes: b40b1ba37ad5 ("nfsd: fix timestamp updates in CB_GETATTR")
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 93 ++++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 63 insertions(+), 30 deletions(-)
+ fs/nfsd/nfs4state.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3491b2b86a3e..6bb3ce974c9c 100644
+index 6bb3ce974c9c..9ebee4fca9d6 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -7286,11 +7286,35 @@ nfs4_delegation_record_grant_slot(struct nfs4_delegation *dp,
- 	dp->dl_recall_grant.valid = true;
- }
+@@ -10910,10 +10910,11 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
+ 			attrs.ia_valid |= ATTR_ATIME | ATTR_ATIME_SET;
  
-+static bool
-+nfs4_delegation_stat(struct nfs4_delegation *dp, struct svc_fh *currentfh,
-+		     struct kstat *stat)
-+{
-+	struct nfsd_file *nf = find_writeable_file(dp->dl_stid.sc_file);
-+	struct path path;
-+	int rc;
-+
-+	if (!nf)
-+		return false;
-+
-+	path.mnt = currentfh->fh_export->ex_path.mnt;
-+	path.dentry = file_dentry(nf->nf_file);
-+
-+	rc = vfs_getattr(&path, stat,
-+			 STATX_MODE | STATX_SIZE | STATX_ATIME |
-+			 STATX_MTIME | STATX_CTIME | STATX_CHANGE_COOKIE,
-+			 AT_STATX_SYNC_AS_STAT);
-+
-+	nfsd_file_put(nf);
-+	return rc == 0;
-+}
-+
- static struct nfs4_delegation *
- nfs4_set_delegation(struct nfsd4_open *open,
- 		    const struct nfsd4_compound_state *cstate,
- 		    struct nfs4_ol_stateid *stp, struct svc_fh *parent,
--		    u32 *held_type)
-+		    struct svc_fh *currentfh, u32 *held_type,
-+		    u64 *grant_change)
- {
- 	bool deleg_ts = nfsd4_want_deleg_timestamps(open);
- 	struct nfs4_client *clp = stp->st_stid.sc_client;
-@@ -7434,6 +7458,25 @@ nfs4_set_delegation(struct nfsd4_open *open,
- 	if (fp->fi_had_conflict)
- 		goto out_unlock;
- 
-+	/*
-+	 * Anything that can reach the delegation once the delegation is
-+	 * hashed may read ncf_initial_cinfo and dl_[amc]time, so set them
-+	 * before hashing. nfs4_open_delegation() stats again after hashing
-+	 * to catch a write that lands between the two stats.
-+	 */
-+	if (deleg_is_write(dl_type)) {
-+		struct kstat stat;
-+
-+		status = -EIO;
-+		if (!nfs4_delegation_stat(dp, currentfh, &stat))
-+			goto out_unlock;
-+		*grant_change = nfsd4_change_attribute(&stat);
-+		dp->dl_cb_fattr.ncf_initial_cinfo = *grant_change;
-+		dp->dl_atime = stat.atime;
-+		dp->dl_ctime = stat.ctime;
-+		dp->dl_mtime = stat.mtime;
-+	}
-+
- 	spin_lock(&nn->deleg_lock);
- 	spin_lock(&clp->cl_lock);
- 	spin_lock(&fp->fi_lock);
-@@ -7497,29 +7540,6 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status,
- 	}
- }
- 
--static bool
--nfs4_delegation_stat(struct nfs4_delegation *dp, struct svc_fh *currentfh,
--		     struct kstat *stat)
--{
--	struct nfsd_file *nf = find_writeable_file(dp->dl_stid.sc_file);
--	struct path path;
--	int rc;
--
--	if (!nf)
--		return false;
--
--	path.mnt = currentfh->fh_export->ex_path.mnt;
--	path.dentry = file_dentry(nf->nf_file);
--
--	rc = vfs_getattr(&path, stat,
--			 STATX_MODE | STATX_SIZE | STATX_ATIME |
--			 STATX_MTIME | STATX_CTIME | STATX_CHANGE_COOKIE,
--			 AT_STATX_SYNC_AS_STAT);
--
--	nfsd_file_put(nf);
--	return rc == 0;
--}
--
- /*
-  * Add NFS4_SHARE_ACCESS_READ to the write delegation granted on OPEN
-  * with NFS4_SHARE_ACCESS_WRITE by allocating separate nfsd_file and
-@@ -7588,6 +7608,7 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 	struct svc_fh *parent = NULL;
- 	struct nfs4_delegation *dp;
- 	u32 held_type = OPEN_DELEGATE_NONE;
-+	u64 grant_change = 0;
- 	struct kstat stat;
- 	int status = 0;
- 	int cb_up;
-@@ -7622,8 +7643,8 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 		default:
- 			goto out_no_deleg;
- 	}
--	dp = nfs4_set_delegation(open, &resp->cstate, stp, parent,
--				 &held_type);
-+	dp = nfs4_set_delegation(open, &resp->cstate, stp, parent, currentfh,
-+				 &held_type, &grant_change);
- 	if (IS_ERR(dp)) {
- 		status = PTR_ERR(dp);
- 		goto out_no_deleg;
-@@ -7641,12 +7662,24 @@ nfs4_open_delegation(struct svc_rqst *rqstp, struct nfsd4_open *open,
- 			nfs4_put_stid(&dp->dl_stid);
- 			goto out_no_deleg;
+ 		if (nfsd4_vet_deleg_time(&attrs.ia_mtime, &dp->dl_mtime, &now)) {
+-			attrs.ia_valid |= ATTR_MTIME | ATTR_MTIME_SET;
++			/* A rejected ctime still moves, to the current time */
++			attrs.ia_valid |= ATTR_MTIME | ATTR_MTIME_SET | ATTR_CTIME;
+ 			attrs.ia_ctime = attrs.ia_mtime;
+ 			if (nfsd4_vet_deleg_time(&attrs.ia_ctime, &dp->dl_ctime, &now))
+-				attrs.ia_valid |= ATTR_CTIME | ATTR_CTIME_SET;
++				attrs.ia_valid |= ATTR_CTIME_SET;
  		}
-+		/*
-+		 * The holder's own WRITE through an earlier open doesn't
-+		 * break the lease and can land after the grant stat, as can
-+		 * a foreign write whose break raced past the fi_had_conflict
-+		 * check. A plain write delegation synthesizes change from
-+		 * ncf_initial_cinfo, so ncf_initial_cinfo must not be stale.
-+		 * Compare with the grant stat's change attribute, not with
-+		 * ncf_initial_cinfo. A GETATTR can already have advanced
-+		 * ncf_initial_cinfo past the grant stat's value.
-+		 */
-+		if (nfsd4_change_attribute(&stat) != grant_change) {
-+			destroy_delegation(dp, false);
-+			nfs4_put_stid(&dp->dl_stid);
-+			status = -EAGAIN;
-+			goto out_no_deleg;
-+		}
- 		open->op_delegate_type = deleg_ts ? OPEN_DELEGATE_WRITE_ATTRS_DELEG :
- 						    OPEN_DELEGATE_WRITE;
--		dp->dl_cb_fattr.ncf_initial_cinfo = nfsd4_change_attribute(&stat);
--		dp->dl_atime = stat.atime;
--		dp->dl_ctime = stat.ctime;
--		dp->dl_mtime = stat.mtime;
- 		spin_lock(&f->f_lock);
- 		if (deleg_ts)
- 			f->f_mode |= FMODE_NOCMTIME;
+ 	} else {
+ 		attrs.ia_valid |= ATTR_MTIME | ATTR_CTIME;
 
 -- 
 2.56.1
