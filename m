@@ -1,73 +1,75 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.221.70
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795539722;
-	b=a4vmi8QhiIqmzZO8DP1RMqCEzM3nnjIY4cO1k+++ce/z8dfouQ35BULkncWT5fUw/gML
-	 0ePKEwmwBQPYUwTTGg5xN8uo0oHjnWDu+p3QDAWItGhc/IrCmuIn7YpXSyCLzZ2812Wtp
-	 /wJ5MDZMp0ID0Xur7j+ihqs7WyIdLhJRt4NU8xdnWhZO4a5adcgNYLPgc7QDDLXK31N4o
-	 9fhHonG134pl3/fy7JojMTT6b6uY7XP2U4ND7BFZpEwNWcS2otVpPfXv4nMvnUaMNaTUt
-	 Zub9CaM91qegZzDkDYXr0JUc52KnWnHXR6VYWugQZCYQRUXY8hy1tSoIs+2yeAJntOw==
+	t=1795543571;
+	b=PGiHg22Mx2jOgP6qUPMTC4eHv+vpuduHVL5rluMPliHJ81DGhLIkiRWoj2xzj3m5cLZ1
+	 APeyG9tpdn38BLAzlj8IkelWWL0Z9PMsM8EVU+1sITj5VAxE+E6Hx7ddQxmhBhSaCvn11
+	 oJVM1dofJVam8AywmY7d7fZKznCgf48cLVDPpSCQbP6I98BEzbT06X4bJIyZhyRE6IZvZ
+	 QnWmvNuZEzMe2KvVJdMBeca4fwz+zGN0xW6VfoCYck+39b5yK+9JpGwqB3q0Me8+erS5t
+	 nxeEQ15f9NxMPHzGhqxo8OnhDj8OuEfqoGks5Q73LLcJ8mEnc3bN2EU9j4LpSWSoZwA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795539722;
-	h=Received:DKIM-Signature:Received:Received:X-ME-Sender:
-	 X-ME-Proxy-Cause:X-ME-Proxy:Feedback-ID:Received:X-Mailer:
-	 MIME-Version:X-ThreadId:Date:From:To:Cc:Message-Id:In-Reply-To:
-	 References:Subject:Content-Type:Content-Transfer-Encoding;
-	bh=/YR2NdyGpQphRBfeuwhxgCxGzrHtOehNZjit7K3pY8Q=;
-	b=KSu6d3+pPAFb4bzaMjaX/E37WNE+HpYMpzPU9qNaT5C//kLtisjX/unFkS0WPaWAi6xT
-	 QYNkyZQ7r9EvOwNdgPIDYw+PBDX7PJNtmqe8okBGEUWPUJGBlgzomwmI2lqKMknCtM69D
-	 fZ7jcc6LZPXq6Qmbm2cpOVhnhwLUr7pxmPJNWkiSzUZ/Mg3BTJ0Xnks0hEBu/g4Xlpovn
-	 suhviKW36XpvIJ1L+9dSQOumOhfPIYHaJsejNbxr05fJtneDsDyyDpkVxHVpqjs91JysQ
-	 9aDrdc8lIyG6pw4AxeWC01EEOwxjJWV3DspJbavlWPEpfm4itycoBvLJo9xswJPIezg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795543571;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Received:Date:In-Reply-To:
+	 Mime-Version:References:X-Mailer:Message-ID:Subject:From:To:Cc:
+	 Content-Type;
+	bh=TTobbA6drSDZJWqbMt7F5A3mt5qZ/w+2ak4GVWngoJU=;
+	b=TcVUsg9+9DFh7NX0CI7HFFa6Gobwo1aKaX5jN7gYApOg3IunVpn65FSfnNgmBBl+fJT8
+	 vR5lBXoPX7I76d8OYYJir96dktlMBbBmjX25PqPfugcBuC5K7RBHJ5TWMo8WFuH4B+9DX
+	 FuD6Wxa8JPHPIFEjkC27gXhOHw4cHKej+aMdrxgjZIXKVdLIMoqaYQoVPT6AxCQ/ROntS
+	 H+r8WYseAMgE1vowmyKJEfoHP2fIXx9/YT9TCRUGFILczM9iu9EabSPPvIXNaAHxGdUOv
+	 ngiv/OmQc/JNHyn6DCweM14lNuq8aPL+szhXC1sIjnUnHsWwAc8eJmxaBrcmB/4Jxng==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Q6r7Kuur;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=google.com;
+	spf=pass smtp.mailfrom=flex--dmnk.bounces.google.com;
+	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=T8i36nVl;
+	arc=none smtp.remote-ip=209.85.221.70
+Received: from mail-wr1-f70.google.com (mail-wr1-f70.google.com [209.85.221.70])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5268606A327;
-	Tue, 24 Nov 2026 17:02:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6D7E606A68C
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 18:06:10 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org A6D7E606A68C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--dmnk.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Q6r7Kuur
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1418A1F000D0;
-	Tue, 24 Nov 2026 17:02:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795539722;
-	bh=/YR2NdyGpQphRBfeuwhxgCxGzrHtOehNZjit7K3pY8Q=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Q6r7KuurGcYYmLIkXt/WJ7+8UUfu37x0nDZP8djVlQ041HlbCxMyn4Kl/nrlGvUX3
-	 NAs3/l3Dfwq0YOGcnaCu8nvaue1VdNbeEQiQRD2c7L42qTbTaC9EjmTmZFx5kctAgM
-	 vSkKeoj4P75ttUNdFDmJb7aaIUXB9HlPt9q/NkW1ar+Q+Ac9ZVcZbZkwf1yeM6VBgm
-	 EKF+iI8MsWvaWljRiYWkLHQc726tHnkXbcno2VcKZHwIAiRq97cIh3BaZWtIimVVR0
-	 nVuUF+eN4B/5UweKHOa7gDnrJ6wDI9P+mb91hUG3MGLTjZp5x+OtEgR3eYjsvW1WET
-	 MzO3tCGlXWEyA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 47F03F40067;
-	Tue, 24 Nov 2026 12:02:01 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 24 Nov 2026 12:02:01 -0500
-X-ME-Sender: <xms:CcMFa6VhvKzWWezBDCEVI9-iNiaw_GtjfX_wen_jE6gXnPQn7jNhrQ>
-    <xme:CcMFaxalmsFv48IzzzCDfQHyVQUa99_sK8AUfbrqyB8rpdyd_NI_4jGqX-gG6Eyjr
-    HW7UCkRSKF5UnBgplSuNtB7OX8WhSqhqhXTRdVEgjZX8xcVeofysfgw>
-X-ME-Proxy-Cause: dmFkZTFwXILTy4fQRfudKC0hWynHKvKwlza8s34nRlusPzeGPNvqBtaTo5l0TmHEx1Eu5e
-    cIwjFljVodOPqo2gBfY/h05A8TwW/b1JFqT1+ptiF0pQxoQ2A+Qe/wVC1gyuqhRskXXytV
-    X+SpdvMINxr8boRipFM6JVIyJSBEZwgqbmDrDXRC/mHxfLlQirs118vs006gGMqyG4dyMp
-    F0uTz44+9j/Zod8N7si79U0pEkaqiS+dPPDDmzsws4/MDJ3xmf9O1rNqCqGZQ5fHgneyAA
-    qSbBhZ1/JdJnb6dbVnZtVPD4q9gH3JboDauS/iK2U/Sl8Sac9TgCAQmRVgMv/vf/bNJyno
-    fkzVieuKII/jw9eQ3uuCEEH2wHsd7ethpwCy47MVDl/wZsIQlJUkWSsYX2hdyemACPbnBB
-    v0S5ckEvO3Kn5zbGLZrjV+mB1oTre18kZgpA+4mjKQLq/5PAaoGiDCOK08nItXQOAyNnay
-    NpeQNwhenintVlBsGGfsN8samSJ9oZ1KXXerlkFLZZyPtCh3iANjJwqdBMzdxfpzebpi00
-    TnQm8Y6MUmIpxOiRrm8xgR3uo9+1bwYTUp5sX+BvdwH9u+ENfRt4JFBU9kar7L1uQ7fmup
-    b7Z1pcLMiJr6qmrESZ2y7g69g8AnVEx/e3WtjReZak/DmqkZeycLVaHu9Y2w
-X-ME-Proxy: <xmx:CcMFazmMaSO0yDSxsO2ozkYPTgkjn6IK1ueRWu1DTfAEIvKjnz0gkg>
-    <xmx:CcMFazNqWNvDK1Ow315AenCCN7ZoWWVnr1YwjlDRybLYdhkCG78_bA>
-    <xmx:CcMFa-Gazjfw4O-qEbDK79ylh_xy_VhYq3l0bWqseg0F7_q4BiABMw>
-    <xmx:CcMFa5ssv84Qzxa-B3OSpAKnGfN_lfOsh2jxKRipQStc4tAMzbLVnA>
-    <xmx:CcMFa-TfI_9dq8GyDUiZPK4aefosCKMaclLq-0FxyOS7oOgEbl8TzedC>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 29F2678007B; Tue, 24 Nov 2026 12:02:01 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=T8i36nVl
+Received: by mail-wr1-f70.google.com with SMTP id ffacd0b85a97d-4a799d93bc3so2327534f8f.1
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 10:06:10 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20260707; t=1795543569; x=1796148369; darn=vger.kernel.org;
+        h=content-type:cc:to:from:subject:message-id:references:mime-version
+         :in-reply-to:date:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=TTobbA6drSDZJWqbMt7F5A3mt5qZ/w+2ak4GVWngoJU=;
+        b=T8i36nVl5IlmUDS277UW/wELWLM4zJuzGpb5XnB8k1V1TTYH8LXgY7jUWOaJTyllKB
+         rE0eb7Aka8293LkouhlEFL6vmNZmCcEduCvHTspBpewnMGqUS1GX8DHDDfvOb8lSXywM
+         /w3YWqF8DfIlTczmFxwIP/yKXPJIUCLLeVTN6snyivLaZ26kTtY/+ozrmIYUkW3P0ChJ
+         lXn8A/Oc6h0kuHiVFwbtG0N1mUDPM+jfWKrIDYotL9E6HMAEAY0rZSfEd7E4LpDkmX3S
+         cT754hL2n2XE7RR27IToMai7zoH9JRVXC3xTvGt/uJZUA21w0AZm8gsCNtIak8JlDiMc
+         c7Lw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795543569; x=1796148369;
+        h=content-type:cc:to:from:subject:message-id:references:mime-version
+         :in-reply-to:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=TTobbA6drSDZJWqbMt7F5A3mt5qZ/w+2ak4GVWngoJU=;
+        b=syWoibrG/2QYYF03ouAB5jRnNpUAhCjc6O7g2xVWzwsiVtaFKpAVeJdvDzUCOI4QfT
+         AmCM0Pb+KhNU6jh3LZRtQQpg3JzjTUKLd/t9NXzJlYdvR4rku1MfeXVilYmp0mAKn0oa
+         HoHgs9VaFHFrax4e7ct9FGBVkKmOD6Hly3So2W4iBwg4PCV46Dwx0Hu/UBH8ZVpfMxGN
+         ZXy2TNSH4VbQFIVHkeIkERtejmIbX1ICZ+H4ZaB4BiKRh54bCzb4ARfGurlFG7/pNmrM
+         I0EdJ9atEMkdcG5Nxr6tqnsKogRoRusYHGx1VT8DugnumX/jXhup6gF+hFxtNFoiYX+B
+         ujgA==
+X-Forwarded-Encrypted: i=1; AL+hErHJ0tAZAV4GpfiFFDBAUTAUg15sbp+Iu4TV8adH+x1luYKh56hBNhIi5nSSQXYeKC87JbsqOJHdNK8=@vger.kernel.org
+X-Gm-Message-State: APuU4Z+ya6j4iPZowAUpBD23BIMemZ7g5SZ5KFGE4hOIYoIwU0LNlSXo
+	68bqlpIOoFuGlCW2dCobu2Tf9lVb+LEAjcOFeZCXqRMfqI1bZX8TNuNUPnOzswtQth38GmDDVQ=
+	=
+X-Received: from wrwk12.prod.google.com ([2002:a5d:66cc:0:b0:4a2:fc3c:6409])
+ (user=dmnk job=prod-delivery.src-stubby-dispatcher) by 2002:a05:6000:2383:b0:4a8:8004:5261
+ with SMTP id ffacd0b85a97d-4abb6d04250mr34532821f8f.44.1795543568707; Tue, 24
+ Nov 2026 10:06:08 -0800 (PST)
+Date: Tue, 24 Nov 2026 18:06:05 +0000
+In-Reply-To: <20261124180606.73719-1-dmnk@google.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -76,57 +78,57 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-MIME-Version: 1.0
-X-ThreadId: A_umGGPHPaig
-Date: Tue, 24 Nov 2026 12:01:40 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "Li Xiasong" <lixiasong1@huawei.com>
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, linux-nfs@vger.kernel.org,
- linux-rdma@vger.kernel.org, stable@vger.kernel.org, yuehaibing@huawei.com,
- zhangchangzhong@huawei.com, weiyongjun1@huawei.com
-Message-Id: <40af69a1-be6b-4afd-acba-2185a7ad832a@slotpi15m67>
-In-Reply-To: <20261124021842.130141-4-lixiasong1@huawei.com>
-References: <20261124021842.130141-1-lixiasong1@huawei.com>
- <20261124021842.130141-4-lixiasong1@huawei.com>
-Subject: Re: [PATCH v3 3/3] xprtrdma: Wake connect worker on device removal
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Mime-Version: 1.0
+References: <20261124180606.73719-1-dmnk@google.com>
+X-Mailer: git-send-email 2.56.1.663.g77904e546d
+Message-ID: <20261124180606.73719-2-dmnk@google.com>
+Subject: [PATCH v2 1/2] nfsd: return GDD4_UNAVAIL when nfsd_file_acquire_dir() fails
+From: Dominik Maier <dmnk@google.com>
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+	Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org, dmnk+artist@google.com
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue, 24 Nov 2026 10:18:42 +0800, Li Xiasong wrote:
-> Device removal only forces a transport disconnect, leaving a connect
-> worker asleep while re_connect_status is zero and blocking endpoint
-> cleanup.
->
-> Set -ENODEV and wake pending connects on removal.
+The Linux NFS client requests a directory delegation by inserting
+GET_DIR_DELEGATION between PUTFH and GETATTR in a single COMPOUND, and
+_nfs4_proc_getattr() does not tolerate -EACCES. When
+nfsd_file_acquire_dir() fails (for example for a non-owner doing stat()
+on a mode 0711 directory without read permission), returning the error
+aborts the COMPOUND before GETATTR and surfaces EACCES to stat().
 
-On InfiniBand, waking the connect worker works as described. On iWARP
-the woken connect worker goes on to rpcrdma_xprt_disconnect(), and
-the rdma_destroy_id() call in rpcrdma_ep_destroy() waits in
-destroy_cm_id() until IWCM_F_CONNECT_WAIT clears. Only the provider's
-connect reply clears that bit. The worker still waits for the peer or
-for the provider's connect timeout, and it now holds XPRT_LOCKED and
-rx_unmap_rwsem while it waits.
+Reply NFS4_OK with GDD4_UNAVAIL when nfsd_file_acquire_dir() fails,
+matching the non-fatal nfsd_get_dir_deleg() path below so the delegation
+is withheld while the trailing GETATTR still completes.
 
-On iWARP, then, this patch moves the wait from re_connect_wait into
-rdma_destroy_id(). I don't see a way around that in xprtrdma. The
-patch description should still not claim that removal unblocks
-endpoint cleanup on every device type.
+Fixes: 8b99f6a8c116 ("nfsd: wire up GET_DIR_DELEGATION handling")
+Cc: stable@vger.kernel.org
+Suggested-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Dominik Maier <dmnk@google.com>
+---
+Note: matching your snippet, this folds any nfsd_file_acquire_dir()
+error into GDD4_UNAVAIL; let me know if you prefer narrowing it to
+status == nfserr_acces so errors like NFS4ERR_NOTDIR or NFS4ERR_WRONGSEC
+still surface directly.
+ fs/nfsd/nfs4proc.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-
-> The final endpoint put can free id->context before rdma_destroy_id()
-> synchronizes with CM callbacks. Destroy the CM ID in the endpoint
-> destructor before freeing its context to close this window. Remove the
-> CM callback get/put pairs so final puts occur outside CM callbacks.
-
-Removing the get/put pairs from the CM event handler also moves the
-last ep put into rpcrdma_xprt_disconnect(), before xprt_rdma_destroy()
-reaches xprt_free(). That ordering closes the stale ep->re_xprt window
-I described in my reply to patch 2/3. Let's mention that ordering in
-this patch's commit message, since patch 2/3 relies on it.
-
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index b76320c265e1..dd17a6b47222 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -2873,8 +2873,10 @@ nfsd4_get_dir_delegation(struct svc_rqst *rqstp,
+ 	__be32 status;
+ 
+ 	status = nfsd_file_acquire_dir(rqstp, &cstate->current_fh, &nf);
+-	if (status != nfs_ok)
+-		return status;
++	if (status != nfs_ok) {
++		gdd->gddrnf_status = GDD4_UNAVAIL;
++		return nfs_ok;
++	}
+ 
+ 	/*
+ 	 * Offer no notifications to an order-aware client. RFC8881bis section
 -- 
-Chuck Lever
+2.56.1.831.g720f3f5937-goog
+
