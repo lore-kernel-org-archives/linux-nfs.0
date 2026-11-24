@@ -1,84 +1,94 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.171
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.218.49
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795525772;
-	b=hMJEyx+GyjjdOYiXyU9rQaxP0dGebbXcuKubAkv7MePZr1tn+nwdO7rJ6dr210hrrbgq
-	 2Go2KZp6A8jc+l8Ktu517Ey2Rz7dCkQRJT0VputIvtUqzii6NbWuZy6LtqBCnt+rz1CPM
-	 YhEJNCQMwaLNAYtwO2EGw2mKaT47P96GQiaojfvdivwNHISa4mT8brucXZzVblDZ9K+va
-	 eQVYIPFXVZwXVadSzavcoV6BaK4WZqlDGtxN/yx9Mc3ggFLJRNmiNprGY1zHUO2x9mm44
-	 pzb9gDlcsLvWRVff4iBibW/0mSdrWFeD3Xm5Wt7hkCQH/SQZeJhNG83epM/SH9kZjfQ==
+	t=1795526681;
+	b=avrLq2I+MoaKxgW026lWVwREzAWufKJKVyI9Eo/T3QOREn5Wpz2QkRnRrVpnIkId6mR1
+	 k7d4CniQym4kYU9hjlk/lV4utNv3EUNkuaPQrPEr2jxCq/cabBq9DHxPEG0/KitdPMGeV
+	 +r13ek/5YmXL8hQXkasoFLIDirvqsPSdxk5ATCQPQiv00mp32OEyIjAb8AAsRjjb9LaAB
+	 OKRjiJMm4TRaw3XqrGZArmAn/iwuKmiF18MVPqJLqRbgFvXJh+4srUMRkvXl7ajfSdAOa
+	 fLdMdvVY5hwrGfSGWNUZYtuXIjZUrErQ9VkLfMjyxsFY2zT8lmDiGLSoG5ZE6zjdrSQ==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795525772;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795526681;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
-	 MIME-Version:Content-Type:Content-Transfer-Encoding:Subject:From:To:
-	 Cc:In-Reply-To:References:Date:Message-Id:X-Mailer;
-	bh=8yG0hkfIb2fB7h6z4Ui2DUaPUWV2P+Yav+jRqgNw3xY=;
-	b=zsjfS9S79ILYoENMzXdvfUThq4Ou6P96bKT6AGBtbGT8RSL9biAreZMTaDTuSWSQPCSW
-	 py/PGonU7dtkPGGo5IGwC//C/Slph89gEP/TFfElaXQSr/YuMp0ZKqz5Rm1hDtbF0GgL8
-	 QMTydvKwVce9K3H/2qPZZiRJY6BLBE+P40HvGQdLQ+IbO4vk5tS2uBbG3dHjqEXVmzhtk
-	 Ofxh70Aalk+Nr2+sqc04y/uggmVkSo+s950ia00KbQ21b0Sn8TqCMeq7AjaECJwlDjZ7d
-	 Uw/KP/q0JTTRc/PRHZ6Z0lXaWqIYYro9XeOK9UpZaL3Zbq2xvJjJSy0YrK5sDDenFaQ==
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=Jg/IvZ+CqBAgcG+VV3IUxltdhuj6dsssOpvBwe9TDXk=;
+	b=g0mFJhZW6a2R1EpBxLMV6KhavXbALWmQwv/znewH4Toox/2g+CmFu0dAXrBTtbaYcakm
+	 K+qPvktyFwhOrs3EFSwwAEA96HRPVlLGWZPXhW+rjI8Xy+weVmlS3xSV1m2ZsjWUdKjHY
+	 Riaua2H7DF8wsb6ldLuHh762fqJdij/LZk0GlbZHmRY89Vi+bEH4I/aI7z6wfFZHCQOu4
+	 syQi+/gMfPZw2sXZlq8Ht/vvjafWnW12I29DbOJy3yeGWc76Amkma70mKqWgcJubZ6Ms7
+	 xRZuiSul+Nd9/PUcpA0MpPNzJphLiYqE+FVUbucLt/sPalIsGBxmBjmOLHFVpEKSM0Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=MqA5yQ3T;
-	arc=none smtp.remote-ip=74.125.82.171
-Received: from mail-dy1-f171.google.com (mail-dy1-f171.google.com [74.125.82.171])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=EbzNxOOT;
+	arc=none smtp.remote-ip=209.85.218.49
+Received: from mail-ej1-f49.google.com (mail-ej1-f49.google.com [209.85.218.49])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EA4F606A327
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 13:09:32 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 3EA4F606A327
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96E9D606A31E
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 13:24:40 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 96E9D606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=MqA5yQ3T
-Received: by mail-dy1-f171.google.com with SMTP id 5a478bee46e88-38699cf08dfso4912839eec.1
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 05:09:32 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=EbzNxOOT
+Received: by mail-ej1-f49.google.com with SMTP id a640c23a62f3a-c4d21051042so726833166b.0
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 05:24:40 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795525771; x=1796130571; darn=vger.kernel.org;
-        h=message-id:date:references:in-reply-to:cc:to:from:subject
-         :content-transfer-encoding:content-type:mime-version:from:to:cc
-         :subject:date:message-id:reply-to:content-type;
-        bh=8yG0hkfIb2fB7h6z4Ui2DUaPUWV2P+Yav+jRqgNw3xY=;
-        b=MqA5yQ3TI8mmHn2+b38HkEvtgqQzyHR0LW8DcJXTREDuHsnh+pcBCLS5qcgW9iqHV2
-         412CSNfvFaovfq9i+tuCfj/aIt8L8dhNQEdrOr7k0LFjsU2tLUqdjRWnMhZDN3K0bI1r
-         p3ZHytCZYvFZEmINQuTqy0a5Y7avToQ9MQN5o/QoJXXH0VXe5B23SQCz1TH21u0sQ9Hg
-         luUfv8AFh9z9SpGarPSf97dpEHiPxoqqMfB6PHb+pSEpI3f3BC5X8G9UmN8mvOv3khf5
-         Cfc4H336Fuyrp4h76AoH70AcMo6GMNVAa13ncgHSzoeYrbHc4kGPR3+GMO6RswgNB/cu
-         iPFw==
+        d=gmail.com; s=20260707; t=1795526679; x=1796131479; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=Jg/IvZ+CqBAgcG+VV3IUxltdhuj6dsssOpvBwe9TDXk=;
+        b=EbzNxOOTcB1clHjTg6KwEBbsSUYEC5KYdwdNXHOro6UDKY2cBwUEmf7YomcYa9eIK/
+         ue6qrNs25TiB3MmuqOtmv3BtguO/lMtbdAvvMgkNk8ldGkVMrMmGGSjxEhKehmf0b3DM
+         BpVqlNtl+PO4CX5+7C1/ex0/TqmK0BuOxrVKB8ylR8wTQ3/ESWg1owOgTlpAddhHK5Uk
+         aaksIPL4brdPgDeue4wXWkpT+KO+hh3Kx6b1IsO0lSy4szZcW5JDr3l6Z9im3YCcS/ZQ
+         F+wf9XrjgquDTqsnFq7ni/fB3wlV2T/KStstbvzSVQNhzu2JRHTe/CCLYG3zBjVkNDTH
+         kGTA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795525771; x=1796130571;
-        h=message-id:date:references:in-reply-to:cc:to:from:subject
-         :content-transfer-encoding:content-type:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=8yG0hkfIb2fB7h6z4Ui2DUaPUWV2P+Yav+jRqgNw3xY=;
-        b=aqK6I9SCBdu26kgrZkPR159r4ngnneHIxSmHg00II2ASb0GaLbm4Tseqmw4guVtjdC
-         7Yq6p7xvTQoNQbcprLh+jQr9WLEhIwke3uw9/4jqvs/dAKjICPts0xdO0Fl3WKrXPhnG
-         dTtS9K6fgDDC4RiugWLiFq+dJAt+uN8Qy7VZYyAPHbA1BPsJI6JYfa1/d5hVkSw81Yl/
-         CPzzaRgLEbj+YqL9Nv+rnpNHFMh1Dy38TrsLicIqnlRIZwZd0r+zaKPJPE4S7iQEFXAu
-         TBVqTc8omkHlMGsRhRR0VxJptno+IVhSEZiP8xOEvJxNDgjvw7vPj97YBxYzY+kdvWqp
-         hMmQ==
-X-Forwarded-Encrypted: i=1; AL+hErEduemgrjKbrt7GDzvEdlA9DnZmqCYlU8Xhd8HIMy5LxIUAwO5IAsVKI14GpSMxJOsXEntM+iS9cac=@vger.kernel.org
-X-Gm-Message-State: APuU4Z8X8Dgr1lyaAKpGh5jeKHly69oLOP25J8X1lGlhT6jjZFC3Zg1S
-	rMJxsQSXO55LPOglFJFtazX4x3aLHWt1vFpm8W1t/JcIHf9Xnr1PI9FE
-X-Gm-Gg: AZFdTZf+xdSLpR4k9IgLuYPqqs+giE9VaiFvr4p1PvNWxLme3+eWTeIzQYEtHV0wON7
-	bRzLpww+ih8K18aUwXGDp3t5N9oVhZn3dWMqeJipIWUCrHzRdezbPs7WtZIep6D6qsSUiIrlYQA
-	TWrc33BiXaq0lOap3iY70om+87+g5naqS1jDEd6uMkTXa+re7TIJAR/uGQeQSMe9m3NpOmmlGPP
-	0mCIS5kOeA17k63/GJdOqtTYfQMRjPAYUay4p0vhdWmIqXB8Jyu4+YZNZCq6Ly3f54XTKx4BkyX
-	6AEDAWdLZ5jwkjj9b1PM40kI7YSLLgkNOgVl+ufRJwTcV7+Luts9R5jshpK1iwLQQeIgeWHwG5I
-	VYHA6AFqHDUFhwdwPuHjEow3JX11MZBSh2t88mG6ps1oS0+NRrYWp5L/q8AWG705wOSDWl2jNgW
-	S89Pizyp05IRdG5ssea33o03s4RHEbgsBdG4R4d37EhpP6JOSUcC0EZLSWPI8JTWXr00jn51wqD
-	oC8u/km5tMTYXy8xa4Gr8vUbtHAUO8Yllo+d0D71AtGYuI3dL5MKYXSSINGFM1dtEpUoJgZhtI8
-	y7tr56r1Dn+nFNme1yRCiascvBIyxY6E3rEiWQ==
-X-Received: by 2002:a05:7301:6083:b0:386:a01f:a36b with SMTP id 5a478bee46e88-386a01fa8d8mr15606324eec.35.1795525771011;
-        Tue, 24 Nov 2026 05:09:31 -0800 (PST)
-Received: from [192.168.29.85] ([2405:201:8026:213e:1412:77ad:61f2:79f2])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-385d2b93dd9sm50659886eec.24.2026.11.24.05.09.27
+        d=1e100.net; s=20260707; t=1795526679; x=1796131479;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=Jg/IvZ+CqBAgcG+VV3IUxltdhuj6dsssOpvBwe9TDXk=;
+        b=2X8GA7DIddqvIPAk2kQbKWsLf7DKXj/7kTjYchB85d7p3szRpQMVJtZCpMgAiNIU6Y
+         BoJSaOHE4MEcDlbGUbNK3oLgnJ8USJWEQN3O/KZpyV+jqdfvCageelrNvPf7YnvxK7d2
+         7tA4ZJZ3vaCpH3FVS48pqjlkvDR93oiIw1FPs+eNOmLi/YFtqpXIm7TA83p7n9KTmC2V
+         PIS/6fN9mZ9rqbsqrYf+CMHqd+unAJIKrH2hHH9HcJFuRdKUvRSgqKIs3bNJfdwmvC1R
+         KrdCnnNg6OpKXwyUel/qShhZGTrpM7WBc59/YMEvLIblslDUSqDRh1TvNu0Nqn1p2yMc
+         58Sw==
+X-Gm-Message-State: APuU4Z/CEoaFFGLKPGV59Cqt5cpg28ksFzqAiuTQrTZBQhde12Kbq/dJ
+	jlSe+e6H0ZmXy/554PA66vKR7L27QHm1zO3Txt+jFIoTfjMLwmGd2i49
+X-Gm-Gg: AZFdTZc+AwLX5Nl02hUwV6N6lSe4JCdkMQkvAF+z1J5fzVt9jvbo1YHYPNz2C37OO6f
+	Am1ei0CenXjeHZGB5N0IfHeog4AMcAgyfTeIseXSibaPuxtyWs80Xprxo4gcbfmdpAR+fj2abQw
+	qL1F+LG3fkndM9QkIBWxsMxVwfWAIHrP5OZgohvxSU3G0lflxi2zPo88P+FEXSzzTTOFeumYTMi
+	XAU6i1P5irzkU3Z8K6QvDyBoTaclNUAd4cuEHS+QVRlLQxGPmWgGGeoDsi9KZQxFaLPRPc6oKoA
+	oMt8RoWIp5xCy/4akF/K9/nATwHtRYjwYR8KjmGF2egMbx94L4+OsLNjTW6UvB4vl9kUg8cW+Af
+	zkohse3OHPcc6mF/d5tGjAMOTKVkLl4rak0SPJstsVy/ouZYSBbydTQFgUydrp1oUSyUG+Lb2C8
+	qb7a9FfyfsY6YUKbQfUDJZarMga5Ml2/rYKf6a4FmXsas4hRfkszZS2vSE1luXSQALs03/0Ib1H
+	QRXSiYkK6DT00VGDtgdrviDI9SZH7taxjPFYB2Fuaugab+7DmR3bx7aHPiXKRiavthZEwg5PpVX
+	Q6y1FlVVp0k4jwKav8Q5yORsXmM9wBhRGlq3Cl7v7RqXedxmh1I6oO23pa/Z/36sa/GEHx/VHnv
+	X4IOXAKA=
+X-Received: by 2002:a17:907:1041:b0:c3e:d0ca:d2fd with SMTP id a640c23a62f3a-c513a5ecdafmr809420966b.12.1795526678660;
+        Tue, 24 Nov 2026 05:24:38 -0800 (PST)
+Received: from docker-desktop (host-145-14-240-255.wtvk.pl. [145.14.240.255])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c513aeabdcbsm508640066b.46.2026.11.24.05.24.37
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 24 Nov 2026 05:09:30 -0800 (PST)
+        Tue, 24 Nov 2026 05:24:38 -0800 (PST)
+From: Marcin Krystianc <marcin.krystianc@gmail.com>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org,
+	Marcin Krystianc <marcin.krystianc@gmail.com>
+Subject: [PATCH] NFSD: Accept an empty access ACL in NFS_ACL SETACL
+Date: Tue, 24 Nov 2026 13:24:21 +0000
+Message-ID: <20261124132421.3698977-1-marcin.krystianc@gmail.com>
+X-Mailer: git-send-email 2.51.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -88,58 +98,76 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Subject: Re: [PATCH v2] NFS: idmap: handle zero return from
- nfs_idmap_get_key()
-From: mdshahid03@gmail.com
-To: mdshahid03@gmail.com
-Cc: trondmy@kernel.org, anna@kernel.org, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org
-In-Reply-To: <20261112162938.14329-1-mdshahid03@gmail.com>
-References: <20261112162938.14329-1-mdshahid03@gmail.com>
-Date: Tue, 24 Nov 2026 18:39:12 +0530
-Message-Id: <179552575292.187304.16298525842648413199.b4-reply@b4>
-X-Mailer: b4 0.16.0
+Content-Transfer-Encoding: 8bit
 
-Hi ,
+The xdrgen SETACL decoders reject a request that sets NA_ACL with an
+access ACL of zero entries, and the SETACL procedures return
+ACL3ERR_INVAL or ACL2ERR_INVAL.
 
-Could you please check and give your feedback ? when time permits.
+The Linux NFSv3 client sends such a request when it creates a directory
+under a default ACL and the inherited access ACL is equivalent to the
+mode. posix_acl_create() then returns a NULL access ACL and a non-NULL
+default ACL, and __nfs3_proc_setacls() sends both, the access ACL with
+zero entries. mkdir(2) fails with EINVAL, although the server has
+created the directory. xfstests generic/319 and generic/697 fail over
+NFSv3.
 
-Thanks
-Shahid.
+The old decoders used nfs_stream_decode_acl(), which decodes zero
+entries as a NULL ACL. The SETACL procedures passed it to
+set_posix_acl(), which removes the access ACL. Restore that behaviour:
+drop the zero-count check.
 
-On 2026-11-12 21:59 +0530, mdshahid03@gmail.com wrote:
-> From: Mohammad Shahid <mdshahid03@gmail.com>
-> 
-> nfs_idmap_get_key() can return zero, but nfs_idmap_lookup_name()
-> treats only negative values as errors.
-> 
-> Treat zero as an error to avoid reporting an unsuccessful lookup
-> as successful.
-> 
-> Signed-off-by: Mohammad Shahid <mdshahid03@gmail.com>
-> ---
->  fs/nfs/nfs4idmap.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-> index 06b193722660..8f5f0abf804d 100644
-> --- a/fs/nfs/nfs4idmap.c
-> +++ b/fs/nfs/nfs4idmap.c
-> @@ -353,7 +353,7 @@ static ssize_t nfs_idmap_lookup_name(__u32 id, const char *type, char *buf,
->  
->  	id_len = nfs_map_numeric_to_string(id, id_str, sizeof(id_str));
->  	ret = nfs_idmap_get_key(id_str, id_len, type, buf, buflen, idmap);
-> -	if (ret < 0)
-> +	if (ret <= 0)
->  		return -EINVAL;
->  	return ret;
->  }
-> -- 
-> 2.43.0
-> 
-> 
-> 
+Fixes: ae1f4d75a973 ("NFSD: Implement NFS-ACL v3 ACL encoding and decoding with xdrgen")
+Fixes: 2125d74330f5 ("NFSD: Implement NFS-ACL v2 ACL encoding and decoding with xdrgen")
+Signed-off-by: Marcin Krystianc <marcin.krystianc@gmail.com>
+---
+The checks become reachable in 96ce1cc333bc ("NFSD: Use xdrgen XDR
+functions for the NFS-ACL v3 SETACL procedure") and 2a9b0e5195be
+("NFSD: Use xdrgen XDR functions for the NFS-ACL v2 SETACL procedure").
 
+Tested with xfstests -g acl over NFSv3 in UML on nfsd-testing
+8489270d1cb9: generic/319 and generic/697 fail without the patch and
+pass with it. The NFS_ACLv2 change is untested.
 
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 8b6e3d717217..ed41fc6dbcff 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -612,11 +612,11 @@ bool nfs_acl2_secattr_decode_begin(struct xdrgen_aggregate_cursor *c)
+ 			argp->invalid = true;
+ 			return true;
+ 		}
+-		if (!dfacl && !c->count) {
+-			argp->invalid = true;
+-			return true;
+-		}
+-		/* An empty default list publishes NULL: default ACL removal. */
++		/*
++		 * An empty list publishes NULL, which set_posix_acl() takes
++		 * as removal: of the default ACL, or of the access ACL,
++		 * leaving only the mode bits.
++		 */
+ 		if (c->count) {
+ 			*pacl = posix_acl_alloc(c->count, GFP_KERNEL);
+ 			if (!*pacl)
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index b426b3e64df8..50e5aee8b49b 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -480,11 +480,11 @@ bool nfs_acl3_secattr_decode_begin(struct xdrgen_aggregate_cursor *c)
+ 			argp->invalid = true;
+ 			return true;
+ 		}
+-		if (!dfacl && !c->count) {
+-			argp->invalid = true;
+-			return true;
+-		}
+-		/* An empty default list publishes NULL: default ACL removal. */
++		/*
++		 * An empty list publishes NULL, which set_posix_acl() takes
++		 * as removal: of the default ACL, or of the access ACL,
++		 * leaving only the mode bits.
++		 */
+ 		if (c->count) {
+ 			*pacl = posix_acl_alloc(c->count, GFP_KERNEL);
+ 			if (!*pacl)
