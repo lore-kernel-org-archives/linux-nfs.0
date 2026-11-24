@@ -1,61 +1,93 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.45
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795551223;
-	b=fkNsK1kW/6UPMMfhLxiKr7d1LXtpyNrWKIzkH3Eh+22K5STLdwCAvjIjK0/HjqoyfjmB
-	 hCsIx8TYtm7Ih4uBs7IeT/Cy/Ts/cbuNRx93HdU5/K6+nnh195E7k7zt8OhQ2FnYhzEES
-	 bArK1lcRkJtMR7M1aQIjjOCg6rHiByfHJXufUxHI54/V7r+sFeDHUeN/9r6h6wEEfUG66
-	 F6g81hApwJTEaSZCOcLhuhI6vXitt28IalEqopYFT3ZymRFOE7e3achxJfNac4eaqnXyt
-	 WjwCCbVevmlvWQXvYvuJg2v3OXjpv0NFR1FUOVhUo88iFWwdaEw4+0oYe+Ca0R6WZmw==
+	t=1795553161;
+	b=njBUh8LH0oqRY9XUxAuKqgmev0+JSLBku20G8YuQM3GCulU+5xXavg02eDHc2BbuHeit
+	 l0ZOPHk1VLDhPua8mf6f02ZYNIPlT36fKR/5vq1R3o46JjaSt/hZzBIfVLpd4c3IyzD8O
+	 rcDc+bLrTWb5CHNdYV0DgB+446e1XQ+7h6SWgnHy6Hio2udr/67jFUQ9/+er7e1nyjZP2
+	 PcHb+Gg3Pto6tO+Xoa+yIRJmFNSCqV3evwICKNtxx1x4peynEaK868AND2V5OYYclTiT3
+	 NyH1hMLXHLbjJvsuZ2/dksQzn3iZ1DW8HYalZAW0i/ts9uOTShi1QlXUU1jYLeK5lSg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795551223;
-	h=Received:DKIM-Signature:From:To:Cc:Subject:Date:Message-ID:X-Mailer:
-	 In-Reply-To:References:MIME-Version:Content-Type:
-	 Content-Transfer-Encoding;
-	bh=8WKbn4TeqqYmpHwpZgCuGW4cCB31ueQLaWCo1miFO6w=;
-	b=J6gDW2yXadoDr4CJHVplmkMk3tC1Tjv19vGNfc2E8/K4vZY1lJWFPwwGzltP+9mC1l29
-	 p2jMeC/J6WDm/Tta2YYOkQMAR34NYGLQF5h7GbQo3fClBdOJbxKog029JcHh+jzmSGThE
-	 Y8c3TJT5vJVxI4Rd8P97juWw4TTm9NiU18greMUsvfYBncp7bepxbiEexnGrjID2SvQfz
-	 BlbC3DsPlSIKMpt/VvDSwILbMSgmoymTD0bjcCX4L5GmxZnymC07Jhbtz8cwNOufh+B1e
-	 L1NhU00d8fQAm0SfUs5e6L58alBDnQ0nx18M5BHMaE5jXWqU2tu3yehRjkYadIc4GFA==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795553161;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 Sender:Received:Date:From:To:Subject:Message-ID:MIME-Version:
+	 Content-Type:Content-Disposition;
+	bh=38lJDMT5xRWk4p8F4X2n0yQXFrty7LmyO2WrdJ2Nx5s=;
+	b=S54vW6pPBNEx6S+8kQI/6RTq7VeJW4CJHCuOzF1a8ZP/R6FbCeZn6Sof4ArHNP0wnGfZ
+	 KUsW3dxl2uSiJgm7NCnp0MINoEQNTpwpSQ6KSBOomigGlfgplzJuMxjNqxopFFrURlv6u
+	 PfXgm07kj7/PGbhPiYjwGb5CLclWNxj/N1HKYJR5EMHrTFIIOrnF1LTI8JXodH113hgUC
+	 4yNKzVwZoeX0iFENu+yHHjJCJvXiiYJHc4UuRZnVLwuxGfuHg3dEORYufQpkBbXv8kMGA
+	 ZW5uPUtPnPpkQTKlBZKpzmJTSgKc/rnO+nDTjjCA4cKRTdM5cyck26pPsPmxpuxAUmg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LFjxjvZ4;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=fail header.from=debian.org;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=E3lcZmXI;
+	arc=none smtp.remote-ip=209.85.128.45
+Received: from mail-wm1-f45.google.com (mail-wm1-f45.google.com [209.85.128.45])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF671606A31E;
-	Tue, 24 Nov 2026 20:13:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09050606A31E
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 20:46:00 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 09050606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=debian.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LFjxjvZ4
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BADB21F000ED;
-	Tue, 24 Nov 2026 20:13:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795551222;
-	bh=8WKbn4TeqqYmpHwpZgCuGW4cCB31ueQLaWCo1miFO6w=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=LFjxjvZ4Q60U6mgcpBjDltcgaiZ3AU/a0WKDiA+gWTPD1r/iRk97+9N+SbsIEnpC0
-	 dfDCiAufmmnUEROgAzJv3HFqUu6y7OGx99aYjjWpgAfdSj9WHS11zU9bOIX9gYuhbE
-	 /mYQnCBUVYU7RixvacgEFcfJ3aMzlF3Zfd9dyffxFux5ZrFgXkF5huVrlD6HlODpf2
-	 C3i2Egc3rN0DILgQ47sB47QaHy8QRZjmxjT8P69MGZU30xkcHeR2kmhvrPxT9rIYru
-	 1sdwX+fcPgeEl6B+hpk0fN81a/GZ0FKvxgdV2D2bL8VvnOVV1/w1tzv+QPg1di/ut8
-	 0xCkxsgpdT6Zw==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Christian Brauner <brauner@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: =?UTF-8?q?Aur=C3=A9lien=20Couderc?= <aurelien.couderc2002@gmail.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 00/12] nfsd: various delegated timestamp fixes
-Date: Tue, 24 Nov 2026 15:13:38 -0500
-Message-ID: <179555119841.1515463.4777099034111650338.b4-ty@b4>
-X-Mailer: git-send-email 2.56.0
-In-Reply-To: <20261124-delegts-fixes-v3-0-6fe4ba705aef@kernel.org>
-References: <20261124-delegts-fixes-v3-0-6fe4ba705aef@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=E3lcZmXI
+Received: by mail-wm1-f45.google.com with SMTP id 5b1f17b1804b1-4a35ac4475dso37310425e9.2
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 12:46:00 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795553159; x=1796157959; darn=vger.kernel.org;
+        h=content-disposition:content-type:mime-version:message-id:subject:to
+         :from:date:sender:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=38lJDMT5xRWk4p8F4X2n0yQXFrty7LmyO2WrdJ2Nx5s=;
+        b=E3lcZmXIVMY1gQ173GgrXmgQ1gKE1EEXaL0tjgOC0jyPguEUQA8CM26dRRTEPOk1zZ
+         LHyWjk+4UAN6SrFT19bn9hDJygR859f4O7hPFfl2yw2Bj8Ye5TcQxyI5JqDDrrl4+v1w
+         XPLtyfzVPmeOgn5EWtLQW7SOfCr6uyNUBLJF+3LMpgbcOW8yhgPJ6Iz38s2lBk0d3xJN
+         IrdrfRqiSqxPPBP8YMy4wG+P82Jp9K5FQ1W9skp/Hdg+wNO/8uIhz+LS7YczuvmezeBt
+         sRoOsheyScw9srQB/dyBpL+fn83rABkun9zWD1zcl9qWtBHn8oBHFWZhXC1bKUhNGlbS
+         WZ1A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795553159; x=1796157959;
+        h=content-disposition:content-type:mime-version:message-id:subject:to
+         :from:date:sender:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=38lJDMT5xRWk4p8F4X2n0yQXFrty7LmyO2WrdJ2Nx5s=;
+        b=CfHvUOXRNKTeLj2H58eo4xWWP/G3A0nDHqsBDZTW0fTaZzd3YvhlJ9uyIp6/wTHMLa
+         BRcYpPKtuGT8cWgviL0WYR9Lul96yJLs3dTOQovZUA8obE18FG3R+faAmOZYnP7cKzw+
+         hKJNdIzCXQlw/phqYN3bI3gkOIYagrrLFzTHQvChK0CoQtMWqf2pE4kATfXW0mxc7EYl
+         eJfBNsvnET/TCvdtbZOFpA3agAQo9LdmguqgUb9ZWX87AA92+JoyUNRNLRDfxI/tK8ob
+         GvzKh138pFNKU4SjTnDepGJrzuD3Ok+eWxSJMn9b8qnWptpJ7RvtlUJxSsTO92ATQ11W
+         NYEQ==
+X-Forwarded-Encrypted: i=1; AL+hErGi1XrdpbNcxCfhFPQ3Afz7MiDql/57ux9a8qfw1fnnTCWcgdCY68oG4HuA7c6CNIR/saGF9VF94w8=@vger.kernel.org
+X-Gm-Message-State: APuU4Z9Ksf3KBoEZ0KQOzMvRcGxTBgn/5HpY4UKHvu30j9fROxcH+4SZ
+	mI68XQGDaX4JyDXsuL/lrmgd/4/sODmtK7Z+a+y06hk6KiiT8BRBhyQe
+X-Gm-Gg: AZFdTZfqmLX1T0FClrdGNbuL1a2elGLVEX79lGxZgwiJEs/NdvVDsoQOk7ujNYoURsF
+	xmwMArylFxdLO7bATwcwMTpjO1mF8SuMPUQsM/zMoB0IkxtDSP/VJuHM3xr7bBzaPMvf9xhteBr
+	m0DMl9BHDz55pCZA+sES5vY/5uuKktpIWTP7uUWoTdy16WynkTKgi6LtRgtmVdBA8SGtSyOh1CH
+	V8ta5rSFgq9BJqcZaw0rIznkR7YnKNE6NaXnqkrMldHq1NjfZHMpc8JuO5vMG3aVQDPx3+zScWG
+	rXyUN8ffAT9SM7OFB+XKT5J+CVrjjLHCxH4idp7VbJ3eHdp4NvRfVLH6qHBqgg0DaCE0KNvSIDn
+	PXSZZiwKvdX5Pw/rhFHLioPOXvhR42L3KHo41X81FB+osBZzn3jzt9mdLL63XGzrhg9KCj90ryD
+	mlr5KJzFTrI/xmK4ztWwBL9lODVX5Y5nyusX17xj57j9DfI5i+bVTf9O19uAIsDoAFsKJmb0qW9
+	KeGpxD3MM9Od8aaUksvT4AsNhwxKjrL4Uma59wjzCTwb4Hh/RTJvO6cJ9xVLLFeVaDuOvyPCIsP
+	F3fQLssuhorILNI1VpxJSuEZOt0xel0U7Rb5ccR19zTrhpo6ebWiWbmezis+Zs9D
+X-Received: by 2002:a05:600c:64c6:b0:4bb:6fd3:5aaa with SMTP id 5b1f17b1804b1-4bb887c30fbmr284311285e9.3.1795553159121;
+        Tue, 24 Nov 2026 12:45:59 -0800 (PST)
+Received: from eldamar.lan (c-82-192-247-196.customer.ggaweb.ch. [82.192.247.196])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb9067846esm294729145e9.4.2026.11.24.12.45.57
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 24 Nov 2026 12:45:57 -0800 (PST)
+Sender: Salvatore Bonaccorso <salvatore.bonaccorso@gmail.com>
+Received: by eldamar.lan (Postfix, from userid 1000)
+	id 17328DC04E1; Tue, 24 Nov 2026 21:45:57 +0100 (CET)
+Date: Tue, 24 Nov 2026 21:45:57 +0100
+From: Salvatore Bonaccorso <carnil@debian.org>
+To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
+	Benjamin Coddington <bcodding@hammerspace.com>
+Subject: [nfs-utils] 65ac44e831ca ("nfs-fh-verify: add tool to validate kNFSD
+ filehandle signatures") added binary file to nfs-utils repository
+Message-ID: <awX3hTLvX3tNkdyy@eldamar.lan>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -65,48 +97,17 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-On Tue, 24 Nov 2026 14:48:39 -0500, Jeff Layton wrote:
-> v3 fixes two problems in the v2 freeze protection and SETATTR ctime
-> patches, and adds a patch for the same ctime bug in CB_GETATTR.
-> 
-> While I was reworking NFSD's delegated timestamp support, LLM review
-> found several bugs in the existing code. This series fixes them.
-> 
-> The timestamp rework is still a work in progress. These fixes can go in
-> ahead of it.
-> 
-> [...]
+Hi Steve, Benjamin,
 
-Applied to nfsd-testing, thanks!
+While rebasing nfs-utils in Debian, I noticed that 65ac44e831ca
+("nfs-fh-verify: add tool to validate kNFSD filehandle signatures")
+adds as well a compiled tools/nfs-fh-verify/nfs-fh-verify  to the
+repository.
 
-[01/12] nfsd: don't hold inode_lock while waiting for a delegation in nfsd_setattr()
-        commit: 6f51f933294bbcff53fb6c7231f356ae8f1a6467
-[02/12] nfsd: take freeze protection before updating delegation timestamps
-        commit: e65caea9feff1cce8a270b518e2f4475d6167423
-[03/12] nfsd: count a delegation in cl_delegs_in_recall only once
-        commit: 266f9a2a591f084149e58e1143374a4d1638a230
-[04/12] nfsd: don't grant write delegations to NFSv4.0 clients on CLAIM_PREVIOUS
-        commit: d4445ca4e442dc09f4eab20afdafb9d8337860ef
-[05/12] nfsd: set ctime when a SETATTR with delegated times changes other attributes
-        commit: 1baa7cda2fba4238c193a5262a97f1dfdbf8d099
-[06/12] nfsd: pin the client while a GETATTR holds a conflicting delegation
-        commit: aa8a7d572d5b9788784038e6a3b7d0bc805e0acf
-[07/12] nfsd: recall when a CB_GETATTR reply omits the size
-        commit: 2b67daa277211096e5c3dbab460b09df89f74f32
-[08/12] nfsd: apply delegated times in a separate times-only setattr
-        commit: 74ca288461569f71b86028e72120f8f2fbabff41
-[09/12] nfsd: grant a plain read delegation when timestamps are wanted on a read open
-        commit: 92a3bf098f0738080cb7869427510364ab6a4d0f
-[10/12] nfsd: check fi_had_conflict under deleg_lock before hashing a delegation
-        commit: 971425a24fe5961611060799392fff93e8c10804
-[11/12] nfsd: take the write delegation grant stat before hashing
-        commit: 68c7e0626beace91513d74c0407264a51a127740
-[12/12] nfsd: move ctime when CB_GETATTR applies a delegated mtime
-        commit: 6f174a0eca19e69a14c34b0ed56b60d484f22fd6
+I assume this was not intentional and it can be dropped?
 
---
-Chuck Lever
-
+Regards,
+Salvatore
