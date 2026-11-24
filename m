@@ -1,98 +1,89 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.47
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795507450;
-	b=W95c3utJYwayX9EG710e1/xaLYljkkby0qWaHpphLEb3+EV8eIQRJQbJ9ILh3jYW1i12
-	 oZoBjZ4ctxe8OntTb4EcoKbbpyouUH3y5WhUqh2asmYW3yD3gMl/kh81iDKioq8lwpDCP
-	 TFhFe4tHlseV8Tr9xCx48PJVhjGbD75nCro5SziYv6nBkdDnjpyws8h5B5E2sBZtnOR2n
-	 LLIrNY65UVRvw/9icGCGXqIzTOWWFgVa+Bw49Q8M0iqwKQ6Z+aiKdXHbZn1P1xU0xS8MR
-	 NlJckCYI8pMnrA4KyaSz/NEDltzmhrxCOCKFIkcnQJpZsT7FzEzeEi6rTd2TxkfJmfw==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795507450;
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.51
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795525233;
+	b=UtHwezQsLNd3FSHTRjA1yspHSNfkooy2KioZQ/AWpcfKp7uD2A/rFsBiOvdamAcACDeY
+	 DTmEMPpLq4918PqfjuUmzgjzmGYmmi68FDKG+GjdON7RLL0vIk4EjZoqX+5fron+YMs54
+	 JeQLNrSi21aqLgYPSMth9d9wDUY341q+34CJjV53hJjflUeVS6+qxtEMnwKaUf/nNzxpp
+	 OtO+qOyFL4KJuWDUOsXKbNI0iEbPLeM6FM76sOKXmYMTtvJc84NjR2qCThteG1Ib3hPxL
+	 LUYQGr8aCHKxLh0aQ6tVW6xdZer80IGLn9W+RoZeOOaezW2adMtSwIj8km5r/WpKngQ==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795525233;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:References:
-	 In-Reply-To:From:Date:X-Gm-Features:Message-ID:Subject:To:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=KKJotujUbHzNVevv6d0v/lsn+q2PmmxE6ACPggTd8Bk=;
-	b=bG6Y4ZbrmkJTuml768iTvgjs6EC+35wOrBuDJdVGNI6okqpkX+zm83TGgzp1aVxUrgdM
-	 NASdnJA1iaXM8mf5S/y9NfF9dNyCzgqw/1/8h2+DG08mBP70Yi6ekoeLpmnfCvPr7EcNr
-	 S2O5jPc7j7Ji5lluHa0o7VeTgkmf/QLD6GEvdoOpCYicD1GuVXj7dhy1kifxS7z8g0KpQ
-	 C78928Xg+abJgfpfXbvbRhjYtNfyrboPVVLsh9pOAvNaSOPZj7iG8K7Xrgx+dDw1CiN32
-	 j0MWto58833prTcHjksDJrV8Zwh0O3Tb696U8xdmw6gv7KFt82BoYiycThdQ/VD2/ig==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=m9pUl7b6;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.47
-Received: from mail-ed1-f47.google.com (mail-ed1-f47.google.com [209.85.208.47])
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:Received:From:To:Cc:Subject:
+	 Date:Message-ID:X-Mailer:MIME-Version:Content-Transfer-Encoding;
+	bh=rw5nKJexAikrczIwVl4gp40ubNw/wjUJNJ/IKuENRwk=;
+	b=n4HPtDY+ROe6iwH3iNEz2CTylwW8nNJ0cncHcsi9C5/q52B3CRgk1XxSj+bJ53LfK36r
+	 8C0lbT5EtMFdKv1R7GqB8kUAFJ/gMbJF6qaLJhNU/ccOnvTn5flIIz2VZh0mZMXcUpY2Z
+	 Ez+eKeYYVnC96+MrM+nWxWdZFTnfauSzokLT67Uc0DZolxUUnRyg6ltSw25kY4YkA6+4G
+	 qJRIeZ/YavZj2cg7RKb3xO9FJXpqxtXuhX5h/5D95R25luWJhPFlcbTZPbg253n7Vv852
+	 WVMu2j4MEzrMRAj+aVgavXEonkiAMvlU4iuRqQ/UxVLU6gJ57cbYZfoRd9PFwtxtFUQ==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=vastdata.com;
+	spf=pass smtp.mailfrom=vastdata.com;
+	dkim=pass header.d=vastdata.com header.i=@vastdata.com header.a=rsa-sha256 header.s=google header.b=QS73P2aX;
+	arc=none smtp.remote-ip=209.85.128.51
+Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1654606A321
-	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 08:04:09 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D1654606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F23F9606A31E
+	for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 13:00:32 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org F23F9606A31E
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=vastdata.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=vastdata.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key, unprotected) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=m9pUl7b6
-Received: by mail-ed1-f47.google.com with SMTP id 4fb4d7f45d1cf-6bab10844b5so3160749a12.1
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 00:04:09 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795507448; cv=none;
-        d=google.com; s=arc-20260327;
-        b=TW/djyPrlA4ZZu7fG4z4r6H5g/A/ZQHbouZFXqDEukZMwGLxrBJhLh0P7taTGkuoSY
-         ZIQDLGDHYDtOd3mmjzICC64u2bUL2x8OS0V7yJfOvkaXwacr4yg8qcXOD++0r0bIdUMo
-         Ifstj3gLveMByQHFag+mTq/uENjAGBx9eW0KJyg4gF1USDp5vutkPOwNJc/LE8VjqNHl
-         ZCfl5GvbBecFxgnA/o4sDhQ7vt9xgzFJwUdXYywAu9fEeIg0ovFnVRKjtT45vAbyyq74
-         7hLxfWQHEmI+V26YyAxpFwn2yqcGMGhITpbLFzsbB4in+T8sYsXVNU2HbXxmtGkDd2fZ
-         YRqw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=KKJotujUbHzNVevv6d0v/lsn+q2PmmxE6ACPggTd8Bk=;
-        fh=Mys3y4MwsHRytUQMpdfGBn3oGRYLcLloxNwkFYMYMmg=;
-        b=PzNIWJJkhIUShhf6tWoS/XxTTCW040Je/GHzj5CW2SDCtVLsvyt3+kDArZesPn7jyt
-         +tV7QtKw4kgJn4Njgf68FjmeTTyyuMrPTgRh5jzPPGPvYduCHKr0kqh8jSR+SxZtDeDD
-         DJeEN4GFgPzL15SFK2bjTLCLga6JxRBWJNlqhmXK1mIqa/BJ8znrw4o+6GepiK+n57pU
-         pdvVG4wioRVfrNb6PrvkDoBHXTR4RwkNbzT7NFv2Uo7nLSPiMtouh4pd+owLXIkZQZSN
-         6XM3V7rZ4MCKA/4y6jbcGB3NvAcoYmnxJwr+58ft5xkgMu/9Eovh+4zmWEleridvAhwc
-         6sBg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key, unprotected) header.d=vastdata.com header.i=@vastdata.com header.a=rsa-sha256 header.s=google header.b=QS73P2aX
+Received: by mail-wm1-f51.google.com with SMTP id 5b1f17b1804b1-4a210470b49so44057415e9.2
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Nov 2026 05:00:32 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795507448; x=1796112248; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=KKJotujUbHzNVevv6d0v/lsn+q2PmmxE6ACPggTd8Bk=;
-        b=m9pUl7b6lZYzf9tbnSkRvIt+Tymt4LIhwsNSpb+//6uI7OiP8f2JT+7QWQhqTGrF1v
-         72LPkeNPpmLSQ8jwVlShZXzZNh6YTK7UNuN1H4RWM81oR8IeFwAkT70wPFMaO8uFzzim
-         yoJo+EZta74AOYRPF6UUf6oH88xpBV2yr9vY2anL+uDXpzAQMzMwAuk1+zDbP2hBu9SJ
-         rpISeyocMbtnnZnThoKKzOqsYAX1qsf8YdvLXkO+NE/xsAFEW1ZH/y+hsSQSueHviWdE
-         +YJ0LUee3NWmKsNgi519rgY6nOsRkzQjv1gryeeZPYO1FopQJB8Pzu542jmQs8/G0nDV
-         fd3g==
+        d=vastdata.com; s=google; t=1795525231; x=1796130031; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=rw5nKJexAikrczIwVl4gp40ubNw/wjUJNJ/IKuENRwk=;
+        b=QS73P2aXmqzC6DxDFEgmGmSFsy1bI9st8OtN92uNbFq9czbb/8eCMfomkDnvlWuUD4
+         oguRulGuPso9nbjgZR0XN127x87aLnVnw+xKSI/HPlMhvlzJFiza0LVIkIZWvKxYwwwS
+         wnHiGRMnuV45nsOrLGr3rQpYWq/qm3LtdoozU51uJxCIWKvniUdWxf1COoSOGs8y/mnj
+         5wUBjDhp/iIZuASRbIZTlB97zos78yDsvrSu4yZcP4if9QCne8LGOydcRFJBoCKlubbF
+         hi8kWp+/anjq6pzDhQb8AnDJ17b2HVgSmBIm2YIYc9v5wSldmFGfa93PmlCO/kLkrpUs
+         t/fA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795507448; x=1796112248;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=KKJotujUbHzNVevv6d0v/lsn+q2PmmxE6ACPggTd8Bk=;
-        b=fv+aC5Y5MnRi3agNOC2NVUVsPGMA76cLcrys79c7xAWBIvB0gpswMrNvKMjo3gYMeC
-         Jg0104Io76MNi4o6zzm7+WWfDx2ms6z+sPRk7yntvKInfdci+9MquMOLMPxCRlmmKj+y
-         XLjVL1AGHweykhTgTTCtmHkEnW3M4V1eMnQoxSKEAb3Y7eeQE1S+JKeEH7/8/CMByQyF
-         IDp2WzvNx2woJ3NPOSmuMoyhIkAuzEAZwvLfWVj5MkXv3iRasW+lvwq3mFX+msOxjp/k
-         jxWF8ZqESTsUt9zUpNI/rmhM2sFjiUxWPamInQ9gCGBiMo4w9TGqBwmP0X33TJiaX+Rv
-         spsA==
-X-Gm-Message-State: APuU4Z81ltSa+dtHkfSK/apSXXguzUYjqejZ8v4bWsOII6sm5AJn4Qsn
-	WumyXKoFfp0SHvdPNxSyr+JKKkxovfHxxYHzyFbI+XqToOxV9R3SuR/w/dbqGVDNgX7VWzyxyA6
-	fgJQuuhrFXS1s61+Vmpmi0gHI5yF4KbFQtTDe
-X-Gm-Gg: AZFdTZdq6LPmCO9yJz4ZjTohu677D43vMvxXQrJ7CXS6+xtMYF+smy2prYvrjZZ5I3Y
-	v1gw1chMDVRZ6HoZIQXMdF44hU9dPuIQoxEfuTGLsQefuUNiK5afQW/SWqf6Zyz4nJH8KnGbMDL
-	AdQ8cAJ8sfrNDGOHTFC3GqUSSZSu0VQVSz0jHgP4xiBq7RrXreOuZ6tOCJOPckOxPvQWHgDsxoa
-	npXJGrPI1OAPK0Se/M/VhLHJESrneUFxggky6VlznB7fktKvZtnaMp8twrZslTu9743VBgaJ3AN
-	TNS3bnS5bk6M6aXj0JZPHhlkOIezqVl4v8Jn10sjJ8dY2xrFAozQazH0xE0WhqMSLWMgL3a4QHw
-	/KAZ4z4TxnXNOJKJ6XEQDtgarKbOjGERctfvWYtFT2pzsy1g8V5hrwfrgCU1EreAnQTK4gT4=
-X-Received: by 2002:a05:6402:3131:b0:6b8:968e:a07b with SMTP id
- 4fb4d7f45d1cf-6ba1fafd50cmr8964745a12.10.1795507448008; Tue, 24 Nov 2026
- 00:04:08 -0800 (PST)
+        d=1e100.net; s=20260707; t=1795525231; x=1796130031;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=rw5nKJexAikrczIwVl4gp40ubNw/wjUJNJ/IKuENRwk=;
+        b=Yp9J7uAk5mR1YHHqOy9/X+HwQD6dwyQQT0Xl5GIpdMpFn+Cuf725bNnyv3Aj7dR+HQ
+         R0D7yhfD/3YtdD0FLr4zI5mfOipClUIbqQu1hka0X7IBDJUf2RvQpntVXJciJqHL192L
+         maI1v1xW+YwRUwjSw50nY4OcoQPNQfLyNB3I047W446MdzehFGR+Nsp0dU8OWrmYw3zz
+         yVk8GSLWXkm9N1DAnLr976ETIwLvwD3RG27FY64AHTEBhs99E/HiCVzZc7UkrB3Y4hGy
+         ymkL/IoYm6p/wCf3kCAYZ+KS/bgVIC5EAdlgyif39TahTi/v4pjWzYtyvtRMLtlRDTl2
+         JQ8w==
+X-Gm-Message-State: APuU4Z9eT/joayOvzD8su6gy6haehq2fsED6PAKlgZxxYYVKk89dXtO8
+	kJM2RRdRGX4JSamo/snG67zLGQjTaxPC7GKVo1jGBkd9QvKIq3X5mEcqC3CwYHZvnbkBlQphuwa
+	jeZWJ8UayXg==
+X-Gm-Gg: AZFdTZeQydsLEn4mp7IavGsminq1Wed4k8D/7ba5VILIR/EggyLjpk9wremPXGuQVL7
+	6wAdDLKgsB4jHNVANaXHb2Pc2j/YkYjcNBtcSJrirGYDGxAak9rXtxrjEKp32jeTPSsxg/7k4Ok
+	+e6J5P14lKWXK4mexZv4QUCKXbc+IztyIsFdBqjQ1VjsElrheBczz7pqQxbxaAjA1QbzApsvoc6
+	5kQI5dm4zX9rkPit07MihL0Sr8tE35XN69U2A/wqLkApn/82vwhcgBKw9pVjTntA24LorYdXEVv
+	V5GE5C5481myNqPOd8aKcilKpr3mNcmAC1vSOtvjB2morbq66ADn9o2ctFjAsiI+dX8Lw9xUHQB
+	wX8VOvxKCjVroEN5wyVbSF75taBbpMwxshLdW+aVqLPlp99MkipBzezELCmJkdvGmnmMr1gXYdM
+	7KatyXYNeGpesJJhndLonAmg430+VcQX8yY13m3lgNU6R1rnCr6qLs5wV18TanvK17+7vEfXLtD
+	i7vYV6zWqbFGJCJRtp7yKwsiBLvzpNy7m9gzD4L2gMjbH+/U9iTODowGKD17giVHwOvogSZsRa8
+	PoXAOP6Ch67kbI1dzdEUrpXz6Myrku5m0WzXnkCwCKOS532aU2nqEIAZUJZbfqJeZ5O0YQ==
+X-Received: by 2002:a05:600c:4e43:b0:4bb:5bf3:8ee9 with SMTP id 5b1f17b1804b1-4bb8893c2d4mr302632835e9.31.1795525230772;
+        Tue, 24 Nov 2026 05:00:30 -0800 (PST)
+Received: from jupiter.vstd.int ([192.116.95.190])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb88402ce9sm348764785e9.0.2026.11.24.05.00.29
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 24 Nov 2026 05:00:30 -0800 (PST)
+From: Dan Aloni <dan.aloni@vastdata.com>
+To: chuck.lever@oracle.com
+Cc: linux-nfs@vger.kernel.org,
+	Hubert Dziedziczak <hubert.dziedziczak@nmc2.ai>
+Subject: [PATCH] sunrpc: fix for missing initialization of GSS au_flags
+Date: Tue, 24 Nov 2026 15:00:27 +0200
+Message-ID: <20261124130027.1432127-1-dan.aloni@vastdata.com>
+X-Mailer: git-send-email 2.52.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -102,44 +93,41 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <CA+1jF5pNXvipBz8Hh3LWn=H07JJGEJPVH_hWZYCE8GhB96kvgg@mail.gmail.com>
- <6bf939ae-c29e-475c-9261-0cddfc31805a@app.fastmail.com>
-In-Reply-To: <6bf939ae-c29e-475c-9261-0cddfc31805a@app.fastmail.com>
-From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
-Date: Tue, 24 Nov 2026 09:04:00 +0100
-X-Gm-Features: Aa3M54od1dkbrfcjG5b0SvUUI4sWUX7UAatB40WdcfcfMVFv2Ar0CQQ02U7A9n4
-Message-ID: <CA+1jF5roNowGUBSAS-v7uC2GzZTgrLzXD_h_HLVuKOsb1qMu_A@mail.gmail.com>
-Subject: Re: Which Debian version has working krb5p support in NFS server?
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Mon, Nov 23, 2026 at 3:28=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
->
->
->
-> On Mon, Nov 23, 2026, at 5:03 AM, Aur=C3=A9lien Couderc wrote:
-> > Which Debian version has working krb5p support in NFS server? We tried
-> > to start a test campaign with krb5p, but that project stalled in
-> > September because neither Debian 12 or Debian 13 seem to have working
-> > krb5p support.
->
-> Have you reported this to Debian?
+gss_create_new() gets struct gss_auth from kmalloc() and never stores to
+rpc_auth.au_flags except through __set_bit(). That sets
+RPCAUTH_AUTH_UPDATE_SLACK on every GSS auth, and RPCAUTH_AUTH_DATATOUCH only for
+krb5i and krb5p. __set_bit() leaves every other bit alone, so a leftover
+DATATOUCH bit from the slab stays set on plain krb5 when the kernel does not
+zero allocations.
 
-Funny thing is, the Debian people suggested asking in
-linux-nfs@vger.kernel.org, to get a list of known "safe" kernel
-versions and "known" broken kernel versions.
-Also, regular (Debian) testing for client/server krb5p appears to be
-outsourced to whatever people use krb5. The whole situation looks
-pretty bad.
+This had led to non-determinant behavior of `rpcrdma_marshal_req()`, which reads
+that bit as "this GSS flavor must not place payload bytes directly". A large
+READ then goes out as a reply chunk instead of a write chunk, when it it not
+needed.
 
-> The status of krb5p is "supported"
-> so if you find that it isn't working, the right thing to do is work
-> with your distributor.
+So we should init this field. Another option was to do kzalloc instead, but I
+thought it's better here to stay aligned with the current initialization manner.
 
-That bounced back.
+Cc: Hubert Dziedziczak <hubert.dziedziczak@nmc2.ai>
+Signed-off-by: Dan Aloni <dan.aloni@vastdata.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Aur=C3=A9lien
---=20
-Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
-Big Data/Data mining expert, chess enthusiast
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 8ddc65e894dab..a666704f1eb9b 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1056,6 +1056,7 @@ gss_create_new(const struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ 	auth->au_rslack = GSS_KRB5_MAX_SLACK_NEEDED >> 2;
+ 	auth->au_verfsize = GSS_VERF_SLACK >> 2;
+ 	auth->au_ralign = GSS_VERF_SLACK >> 2;
++	auth->au_flags = 0;
+ 	__set_bit(RPCAUTH_AUTH_UPDATE_SLACK, &auth->au_flags);
+ 	auth->au_ops = &authgss_ops;
+ 	auth->au_flavor = flavor;
+-- 
+2.52.0
+
