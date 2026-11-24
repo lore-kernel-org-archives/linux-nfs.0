@@ -1,56 +1,56 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.225
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=113.46.200.218
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795485201;
-	b=XLa3s4WmVWbWdzjfyPSxpU5vMUxspwcuxAd9CjNhS3JsllaFB7ZJQ/gJTEOxS5gsk3mm
-	 YWpmGOJTBTtgbu8OrtEjDuqparCm1LYpBygg+mNKATF5gpfgifhS7Kqg7oxHsmJDjsc5T
-	 6Bt5Kvihze3Y0t703wz+JkuD2pTYZNUuln9FXcbO76ZDoHfx0MxnC/rTutdkpuqcypA/f
-	 ZyPlpGcwID47rih2ZYSkcrG4lxyNKDrSH7txGawBZwS/Pkw94Eqysf2z8A1zWR2h5Y2Vj
-	 wrXjPRG3dn6qbbwnJKJubL6KP7qwGYWAwwWamHIWrqN9hRjM9m/WRSQpny/wbV7yCkQ==
+	b=OoIvHPCeALIgUcgr1VwC2vVgdSGHS3e80T0QPDRX6L5Rmfn7hktwxaht9rG4ImhRvcfw
+	 CIiff0skpjTyrkRVvmhalfngwFHaVvhv3jlgtKRTP/30rlv/kZrg5j+KgMe/Kjz5asQyM
+	 Ul7y/c4rs2wvlSkmNUhRZDm5vwjP30ECLoWT9Z15hOjvK5b6C50tWdSNJnLmgaD6QD073
+	 jVs88NNO6v1EqgcBOZw2suGo8boNyCp5xBOiT3ujmG+iv55x98wPTezVFbIajg6qX0EDt
+	 4nrBJ6Svc3xbnLk8Cy2MNs6cA1iEE1YxZqeUkcvlqdEjzhpGZM0hTnoCdJcc/fRv2+Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795485201;
 	h=DMARC-Filter:dkim-signature:Received:Received:Received:From:To:CC:
-	 Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:MIME-Version:
 	 Content-Transfer-Encoding:Content-Type:X-Originating-IP:
 	 X-ClientProxiedBy;
-	bh=tkucSQ4byPvhiJwUrA8Yq4ByYevkQkVNvkxbqT3c11M=;
-	b=OxH0QIFKtIn+mJlQIEmJLCZaNv2KrrsMiPLb8qo5FJAR3I7W3X/wRZf8MADUcEnGEXKK
-	 H3gJL2nmihXD8lsLJkxXDvsY1R8H4Qz5Mj3cjQuKN+RwnVfBf+JV2qilxRb+LKGKrCYFO
-	 fjTbPs+kA5dOHDOGIgVyF81mEWyRZrOEBfPcwQOM57Vanr+h1yn+0Sn7ge0csPcb6kK0O
-	 VH6voazAZ2Zc/lfq8DsisxgVj5v7/C5BTcVUVddvs84H4WrdvqvJe3ZI66IG0CNPOS13d
-	 Mf/GjsePiJ1gPoqp9Gc1G9TNdOqq+YY+W2LKDlhApNHz7pPbKKGeaOf3tLrUNbXNy4A==
+	bh=pzXP1xvuChIRpzUx7yKxvOtXSYT/dGX/q2L9jIUScxo=;
+	b=HJu5G5DhjNNmDhp6sx9LUTjwnkG7mLo2jWaMqkQaEfPDg1AO1oplzw55RkmqBp9SWO14
+	 7gbiO9NhR2aii0+34S5RqJ6f6HNK+5Jvn/V1F75lNcdbpfFOuyRQ/KaRKPUO0Y4O2tSUa
+	 /eGjuuEMCVlzvK87PU0eHLfsgBggicr7uhh3Veqvod78A7BYbHwnmnxJhBdHIkFlv8jJP
+	 UYNqDIRpFvL6di417LrVqOj9vGYOJfcYoF0oS9fXU6wYeBNdPRiTWAGJDbZ7Njgy143VA
+	 K7cKtE6f5WadJWt4ZsuGICeiAh9YYjmIcyfRtCn5pzvUVm70QS4DfVDhLCuOIAUmf7g==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=huawei.com;
 	spf=pass smtp.mailfrom=huawei.com;
-	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=oPMgnupr;
-	arc=none smtp.remote-ip=113.46.200.225
-Received: from canpmsgout10.his.huawei.com (canpmsgout10.his.huawei.com [113.46.200.225])
+	dkim=pass header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=nTPGpw89;
+	arc=none smtp.remote-ip=113.46.200.218
+Received: from canpmsgout03.his.huawei.com (canpmsgout03.his.huawei.com [113.46.200.218])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDC38606A321;
-	Tue, 24 Nov 2026 01:53:18 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DDC38606A321
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91312606A31E;
+	Tue, 24 Nov 2026 01:53:20 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 91312606A31E
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key, unprotected) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=oPMgnupr
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.a=rsa-sha256 header.s=dkim header.b=nTPGpw89
 dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
 	c=relaxed/relaxed; q=dns/txt;
 	h=From;
-	bh=tkucSQ4byPvhiJwUrA8Yq4ByYevkQkVNvkxbqT3c11M=;
-	b=oPMgnuprLaUiyQR1swM21wyMOTyPwddx9g6ITfEvHdhCjuMRUjowWpQUMK6TuZlKXq5L8lYQd
-	SxFY96YHAcpZ0r8Vi0InTgaGvyMyk4Vy6B7LfpMUGYtbRcCWbdHnjfQaNb/neDgcTZCVNh/esAj
-	HjACZHx+fB0mRBVEjrl4wIs=
-Received: from mail.maildlp.com (unknown [172.19.162.92])
-	by canpmsgout10.his.huawei.com (SkyGuard) with ESMTPS id 4jYQn61jslz1K9BF;
-	Tue, 24 Nov 2026 09:52:58 +0800 (CST)
+	bh=pzXP1xvuChIRpzUx7yKxvOtXSYT/dGX/q2L9jIUScxo=;
+	b=nTPGpw89Ed9Z/NuLYQ0MN2TukdSVoK86R+hxLAe7Qh8Ye1Wbne3QuyTNpz/jAOls/003cbtcO
+	LfOeFjB/0ElSz16ukC2R8lkd3OLs/LFv1U/E95GuDHGhgIgaoQGYopP+RKkyqql9WkdERWjqXVz
+	byc9d7QQY38u5wlKcrZ/43g=
+Received: from mail.maildlp.com (unknown [172.19.163.0])
+	by canpmsgout03.his.huawei.com (SkyGuard) with ESMTPS id 4jYQmJ3D8HzpSvq;
+	Tue, 24 Nov 2026 09:52:16 +0800 (CST)
 Received: from whupemk300014.china.huawei.com (unknown [7.152.185.8])
-	by mail.maildlp.com (Postfix) with ESMTPS id 6585640586;
-	Tue, 24 Nov 2026 09:53:15 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 7397740561;
+	Tue, 24 Nov 2026 09:53:16 +0800 (CST)
 Received: from huawei.com (10.50.85.128) by whupemk300014.china.huawei.com
  (7.152.185.8) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.2562.45; Tue, 24 Nov
- 2026 09:53:14 +0800
+ 2026 09:53:15 +0800
 From: Li Xiasong <lixiasong1@huawei.com>
 To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown
 	<neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
@@ -59,10 +59,12 @@ To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown
 CC: <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
 	<stable@vger.kernel.org>, <yuehaibing@huawei.com>,
 	<zhangchangzhong@huawei.com>, <weiyongjun1@huawei.com>
-Subject: [PATCH v3 0/3] rpcrdma: Fix device removal races and endpoint cleanup
-Date: Tue, 24 Nov 2026 10:18:39 +0800
-Message-ID: <20261124021842.130141-1-lixiasong1@huawei.com>
+Subject: [PATCH v3 1/3] rpcrdma: Serialize notification registration with device removal
+Date: Tue, 24 Nov 2026 10:18:40 +0800
+Message-ID: <20261124021842.130141-2-lixiasong1@huawei.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20261124021842.130141-1-lixiasong1@huawei.com>
+References: <20261124021842.130141-1-lixiasong1@huawei.com>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -77,79 +79,134 @@ Content-Type: text/plain
 X-ClientProxiedBy: kwepems200001.china.huawei.com (7.221.188.67) To
  whupemk300014.china.huawei.com (7.152.185.8)
 
-This series fixes races and endpoint cleanup issues in the RPC-over-RDMA
-device removal paths.
+Registration can race with device removal between the client-data
+lookup, the removing-state check, XArray publication and device
+reference acquisition. Serialize these operations and client-data
+teardown with a module-wide mutex, keeping callbacks and completion
+waits outside it.
 
-Notification registration is not serialized with device removal. Removal
-can free the per-device private data while registration is still using it,
-or finish walking the notification array before a new registration is
-published. In addition, the notification walk does not hold references to
-the objects containing the notifications, allowing concurrent unregister
-and teardown to free an object before its removal callback is invoked.
+Enter a NOIO allocation scope before taking the mutex to prevent reclaim
+from waiting for RPC I/O on a transport whose reconnect needs the same
+mutex.
 
-On the client side, the device removal callback only forces a transport
-disconnect. A connect worker waiting for re_connect_status to change can
-remain asleep, preventing endpoint cleanup. Removal that races with
-connection establishment can also be overwritten by a late ESTABLISHED
-event, and releasing the endpoint from a removal callback or address
-change can free its CM ID context before CMA has stopped dispatching
-events to it.
+Fixes: 7e86845a0346 ("rpcrdma: Implement generic device removal")
+Signed-off-by: Li Xiasong <lixiasong1@huawei.com>
+---
+ net/sunrpc/xprtrdma/ib_client.c | 47 +++++++++++++++++++++++++--------
+ 1 file changed, 36 insertions(+), 11 deletions(-)
 
-Patch 1 serializes notification registration with the transition to device
-removal and protects access to the per-device private data. The critical
-section runs in a NOIO allocation scope so reclaim cannot wait for RPC I/O
-on a transport whose reconnect needs the same mutex.
-
-Patch 2 serializes removal callbacks with unregister. Short removal
-callbacks run under the device mutex, so an owner cannot be unregistered
-and freed while its callback is running. Callbacks that must release a
-reference do so outside the mutex through an independently owned release
-callback, keeping a final transport put from waiting on a connect worker
-that needs the mutex.
-
-Patch 3 records device removal in the endpoint connection status and wakes
-a waiting connect worker. Atomic state transitions give -ENODEV precedence
-and force an established connection to disconnect without a late
-ESTABLISHED event masking the error. It drops the connection-management
-callback get/put pairs and destroys the CM ID in the endpoint destructor,
-before freeing its context, so that active and future callbacks are fenced.
-Device removal during setup is translated to -ENOTCONN so pending RPCs
-retry.
-
-The patches are ordered by dependency: patch 2 uses the serialization
-introduced by patch 1, and patch 3 relies on the callback lifetime
-protection added by patch 2.
-
-Changes since v2:
-- Run the registration critical section under memalloc_noio_save()/
-  memalloc_noio_restore() so the module-wide mutex is never held across
-  reclaim that may wait for RPC I/O.
-- Drop the rn_get/rn_put callbacks and rpcrdma_notification_ref. Removal
-  callbacks now run under the device mutex (they are short and do not
-  sleep), so a pinned owner is unnecessary. Transport references are moved
-  back into verbs.c and svc_rdma_transport.c and released outside the
-  mutex via a new rpcrdma_notification_release output parameter.
-- Make rpcrdma_ep_disconnect() use a try_cmpxchg loop so a connection that
-  is already established transitions to the error state and is forced to
-  disconnect, instead of leaving re_connect_status at 1.
-- Have RDMA_CM_EVENT_ESTABLISHED return early when the status is already
-  non-zero, avoiding a forced disconnect on an unpinned transport.
-- Translate the -ENODEV connection status to -ENOTCONN so pending RPCs
-  retry on a hard mount when the device disappears during setup.
-- Link to v2: https://lore.kernel.org/all/20261103032758.1302493-1-lixiasong1@huawei.com/
-
-Li Xiasong (3):
-  rpcrdma: Serialize notification registration with device removal
-  rpcrdma: Serialize removal callbacks with unregister
-  xprtrdma: Wake connect worker on device removal
-
- include/linux/sunrpc/rdma_rn.h           |  27 ++++-
- net/sunrpc/xprtrdma/ib_client.c          |  86 +++++++++++---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  24 +++-
- net/sunrpc/xprtrdma/transport.c          |   2 +-
- net/sunrpc/xprtrdma/verbs.c              | 138 +++++++++++++++--------
- 5 files changed, 208 insertions(+), 69 deletions(-)
-
+diff --git a/net/sunrpc/xprtrdma/ib_client.c b/net/sunrpc/xprtrdma/ib_client.c
+index 188f7a13397f..23fbaf406a22 100644
+--- a/net/sunrpc/xprtrdma/ib_client.c
++++ b/net/sunrpc/xprtrdma/ib_client.c
+@@ -9,6 +9,8 @@
+ #include <linux/types.h>
+ #include <linux/kref.h>
+ #include <linux/completion.h>
++#include <linux/mutex.h>
++#include <linux/sched/mm.h>
+ 
+ #include <linux/sunrpc/svc_rdma.h>
+ #include <linux/sunrpc/rdma_rn.h>
+@@ -28,6 +30,11 @@ struct rpcrdma_device {
+ #define RPCRDMA_RD_F_REMOVING	(0)
+ 
+ static struct ib_client rpcrdma_ib_client;
++/*
++ * Serialize registration with the removal transition and client-data teardown.
++ * Invoke rn_done callbacks and wait for completion outside this mutex.
++ */
++static DEFINE_MUTEX(rpcrdma_device_mutex);
+ 
+ /*
+  * Listeners have no associated device, so we never register them.
+@@ -56,33 +63,44 @@ static struct rpcrdma_device *rpcrdma_get_client_data(struct ib_device *device)
+  * cleared again if xa_alloc fails), so the @rn may safely be
+  * passed to rpcrdma_rn_unregister() without a separate
+  * registered/unregistered flag in the caller.
++ *
++ * Context: May sleep. Takes rpcrdma_device_mutex in a NOIO allocation scope.
+  */
+ int rpcrdma_rn_register(struct ib_device *device,
+ 			struct rpcrdma_notification *rn,
+ 			void (*done)(struct rpcrdma_notification *rn))
+ {
+-	struct rpcrdma_device *rd = rpcrdma_get_client_data(device);
++	struct rpcrdma_device *rd;
++	unsigned int noio_flags;
++	int ret = -ENETUNREACH;
+ 
++	/* Reclaim must not wait for RPC I/O on a transport whose reconnect
++	 * needs this mutex to register its notification.
++	 */
++	noio_flags = memalloc_noio_save();
++	mutex_lock(&rpcrdma_device_mutex);
++	rd = rpcrdma_get_client_data(device);
+ 	if (!rd || test_bit(RPCRDMA_RD_F_REMOVING, &rd->rd_flags))
+-		return -ENETUNREACH;
++		goto out_unlock;
+ 
+ 	/*
+-	 * Arm rn_done before xa_alloc() publishes @rn: once @rn is
+-	 * visible in rd_xa, a concurrent rpcrdma_remove_one() can
+-	 * call rn->rn_done(), so the pointer must already be set.
+-	 *
+-	 * Restore NULL if xa_alloc() fails. rn_done doubles as the
+-	 * registration sentinel for rpcrdma_rn_unregister(); a stale
+-	 * value would unregister an @rn that was never inserted.
++	 * The removal walk cannot see @rn until registration drops the
++	 * device mutex. Clear rn_done if xa_alloc() fails so unregister
++	 * does not treat @rn as registered.
+ 	 */
+ 	rn->rn_done = done;
+ 	if (xa_alloc(&rd->rd_xa, &rn->rn_index, rn, xa_limit_32b, GFP_KERNEL) < 0) {
+ 		rn->rn_done = NULL;
+-		return -ENOMEM;
++		ret = -ENOMEM;
++		goto out_unlock;
+ 	}
+ 	kref_get(&rd->rd_kref);
+ 	trace_rpcrdma_client_register(device, rn);
+-	return 0;
++	ret = 0;
++out_unlock:
++	mutex_unlock(&rpcrdma_device_mutex);
++	memalloc_noio_restore(noio_flags);
++	return ret;
+ }
+ 
+ static void rpcrdma_rn_release(struct kref *kref)
+@@ -163,6 +181,8 @@ static int rpcrdma_add_one(struct ib_device *device)
+  *
+  * Upon return, all transports associated with @device have divested
+  * themselves from IB hardware resources.
++ *
++ * Context: May sleep. Takes rpcrdma_device_mutex.
+  */
+ static void rpcrdma_remove_one(struct ib_device *device,
+ 			       void *client_data)
+@@ -173,7 +193,9 @@ static void rpcrdma_remove_one(struct ib_device *device,
+ 
+ 	trace_rpcrdma_client_remove_one(device);
+ 
++	mutex_lock(&rpcrdma_device_mutex);
+ 	set_bit(RPCRDMA_RD_F_REMOVING, &rd->rd_flags);
++	mutex_unlock(&rpcrdma_device_mutex);
+ 	xa_for_each(&rd->rd_xa, index, rn)
+ 		rn->rn_done(rn);
+ 
+@@ -187,8 +209,11 @@ static void rpcrdma_remove_one(struct ib_device *device,
+ 	}
+ 
+ 	trace_rpcrdma_client_remove_one_done(device);
++	mutex_lock(&rpcrdma_device_mutex);
++	ib_set_client_data(device, &rpcrdma_ib_client, NULL);
+ 	xa_destroy(&rd->rd_xa);
+ 	kfree(rd);
++	mutex_unlock(&rpcrdma_device_mutex);
+ }
+ 
+ static struct ib_client rpcrdma_ib_client = {
 -- 
 2.34.1
 
