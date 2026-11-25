@@ -1,85 +1,100 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795616754;
-	b=SoYCvC2nV8I1dUVpPsR6CbwXxAptjtW88PcK+wvty8DfE2FDutjJztQsxguFh1HkV2nM
-	 8zx4sKVCRK/0SCb+U1Ox1JY1ycMlMMPSGoL9lH53/a77PFq05lfv0dSqWbxVOltg0Sa4j
-	 E/mQw+zSUWu/nDSCseImgYVNtBzXdQGCw5zCYuMtm2AUsY9GdbioQIb8UxFfEoPhYo4Dt
-	 xSCPnnrFCFs+hdOOOaMcomZriUafzMNyvjxuQ3QJOkLBe2+MnXBVXPzHZsQJme/QsLAaN
-	 YGtXvgOyYlHnxQxm/KQ1y/tXcvob21GETij23XFdDGwPFhzY9ExGbOBh6TcDVy3bRIw==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795616754;
-	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-SRS-Rewrite;
-	bh=qUuiYfPMGF1dYU/3s8nfXtw2BbGEHy61uU94+Ks01XY=;
-	b=PLbIAzGUZi42jPvsvl2u3BYEn2f3GTv5PxSaqJMsWIdUOqp5Hwo6P37BqVVs3Icw8aFJ
-	 uVk2DbqJadiFMGwDSJJGX6QtQpd6XOzOboWeAxBQEWxBBHqCNnnOMTIhqvcrcYTPumIGj
-	 FmyduXM+i1KHHAyTodGiRTK1B014aZeCsoznnou7c/6eSs57n4dGwTO70bvBgUPqQh40V
-	 Hyc6fQwk1v01l1EVL3eZwJrBE3D1TwZb1toH8ezwzdgE5ZPDKZ3i2hdCvupL+cHcta8Jj
-	 Bzhg9Ntys4RGXnE4WVjdOPnZ6pCQeTmJsoN1BN5W26Rwwn6H1brr47ekEhBRXFM2oyg==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=infradead.org;
-	spf=none smtp.mailfrom=bombadil.srs.infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=SPVQka5q;
-	arc=none smtp.remote-ip=198.137.202.133
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.224.41
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1795617541;
+	b=uEYPtZQ5jMmdf59H5wxYMh8chKDhs+RKMmiSFB6rDhAtdUmSdWofnPg4a0R8saE6o2xq
+	 niAcSET67ar6MKqzEpFAk9UMXe6Ndc55WV5bqqFWihNQ/p3ih02QiThpL02JjQoUIMPg2
+	 rhKrNucmUSwAsAis6gO6GNd/RDne+OF40sMtV/eVFNIPaoqmWSklQLRP0Gc/8+pO11J1q
+	 iAaCWW46N+wS3NnTFURCsT3o/RajdMLbXuumLf13MSOwe/iFkY2f9AOGizceTxFBR0NWV
+	 FgLTIpLXxHGl+fhCKIY4tAtjMWwsL8YKnHzgROkfGGgHS6gddWDrQNAWJcgTvNUjiTQ==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795617541;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
+	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
+	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
+	bh=2vBPf9O5A2N6vPyFBaBk1N1z9BatJmAjUAi4ZLhtVRI=;
+	b=o+aqJc0LF1cZmdPmz9kTdUngibxrt8+FecuzGnOPfN9druL3tACIiBp06FOlhwllmNOJ
+	 Q72fGH84tzmovA16hwrhaVOoNeKNw6mNAvHdzFlQGeDHpun9JgaPqSf8ucdk5FKvnujqD
+	 LvyUxATlgZ1OkDJXQdx2pILL/xJW7zd2zlCxmyKQ0fCY/843Iq1Mw4Okzh2nJobgh40qs
+	 o5weKPY3j2jixPXTYQfedBsorlo8FS7CC0ThCGVvTzbNqk5ZG8YZbQ5+PjsK2swdFtAgK
+	 Yv5po6hmecsHcfS4NKzs4kvCh5nT1N+nLfxw9xu3THgcObSxt666yCTsUZUwG+imorw==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tNuOaU35;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=74.125.224.41
+Received: from mail-yx1-f41.google.com (mail-yx1-f41.google.com [74.125.224.41])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21955606A31E;
-	Wed, 25 Nov 2026 14:25:52 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 21955606A31E
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 679D4606A323
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 14:39:01 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 679D4606A323
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=SPVQka5q
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=qUuiYfPMGF1dYU/3s8nfXtw2BbGEHy61uU94+Ks01XY=; b=SPVQka5q6b+Q1YM0gqBdrJp3y3
-	UUUokphX0g5eOWTiYvKvIDnraP8DhH9YtPY1ZVZmsYKhEi7+gXw3fYCn4rPNoFx2DLd55U804oNgy
-	BpAC/5lODMecYTLyeGz5nCdxDEtSTYfIvUTVe8FbTHsbr0cIOgfgv0jPn+sHtL6DMlT8tuSRuUd6v
-	32FH4VYNd9i9qBT2ZAx4KCl5vVK5/EmscHlH4AaNOdMwQCsBZIDp6aSZpqVQ4A5WpNM8a/Uxl+XzR
-	DKPxKHf0vYby5fO+XwYhJ+FBMHHCrLpsCuR4fOwgm09h/UIcEa50ozW2eGgy3J1Rf3BkAR21O08IJ
-	cQO/zxyw==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xWDwO-0000000A9gO-01yg;
-	Wed, 25 Nov 2026 14:25:44 +0000
-Date: Wed, 25 Nov 2026 06:25:43 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "David Hildenbrand (Arm)" <david@kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>, Pedro Falcato <pfalcato@suse.de>,
-	John Hubbard <jhubbard@nvidia.com>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
-	Vlastimil Babka <vbabka@kernel.org>,
-	Mike Rapoport <rppt@kernel.org>,
-	Suren Baghdasaryan <surenb@google.com>,
-	Michal Hocko <mhocko@suse.com>,
-	Baolin Wang <baolin.wang@linux.alibaba.com>,
-	Nico Pache <nico.pache@linux.dev>,
-	Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>,
-	Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>,
-	Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>,
-	Shakeel Butt <shakeel.butt@linux.dev>,
-	Axel Rasmussen <axelrasmussen@google.com>,
-	Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>,
-	Baoquan He <baoquan.he@linux.dev>, Michal Hocko <mhocko@kernel.org>,
-	linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
-Message-ID: <awbv55FryMamHvVP@infradead.org>
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com>
- <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
- <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
- <away88BuU8ibcTA5@infradead.org>
- <d088452f-1118-4a06-bc16-1942e523e0fc@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=tNuOaU35
+Received: by mail-yx1-f41.google.com with SMTP id 956f58d0204a3-67df3b1ca06so6568212d50.2
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 06:39:01 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1795617540; cv=none;
+        d=google.com; s=arc-20260327;
+        b=nSJQ7UJEfOVrq6SHdo1Kwj1Ha97r7QrA0J2YyfnyEZM6agJswDcrRJvXvf5+jKMzpe
+         zBCAXBeKoUVAZx9St2TkTJwZNtj2TxvlMLfpzXQhIZwKe3BIbGgGAc/89mUDtNxCyxcO
+         8OQd0CDa4vNgUH+JzJXy/ddPHQm9bXup+T+MRBuwdx42jrAQ3CO/Qs509gw2c0fahnId
+         HtUDTPX7rAsEnBNPk/e8rhKDBgLG7+SPsuJGnRn4lFKH0bVAxcdd3HOrvNwuCGV1yZCq
+         eCMo+U47aUXHJmlfm+VE4r8/ZAKmqV+pLG16r93GlkTf7CIad1wRZyPt20cm0Mymk0rs
+         C58A==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=2vBPf9O5A2N6vPyFBaBk1N1z9BatJmAjUAi4ZLhtVRI=;
+        fh=rF6vhYPer7J3QUm8sdfE/184qOWo1x5HKkFFTTuBPcs=;
+        b=TLQLvghBxQl69ye1Volid6Wms61MMYsUWE3ZOexanwJaiy55NP9EM8kKvTC1UhHug8
+         0kxS1036nLTzeXHUNYOBzQEsMqzN6fEwTD67aa7Kc14Y0YacRZoyJ3d0+pHc2+8fYYLX
+         CQWMxz1tqy/0OQLancU5OyRUkNRfqpG7v/f/Gq7WGnmhYdPMNqbfu8m6cmM2J9SnDx5G
+         emtehmtEKhua3rV1mGf67gOGt/w+EuI8YV6cU2mwjpq3fV86T+9P27zMVvxF0Ln9BQEA
+         ksMA9B62GrYhekdp1YQw/Mo+WILmQylOOhixWebw5aBJEoIM7hHkaKH2HsoUioxKIxsA
+         DdUw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795617540; x=1796222340; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=2vBPf9O5A2N6vPyFBaBk1N1z9BatJmAjUAi4ZLhtVRI=;
+        b=tNuOaU35BPa5VDSA86hNSc8Rt54eBqJ2xrUuX756fLosXrG5//yL4CFwlNPQj4MrT5
+         n1R/T2rl9AuOAur8R+j0y6G68bH3CeubbZsCcsbuCKR2yG2Tl6hx88jYx6UJIMp6qNTV
+         uRpv/n/gj/3VOUpQRXzTwkbQJ7w4HpshSh0+c8AXsRhtZzYGkAynm86mSGsId5xiay7E
+         +NdiTcnh57kWQMLHJ5xXQSqbK8xa6w4vZBuCS67D3i1FwutstmDrUm+DXXcyWuyo7Ad7
+         urjMnfsBlP1PIoo6xWaHK0BpL2sNtycIHd7GdQMwW6MkFa553tnw+UOfR8Qb13mQMZGQ
+         5Teg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795617540; x=1796222340;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=2vBPf9O5A2N6vPyFBaBk1N1z9BatJmAjUAi4ZLhtVRI=;
+        b=WhlsRKCxHN6lvGEoogmp0RquyPc6x6GrATYESwubgAcHuWwCecBJy/L/HHe/C6ZuGD
+         qSapwzCHTVPS7GbPYz5iWec4Iqau/f+iFtabw0DsTJ1KIcqgVeHngDbuJZinpAKSpzZr
+         AYl7ZnimS5vQksCWtJpkXO2f3J3ogDPKJRozHXqh2N323d9f5wVkD/DJMSrcGKP4TnoX
+         nmaE6rW6MbQGS1zHLvpOLrsCiaoPCo+T+V36NxJmaajlyOKUbygzq73PhxwXw3pMZwpK
+         kQtz09iM+3Dz39FkZP9X5bm1S45Xx1K+zMGDr3MSgSxdri8AChcIypQLi1s7BaJwqDOl
+         2PKA==
+X-Forwarded-Encrypted: i=1; AL+hErEUN7c57wKXIK0XAFo3FRXZsZ3yPGi/ZU7T9rhRZqGZVwCbO+ML9mOn1dWjELbejpkUmCDcsfO1tDo=@vger.kernel.org
+X-Gm-Message-State: APuU4Z98SBRIDQghN3YMMwjKiyds7r0NQJ5ld/4HJH5XXV90XTlpPuCt
+	eMSaBS7gIjtUCl0E2uORJDXKnvAHtloppUuLY7TZMD9pd4eaaCINS28OmMShED//bykGdAsskta
+	giqkO7q2FmV5X06SNmbAViJeHU4UmX4A=
+X-Gm-Gg: AZFdTZdUQN56nhjRaBggbb0ou/PnI6g5MMcCXHi6dlEFbO3gz2+K8cqt3U2sAXtfWHE
+	L+q9STfHIaddAj9oDz49KXKlCxRiSN1aSoX8wok5VgZyTmB7sG/51dc30CASAdgUnQtZo2X1KPC
+	4iIjXtp496Nn0aujwDmTX7v457cvz9yOgLVu6dM+XEt+q5v4md74y/oAdtbJDvirTqxiXBMU2rw
+	MqM8svHzzK919POV48J3KNvWtajxrNe9QIy0TqNA/xWkaHjHqyyGcAN9UZnOc+l7DoWO89GR5j3
+	DWfYWNuBUoj0k74WPgijVaXTQWsUmNrHnSPBGVqX/ilOX67Z+sS2UmlIB1Y4yF+0jxFebZlIEPG
+	MERtP3+D/YU8ZHejTjiYVRJOLOIr1jRVKr+yo
+X-Received: by 2002:a05:690e:a45:b0:67c:2755:712c with SMTP id
+ 956f58d0204a3-67df44146e1mr7854025d50.49.1795617540224; Wed, 25 Nov 2026
+ 06:39:00 -0800 (PST)
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -89,29 +104,42 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <d088452f-1118-4a06-bc16-1942e523e0fc@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+References: <CANkg2rNRVyYLYLaVnCz75nYvC0DAKrphNazX1Asacf8MuBnxAg@mail.gmail.com>
+ <525d6d4a-f015-415a-a4b9-9ffdbb8966be@app.fastmail.com> <CANkg2rM7XsiVriVzDr52WcxD-xFb4qu3qxiPJNyJUYYOTLUmNg@mail.gmail.com>
+ <8999aef5-c521-4a78-9137-fd82ef2dab6d@app.fastmail.com>
+In-Reply-To: <8999aef5-c521-4a78-9137-fd82ef2dab6d@app.fastmail.com>
+From: Rida Shamasneh <ridahani@gmail.com>
+Date: Wed, 25 Nov 2026 16:38:45 +0200
+X-Gm-Features: Aa3M54q8YDkT5ZTwgjV7Yi9BVbJohuUFGivkaRqzlSxk-322cFwtxjsD0zFjQa8
+Message-ID: <CANkg2rNYSxGcWLhP-B3T+TUsvCNh2J4m7UUzTrWFyJrW2rpXxQ@mail.gmail.com>
+Subject: Re: RFC: RPC-over-RDMA client transport for pynfs (testserver.py --rdma)
+To: Chuck Lever <cel@kernel.org>
+Cc: Calum Mackay <calum.mackay@cdmnet.org>, Jeff Layton <jlayton@kernel.org>, 
+	linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Wed, Nov 25, 2026 at 11:19:18AM +0100, David Hildenbrand (Arm) wrote:
-> > I don't think that is a good reason.  For file system backed VMAs we
-> > really need the pin to be able to do someting sane, DMA or not.
-> > 
-> >> 1) We fix all such cases now where unprivileged users can trigger this,
-> >>    converting to FOLL_PIN.
-> > 
-> > We need to, if not for this series then for all the other outstanding
-> > issues with GUP writes.
-> 
-> Cool, and I agree (that's why I placed it at 1).
-> 
-> But who is "we"? Because I recall that "we" wanted to do that a while ago.
-> 
-> (I won't be "we" ;) Pedro, can you take a look? I'm afraid the fuse thing might
-> be the harder nut to crack)
+Ok, thanks for the clarification.
 
-The collective of MM/FS integrity interested people (for which the
-recipient list is a good proxy) plus the maintainers of the code
-still writing through FOLL_GET.
+On Wed, Nov 25, 2026 at 3:54=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
+>
+>
+>
+> On Tue, Nov 24, 2026, at 4:44 PM, Rida Shamasneh wrote:
+> > I sent the patch via email "[PATCH] rpc: do not format a whole reply
+> > for the debug log";
+> > Do I need to open a PR as well?
+>
+> CONTRIBUTING explains pynfs is a project that takes patches only by
+> email. No PR is needed.
+>
+>
+> --
+> Chuck Lever
 
+
+
+--=20
+--=20
+Thanks,
+Rida Shamasneh
