@@ -1,47 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795600255;
-	b=D/dFLcK3IjY6rGfJAd0DJRTL2KEOS4IuwB82GK688VaXhKlbMdLndJKNP68jmpJBmY6/
-	 TfSPhS121MNAkDTZKt2wBX2SKnaRIi2eLw3gaebgDMgQatFw8TdIqEstwra8reFXEBcDr
-	 B26rDEng5hnsrcA/H1ToTmuwy6f8SCOZYkSK+K3kTF9VVeMQGjOissMX1kQprtudm3UQG
-	 ieUiUm9tffA9q3WQGMuIhF/VeFfJjANt7wgHcHgXXtv/F8HhpDE7siAfOCamahjpL6myo
-	 J4O5TuMXJGeBRvm0SFzm2nKAptbDvR+5a4Ih9dNv0CkyStIHEbF2QNnIGCvcyS4Xdlg==
+	t=1795601147;
+	b=PcCZR6gKcYu+Ha5QUA2x7oqYjfrwHBExYD/Gv8Vju9lE7NkHmPC40P1/DZSIZsurXUPT
+	 j26bee/Zz2MP83K34bP0gFEAJkPZAN3hCOiYINEEdVmPdfX/8ekN/GTM229T0Zz1JZIg6
+	 hWgnbVrCIUHBwnjTo9lmx8j0mEq35VC7EepeIFFnsQWY0yUbC78PCqWDE868esV5JKonB
+	 d33lIK57H5h1C9Fc7hynw94iGJi7IvrZMAh8/ZYOHdoc6uu2jS0MJ2GCjBGw9yHj+l/KL
+	 ztaoAVsYsi/u/IQVHGUxaSkqPuyV01EA/ICutd8lVscGU0xxpfSqXsjNd6X8n89oyWg==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795600255;
-	h=Received:DKIM-Signature:Message-ID:Date:MIME-Version:User-Agent:
-	 Subject:To:Cc:References:From:Content-Language:Autocrypt:In-Reply-To:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=tGnj930oYxvF/0cd6nEVQpcZo3ih9Np+B2tQs915UOA=;
-	b=Bha+NYr9Y8HFzD7EHmz29lyGJOQXB2ZDN5OxQMxzU5aGpluKInTKgUML/3ZLtIX0N5rq
-	 W7YraHliMlmBBf33PB2h5KaS9bAYQERMjrJF3Y20BTGDiW33SUsLjA73IelQdFGpVa4l9
-	 mgirVushsZ76EpYQd63PoYEh0T4yfUEmYvIcFsSfI7wU/uXRCE02zCcVb1LL3YLhVYbCx
-	 /xPpgIlbUEm3gpe72KzwqUpA/3eKqo2cOYeMoB8je9qdRTKJ4rPXQTVWlrv3/nsbRC7oe
-	 rr2u1UKP29LP8je7foA8Z7+desdvsYd8FAgOvyDvhby/70ZcKZpzVARccSoSWY0lheQ==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795601147;
+	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
+	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
+	 In-Reply-To:X-SRS-Rewrite;
+	bh=lVzOnSLOiNwp7oTUU4Cf9rSv1I0m0hohY9lma3fv+uA=;
+	b=ViFPaPURfZpxkPWhPbJMt0VYxM6BPRLNG/YWJQNNYyvToPzlDcIW2xVWCt4f60IdoAhp
+	 0Yc3MBT89PV5+49bl5saXjHA+L2h7tH+eeCVeIA004Kl6Ct9WQurFLy+qtyNQoiwgeDIv
+	 tCBC0CxRZPF6WqA1tZYa6s+suP8pzmF+4il04/MabwRwBI15rXicNf4PkI9gkscd98gQQ
+	 2lBAaU4Knt9AHyp6g791r6tdYxpIYiEwe1VItGYMG3CS6qDR4KLhT1J4VuTNv+fREBAdX
+	 vKaVDVUP+/gV8u9WCSH4GlddgjDCU5itgurwXoUivCpOYCe8oeqVB08IhyD/RElkHQw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B9tou37Y;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	dmarc=pass header.from=infradead.org;
+	spf=none smtp.mailfrom=bombadil.srs.infradead.org;
+	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=DK7Z9izk;
+	arc=none smtp.remote-ip=198.137.202.133
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37A15606A31E;
-	Wed, 25 Nov 2026 09:50:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51E92606A323;
+	Wed, 25 Nov 2026 10:05:46 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 51E92606A323
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=B9tou37Y
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 894941F000CF;
-	Wed, 25 Nov 2026 09:50:45 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795600254;
-	bh=tGnj930oYxvF/0cd6nEVQpcZo3ih9Np+B2tQs915UOA=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=B9tou37YVeV/G6AsGUDZ7SNc5OQVrGY/e9fE6e/1iMXgYZYdZ/PG/h0Aade1ilmLy
-	 qwQkMhJ4Oq6rdmJz2jIkmIQxqr6WN16CSV4Avy5fsNI4fbj/B0B0L9XIArwzx30wtb
-	 6EQOMXOy3aw0dq3Hg1UrmNPaLRtwrVonlnPgHUW6B7Mdyk/9Hrmps1xVD9L33zzMzY
-	 XA6n9Sn0k8dqCLzbGRZEEcXtPzcWZVBW7wshk2ZT94W0+N9f9LOib2f5MX/2pu06pc
-	 e7VKroqFAm6xbpg5hSelGOkkhoY3rPNpqNHQoIZih+ZomJOIp7NMgS0AuAngoGBqwc
-	 jXV0PFZA3A6tg==
-Message-ID: <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
-Date: Wed, 25 Nov 2026 10:50:42 +0100
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=DK7Z9izk
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=lVzOnSLOiNwp7oTUU4Cf9rSv1I0m0hohY9lma3fv+uA=; b=DK7Z9izk01BpR7A/zkj0WwMYoA
+	CoXufy7m7SRtXrx5IULq0pQpJnIW8G6faQ9ewDcD82OXfTdNIePjZvz+VxYCrF5csf0R2efUoiFiJ
+	sozucpD6cRGf1qTCeHiT18MUWVZQHoZrXlWetQ9sztRVHA924bPfv+IHyEk1pHuDSgvhZfklkwvAt
+	Fny0Oz4fK12vr40pmyJyxdVEAFy4L6hJopNcjPngsA1YgMc4VpSCAU+dlYyWzBXkXag0WLO7DQ72X
+	L3kfXB5i9W0Bk1KTGrtW9ZQGkcwHGA4dF0Bops+aJlS0LY3HYwIwKJyv8CHoYsFe6H7idIQ09tp1a
+	4zfVHw2Q==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.100.1 #2 (Red Hat Linux))
+	id 1xW9sh-00000009PVf-08Ll;
+	Wed, 25 Nov 2026 10:05:39 +0000
+Date: Wed, 25 Nov 2026 02:05:39 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: "David Hildenbrand (Arm)" <david@kernel.org>
+Cc: Pedro Falcato <pfalcato@suse.de>, John Hubbard <jhubbard@nvidia.com>,
+	Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
+	Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
+	linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
+	Vlastimil Babka <vbabka@kernel.org>,
+	Mike Rapoport <rppt@kernel.org>,
+	Suren Baghdasaryan <surenb@google.com>,
+	Michal Hocko <mhocko@suse.com>,
+	Baolin Wang <baolin.wang@linux.alibaba.com>,
+	Nico Pache <nico.pache@linux.dev>,
+	Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>,
+	Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>,
+	Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>,
+	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>,
+	Shakeel Butt <shakeel.butt@linux.dev>,
+	Axel Rasmussen <axelrasmussen@google.com>,
+	Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>,
+	Baoquan He <baoquan.he@linux.dev>, Michal Hocko <mhocko@kernel.org>,
+	linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
+Message-ID: <away88BuU8ibcTA5@infradead.org>
+References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
+ <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com>
+ <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
+ <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -51,209 +87,36 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
-To: Pedro Falcato <pfalcato@suse.de>, John Hubbard <jhubbard@nvidia.com>,
- Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>,
- "Matthew Wilcox (Oracle)" <willy@infradead.org>,
- Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
- Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
- linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
- Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>,
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>,
- Baolin Wang <baolin.wang@linux.alibaba.com>,
- Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>,
- Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>,
- Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>,
- Kiryl Shutsemau <kas@kernel.org>, linux-mm@kvack.org,
- linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>,
- Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>,
- Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>,
- Wei Xu <weixugc@google.com>, Baoquan He <baoquan.he@linux.dev>,
- Michal Hocko <mhocko@kernel.org>, linux-fsdevel@vger.kernel.org,
- stable@vger.kernel.org
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com>
- <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
-From: "David Hildenbrand (Arm)" <david@kernel.org>
-Content-Language: en-US
-Autocrypt: addr=david@kernel.org; keydata=
- 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
- qIws/H2t
-In-Reply-To: <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On 11/24/26 14:37, Pedro Falcato wrote:
-> Hi John, Christoph, Jan,
+On Wed, Nov 25, 2026 at 10:50:42AM +0100, David Hildenbrand (Arm) wrote:
+> When I looked into this issue, there were some problematic things.
 > 
-> Thank you for your replies. Since you largely share the same point, I'll
-> combine this into a single reply.
+> We have some odd drivers that use FOLL_GET|FOLL_WRITE, but I am not too
+> concerned about them.
 > 
-> On Thu, Nov 19, 2026 at 04:55:30PM -0800, John Hubbard wrote:
->> On 11/19/26 12:10 PM, Pedro Falcato wrote:
->>> Sooo.... It turns out GUP dirty and ->release_folio() interact really
->>> weirdly. This was initially reported by some AI agent, and David let me
->>> know.
->>>
->>> The basic issue is:
->>
->> The basic issue is covered in a series of LWN articles that span 5 or
->> 6 years:
->>
->>     https://lwn.net/Kernel/Index/#Memory_management-get_user_pages
->>
->> Probably good to read and absorb that. There's a lot.
->>
+> But are ways where unprivileged users can mess with  FOLL_GET|FOLL_WRITE
+> references to trigger this.
 > 
-> Thanks. I was aware of some of this, but it's good to take a fresh look again :)
->  
->> The problem remains not fully solved. pin_user_pages() is a building
->> block, but we need to fully coordinate with filesystems in order to
->> finish. It's good that you are looking at this.
->>
->>>  - ->dirty_folio() relies on buffers/IFS/etc being attached to the
->>>    folios. It _cannot_ attach them itself, as dirty_folio() cannot
->>>    block.
->>>  - certain MM paths (reclaim, khugepaged, folio split, etc) are very
->>>    trigger-happy when it comes to asking filesystems to release them. In
->>>    most cases, barring any dirty folios, buffers, it will just drop
->>>    them.
->>>  - there is no problem in usual IO submission, but issues start to pop
->>>    up with GUP, where the code flow (roughly) becomes:
->>>         [get_user_pages(), etc]
->>>            ->page_mkwrite() called here, or before
->>>              ->private correctly populated with whatever the filesystem
->>>                expects.
->>>              folio is marked as dirty, initially.
->>>        *write finishes*
->>>        folio_lock();
->>>        folio_mark_dirty();
->>>          ->dirty_folio()
->>>               dirty_folio expects ->private to be populated by
->>>               ->page_mkwrite(), ->write_begin().
->>>        folio_unlock();
->>>
->>> What happens if any filemap_release_folio() runs (and succeeds) between
->>> the initial dirtying (plus eventually writeback) and the write to the
->>> folio completes? Welp, it's unpredictable. ext4 for example will
->>> WARN_ONCE, and likely drop data (see ext4_dirty_folio()).
->>>
->>> So, what can we do about it? It's complicated, hence why this is an RFC.
->>> For the possible solutions:
->>>  - ->dirty_folio() attaching this FS information itself is not really
->>>    possible in many cases. ->dirty_folio() can't block, nor is it even
->>>    guaranteed to hold the folio lock while being called.
->>>  - Can pincount help? Kind of. Things like folio_maybe_dma_pinned() are
->>>    rough, and don't deal with the usage of get_user_pages(FOLL_WRITE).
->>>    pincount itself isn't available in the common order-0 case, and not
->>>    available on order-1 as well on 32-bit, but who cares about that^W^W^W^W^W
->>>  - Could get_user_pages() ban FOLL_WRITE? Mayhaps. I would not be
->>>    opposed to that, but that's probably a larger change than ideal for stable,
->>>    and I'm not familiar enough with GUP requirements to decide to go that way.
->>>    This would require migrating all FOLL_WRITE users to
->>>    pin_user_pages().
->>>  - Can the whole system be reworked? Probably, but not for stable.
->>>
->>> This patch series is really rough but kind-of works. Instead of using
->>> folio_maybe_dma_pinned(), which only interacts with pin_user_pages(), I
->>
->> pin_user_pages() was specifically introduced for this exact class of
->> problem. get_user_pages() is now meant for other, much more limited cases.
->> I've attempted to document that, here:
->>
->>     https://docs.kernel.org/core-api/pin_user_pages.html
+> I think the two that stand out are:
 > 
-> Ok, so I guess you want me to drop the hacks to make GUP FOLL_WRITE not
-> screw itself over? To be clear, the rest is still broken, even with pin_user_pages().
-> It just means we get nicer looking fixes, and I can drop patch 3.
+> 1) /proc/self/mem access using mem_rw() -> access_remote_vm()
+> 
+> User can write to a writable-mapped page-cache PTE. Then we can race with
+> removal of folio metadta, to then set the folio dirty afterwards.
+> 
+> I remember a good reason to not convert these paths in the past (we are not
+> performing DMA).
 
-I think focusing on pinned pages as the first approach+long-term solution is ok.
+I don't think that is a good reason.  For file system backed VMAs we
+really need the pin to be able to do someting sane, DMA or not.
 
-BUT
+> 1) We fix all such cases now where unprivileged users can trigger this,
+>    converting to FOLL_PIN.
 
-When I looked into this issue, there were some problematic things.
+We need to, if not for this series then for all the other outstanding
+issues with GUP writes.
 
-We have some odd drivers that use FOLL_GET|FOLL_WRITE, but I am not too
-concerned about them.
-
-But are ways where unprivileged users can mess with  FOLL_GET|FOLL_WRITE
-references to trigger this.
-
-I think the two that stand out are:
-
-1) /proc/self/mem access using mem_rw() -> access_remote_vm()
-
-User can write to a writable-mapped page-cache PTE. Then we can race with
-removal of folio metadta, to then set the folio dirty afterwards.
-
-I remember a good reason to not convert these paths in the past (we are not
-performing DMA).
-
-
-2) /dev/fuse using fuse_copy_fill() -> iov_iter_get_pages2()
-
-Same problem, just through fuse.
-
-
-So either
-
-1) We fix all such cases now where unprivileged users can trigger this,
-   converting to FOLL_PIN.
-
-2) We handle it for now in reclaim code by checking for unexpected folio
-   references instead of GUP pins. The spirit of this series.
-
-3) We accept that unprivileged users can trigger unexpected behavior
-   (WARN_ON_ONCE()) etc. I don't think that's an option.
-
-4) We turn all these checks for unexpected behavior into soft warnings.
-
-I think only ext4 is problematic, but I didn't check.
-
--- 
-Cheers,
-
-David
