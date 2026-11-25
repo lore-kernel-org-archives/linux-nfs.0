@@ -1,83 +1,94 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.42
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795601147;
-	b=PcCZR6gKcYu+Ha5QUA2x7oqYjfrwHBExYD/Gv8Vju9lE7NkHmPC40P1/DZSIZsurXUPT
-	 j26bee/Zz2MP83K34bP0gFEAJkPZAN3hCOiYINEEdVmPdfX/8ekN/GTM229T0Zz1JZIg6
-	 hWgnbVrCIUHBwnjTo9lmx8j0mEq35VC7EepeIFFnsQWY0yUbC78PCqWDE868esV5JKonB
-	 d33lIK57H5h1C9Fc7hynw94iGJi7IvrZMAh8/ZYOHdoc6uu2jS0MJ2GCjBGw9yHj+l/KL
-	 ztaoAVsYsi/u/IQVHGUxaSkqPuyV01EA/ICutd8lVscGU0xxpfSqXsjNd6X8n89oyWg==
+	t=1795601848;
+	b=ewEtX5JAdGA6OGS699q4rvpSkybircrFl+FUzmhCkzX1iI9dN/Plt2SbyPse1HNAq5Vg
+	 VbdyDm5pp0ZRP5MLaev0vZ/giecTAUjJEy1SHTacKN/LVHG5dX/zeXyeguVkQtcHbStZ1
+	 Kg7x8wrxtK7Opaptcw4LGnTEFxMm/tSdLmWeOD71PBftiuTdjCql2ggEBGbwGgy//5E6g
+	 LRicsmqt27THVf3vFzh3x0un/8LgCPnzGicrpR7emCV+nQcclczA7TUDX4QtOwXQN9mUe
+	 o02tjUYDA1nFU81j9XcuHi78XROmkqeR7Exb5yB+Okz1usmtpK+3kNmiKKmF7njjRbA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795601147;
-	h=DMARC-Filter:DKIM-Signature:Received:Date:From:To:Cc:Subject:
-	 Message-ID:References:MIME-Version:Content-Type:Content-Disposition:
-	 In-Reply-To:X-SRS-Rewrite;
-	bh=lVzOnSLOiNwp7oTUU4Cf9rSv1I0m0hohY9lma3fv+uA=;
-	b=ViFPaPURfZpxkPWhPbJMt0VYxM6BPRLNG/YWJQNNYyvToPzlDcIW2xVWCt4f60IdoAhp
-	 0Yc3MBT89PV5+49bl5saXjHA+L2h7tH+eeCVeIA004Kl6Ct9WQurFLy+qtyNQoiwgeDIv
-	 tCBC0CxRZPF6WqA1tZYa6s+suP8pzmF+4il04/MabwRwBI15rXicNf4PkI9gkscd98gQQ
-	 2lBAaU4Knt9AHyp6g791r6tdYxpIYiEwe1VItGYMG3CS6qDR4KLhT1J4VuTNv+fREBAdX
-	 vKaVDVUP+/gV8u9WCSH4GlddgjDCU5itgurwXoUivCpOYCe8oeqVB08IhyD/RElkHQw==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795601848;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=DwvC3/Uc/Q4JTglnun5WSsaA4EcGf3iK2OxV4jCGl18=;
+	b=jGEMzFE1vqsmdKA+bPD/SgzLctqorCSzs3pywg2W9LDxiLlm3r1C66mYFHojAvg/ztMZ
+	 KLO6/YBknlT5wsfhut/PLWX1E6UGu8DpWPKbm8h5gXhKf/u9qpZM1wGo2rd/UQp0XY+cw
+	 dEPAdoJ2GxYa+2ic0/i8d8ulmCGLJayHMY/l9kqd9K4dwN/JdzTtmPeyCXEkRVwOvfWkI
+	 tKyi47RZ+JUQrMb7UpCZbkIu47r0ObFto0kCMEveoGbaSS0gm9amdl9wAwyXJMSD5+VgB
+	 vJcstTbJBwppIi0b1vS3KXkBSUhWCvnY1RlVuyjfZIlU0csX5f4gwjruDT1e+/a9WWA==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=infradead.org;
-	spf=none smtp.mailfrom=bombadil.srs.infradead.org;
-	dkim=pass header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=DK7Z9izk;
-	arc=none smtp.remote-ip=198.137.202.133
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=HXxiItM2;
+	arc=none smtp.remote-ip=209.85.128.42
+Received: from mail-wm1-f42.google.com (mail-wm1-f42.google.com [209.85.128.42])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51E92606A323;
-	Wed, 25 Nov 2026 10:05:46 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 51E92606A323
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DFE93606A321
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 10:17:27 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org DFE93606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.a=rsa-sha256 header.s=bombadil.20210309 header.b=DK7Z9izk
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=lVzOnSLOiNwp7oTUU4Cf9rSv1I0m0hohY9lma3fv+uA=; b=DK7Z9izk01BpR7A/zkj0WwMYoA
-	CoXufy7m7SRtXrx5IULq0pQpJnIW8G6faQ9ewDcD82OXfTdNIePjZvz+VxYCrF5csf0R2efUoiFiJ
-	sozucpD6cRGf1qTCeHiT18MUWVZQHoZrXlWetQ9sztRVHA924bPfv+IHyEk1pHuDSgvhZfklkwvAt
-	Fny0Oz4fK12vr40pmyJyxdVEAFy4L6hJopNcjPngsA1YgMc4VpSCAU+dlYyWzBXkXag0WLO7DQ72X
-	L3kfXB5i9W0Bk1KTGrtW9ZQGkcwHGA4dF0Bops+aJlS0LY3HYwIwKJyv8CHoYsFe6H7idIQ09tp1a
-	4zfVHw2Q==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.100.1 #2 (Red Hat Linux))
-	id 1xW9sh-00000009PVf-08Ll;
-	Wed, 25 Nov 2026 10:05:39 +0000
-Date: Wed, 25 Nov 2026 02:05:39 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "David Hildenbrand (Arm)" <david@kernel.org>
-Cc: Pedro Falcato <pfalcato@suse.de>, John Hubbard <jhubbard@nvidia.com>,
-	Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-	Andrew Morton <akpm@linux-foundation.org>, Zi Yan <ziy@nvidia.com>,
-	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
-	Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
-	Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
-	Vlastimil Babka <vbabka@kernel.org>,
-	Mike Rapoport <rppt@kernel.org>,
-	Suren Baghdasaryan <surenb@google.com>,
-	Michal Hocko <mhocko@suse.com>,
-	Baolin Wang <baolin.wang@linux.alibaba.com>,
-	Nico Pache <nico.pache@linux.dev>,
-	Ryan Roberts <ryan.roberts@arm.com>, Dev Jain <dev.jain@arm.com>,
-	Barry Song <baohua@kernel.org>, Lance Yang <lance.yang@linux.dev>,
-	Usama Arif <usama.arif@linux.dev>, Kiryl Shutsemau <kas@kernel.org>,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>,
-	Shakeel Butt <shakeel.butt@linux.dev>,
-	Axel Rasmussen <axelrasmussen@google.com>,
-	Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>,
-	Baoquan He <baoquan.he@linux.dev>, Michal Hocko <mhocko@kernel.org>,
-	linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
-Message-ID: <away88BuU8ibcTA5@infradead.org>
-References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de>
- <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com>
- <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net>
- <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=HXxiItM2
+Received: by mail-wm1-f42.google.com with SMTP id 5b1f17b1804b1-4bb69f5b161so36142975e9.0
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 02:17:27 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795601846; x=1796206646; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=DwvC3/Uc/Q4JTglnun5WSsaA4EcGf3iK2OxV4jCGl18=;
+        b=HXxiItM21uvFZ1UiM9CyPnY1K8te/jWgmGGDlAK8Lz/uLh7dPzOilpVnm2xb0THECp
+         N94lZG8XJoddlrBAp6VSSpTmBLcw7Irx3TFh00qiRFrFfQC4UkNQQQpCv89Dw+yPmdNM
+         tVRw/aVj6RZFdju4hLhnMRzulD474Ku7c1WgllztmBOPNWvbxqD0FoujirK0n7NiQdk0
+         dQEJpHWwX158luWUAtuHRoBgZkPioGOcx5k0reVQbGcD170lhsZacVZIDFSFVBCxyd+B
+         JTLaao5ILNwWWtbWhgTWUtc+xxmu1cIoiNZc1UZ7+PEPv8ct9x9zRgTvcwR5qZs9dZDG
+         ssaQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795601846; x=1796206646;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=DwvC3/Uc/Q4JTglnun5WSsaA4EcGf3iK2OxV4jCGl18=;
+        b=V5Q/eEMw0G7nQaw48QmhZh0ipTc6r0K8o5L0PH/aJGlX2Q9CnUZi79CVnAKcDnRnPC
+         mm7MG+0dy55YgLlgD9uigLObsCAZE9iFeuAu6MU4mrBlSIY3evCF5sGSkpP14L8cNpn2
+         9SedoDFYh9Rc4/uQlPYifw/fV5XSXPth2yTFfQc1W7PVw6MmJseizFkJXx3+p8ju7TIq
+         lAjnX1u60vQWklyt1UDLU7OiYFH29ULCNf5ilqqnCvNCtI2z4R99sdYzFj2bPDLn25bn
+         nKRKnYuyjjX25twNF8DmeHxPDZQVav553oENB6eEeSRp4D+RuqIHvmJ2rB9Tpq2xQRQg
+         Yd/A==
+X-Forwarded-Encrypted: i=1; AL+hErGIcHIm+iu4ByV9cIZzBGt+0NbRHFHAXyqgkmjoq1h7xBlPHToAnu3sX117rOoCRQoo929qz/aBXts=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/YLgx+Qw+N9S4l3f93zOoLAwLPRQIRmU646zvlcWDxcmv952kd
+	XOWX/Pv09EkUZYCi69awofkeCkrPOSeKb/CTlUMuDKhXQaX7nUHZXs81
+X-Gm-Gg: AZFdTZfNhLRJwvqEbAZD/GPLCfUa/bPSk/aAZ+O/FmHvvIARk4Tml2H+eCJKFsaV9DA
+	Z315xSPjEVx/7s6o/5XGm56vb1vXAltsYwbauaexf8QTgxSiFgQbE4vTEv8qLhjUKrt3bQm6vR6
+	7Qdoff43t1snqOMXAs30EExgN1ulfVFTt8QkZYWTdrOp0xZvBDCpePPpLWMwFKhO5TpsrV8dFHF
+	CGamb+e6cBB8BQhGW/neZ2FUOctTU5yd5f3MylQUPRWja476RPT3f84Ow8CXbtfKN1Ck9yB4sX5
+	lkq+PBpyMrnN4wapMghySEaOdTqT7uEV6BF58RupRC2E+FM9NUroxsBkFT9K1nnQ1rbiGR3lzV3
+	XqTMBzwFCYJ5JCjsW4MKX5QUhrZNlYI3+ERFslLzeK2CS0eYrofmqJnC1QuW/BLicR8wntTsllC
+	FYBU0gavDGdci1iM5aWZD/U+uaUVEZjkZ0dsNHsoN7yMmdLSkF6wS2pQNSdCI2XTe9OrZTA87us
+	fMebwvuQnArGIf12P9cd4CMbqefLOSyZltH6QYAKYinOoDxBCIa+lwPhPAOFBD9HEUF2D/ReJ7s
+	4z7/X0G2AxJK4k+QNNvtXAfUbRYEbC7AD8kZrt/+B7zdVFDUYGRGWipqquQO+Mqle25iq6TBDUT
+	nVAD0FuQ4nd+VCwBxw7WtpS0jW5qoXMksMHyR9pWVSo+ZaxNJYRu7FpLkx5Zt5gIgkOhoIA==
+X-Received: by 2002:a05:600c:1d09:b0:4bb:6fd3:5ac0 with SMTP id 5b1f17b1804b1-4bb88816c7emr380804395e9.28.1795601846161;
+        Wed, 25 Nov 2026 02:17:26 -0800 (PST)
+Received: from DESKTOP-0KSTGNI.localdomain ([197.52.150.30])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-4ab69bf630esm33897093f8f.16.2026.11.25.02.17.25
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 25 Nov 2026 02:17:25 -0800 (PST)
+From: Temitope obabi <obabitemitope765@gmail.com>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: jlayton@kernel.org,
+	linux-nfs@vger.kernel.org,
+	rostedt@goodmis.org,
+	obabitemitope765@gmail.com
+Subject: [PATCH] NFSv4: Remove unused nfs4_rename tracepoint
+Date: Wed, 25 Nov 2026 12:16:00 +0200
+Message-ID: <20261125101601.2946-1-obabitemitope765@gmail.com>
+X-Mailer: git-send-email 2.53.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -87,36 +98,74 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
 
-On Wed, Nov 25, 2026 at 10:50:42AM +0100, David Hildenbrand (Arm) wrote:
-> When I looked into this issue, there were some problematic things.
-> 
-> We have some odd drivers that use FOLL_GET|FOLL_WRITE, but I am not too
-> concerned about them.
-> 
-> But are ways where unprivileged users can mess with  FOLL_GET|FOLL_WRITE
-> references to trigger this.
-> 
-> I think the two that stand out are:
-> 
-> 1) /proc/self/mem access using mem_rw() -> access_remote_vm()
-> 
-> User can write to a writable-mapped page-cache PTE. Then we can race with
-> removal of folio metadta, to then set the folio dirty afterwards.
-> 
-> I remember a good reason to not convert these paths in the past (we are not
-> performing DMA).
+The nfs4_rename tracepoint has had no callers since commit 33912be816d9
+("nfs: remove synchronous rename code") removed the last call to
+trace_nfs4_rename(). The event definition was left behind.
 
-I don't think that is a good reason.  For file system backed VMAs we
-really need the pin to be able to do someting sane, DMA or not.
+Remove this unused tracepoint.
 
-> 1) We fix all such cases now where unprivileged users can trigger this,
->    converting to FOLL_PIN.
+Fixes: 33912be816d9 ("nfs: remove synchronous rename code")
+Signed-off-by: Temitope obabi <obabitemitope765@gmail.com>
+---
+ fs/nfs/nfs4trace.h | 43 -------------------------------------------
+ 1 file changed, 43 deletions(-)
 
-We need to, if not for this series then for all the other outstanding
-issues with GUP writes.
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index b5c89eeef2bc..22365115b3d6 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -1199,49 +1199,6 @@ TRACE_EVENT(nfs4_lookupp,
+ 		)
+ );
+ 
+-TRACE_EVENT(nfs4_rename,
+-		TP_PROTO(
+-			const struct inode *olddir,
+-			const struct qstr *oldname,
+-			const struct inode *newdir,
+-			const struct qstr *newname,
+-			int error
+-		),
+-
+-		TP_ARGS(olddir, oldname, newdir, newname, error),
+-
+-		TP_STRUCT__entry(
+-			__field(dev_t, dev)
+-			__field(unsigned long, error)
+-			__field(u64, olddir)
+-			__string(oldname, oldname->name)
+-			__field(u64, newdir)
+-			__string(newname, newname->name)
+-		),
+-
+-		TP_fast_assign(
+-			__entry->dev = olddir->i_sb->s_dev;
+-			__entry->olddir = olddir->i_ino;
+-			__entry->newdir = newdir->i_ino;
+-			__entry->error = error < 0 ? -error : 0;
+-			__assign_str(oldname);
+-			__assign_str(newname);
+-		),
+-
+-		TP_printk(
+-			"error=%ld (%s) oldname=%02x:%02x:%llu/%s "
+-			"newname=%02x:%02x:%llu/%s",
+-			-__entry->error,
+-			show_nfs4_status(__entry->error),
+-			MAJOR(__entry->dev), MINOR(__entry->dev),
+-			(unsigned long long)__entry->olddir,
+-			__get_str(oldname),
+-			MAJOR(__entry->dev), MINOR(__entry->dev),
+-			(unsigned long long)__entry->newdir,
+-			__get_str(newname)
+-		)
+-);
+-
+ DECLARE_EVENT_CLASS(nfs4_inode_event,
+ 		TP_PROTO(
+ 			const struct inode *inode,
+-- 
+2.53.0
 
