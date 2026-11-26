@@ -1,71 +1,78 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.199
-ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795645130;
-	b=xPmNBoiTGcxMu1IPgufb8vsl4hqZ5Fe0Ql1ySr//JxmhBOnEbv9e6U+PUcXDjMVejl0T
-	 dh89+rFFqHV+sf8W74Mxu7iQB9WAUZHsVkVr9AgSj88HXo9kBFIX/CXjcZKhnLMlKI9ZT
-	 My2gkw6muZ6sOVmmsbcn4klP8qz96PbhLZ1GA4yGRbsXAQn9BE5Na7csjrb2OGnC0lRm6
-	 f2UvZwx77mDXvw+k/6SZEaxB1+vgvKLSLxbWKIbBfoiPF0cJEZiTOSdcUTk2jq4XelF2J
-	 8Rb/bNVgOevGV+oxIPmOtv8U57zgFyvnMBmH1LUtk5S32YddiOvz5fON0X7c2OqqXrg==
-ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795645130;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Received:Date:Mime-Version:X-Mailer:Message-ID:
-	 Subject:From:To:Cc:Content-Type;
-	bh=u2+GtbAzliCVLY4qt9XkKEEOn7y3no8jVdjlKGtflhg=;
-	b=HJgo769kO89iPkMWZUQqZstWZAdU72ufNdKkPNMiGj9MwO9IT/2u9L3/FjHm3TiT6hXO
-	 Y8lHFNhJwcbvP5dhtO3lmQuyxiW2c+EsL2Oa8CgyW+lqCoDnMfIsqG0Ni2bCgadVRmWDB
-	 9ZYmFf0w6765dQxQBvQZ5tHp5aesfYmTMAMSjBNOcOD5QaRqnzKugmbUs4dWwzQ0pX4Sy
-	 KGDE8ncHrqA6UkJpoInf9CPHPeybYwgLBT63nlwHjwxfFs7ykElyh479nrj1YEDNMj36n
-	 bR3Gzfz+zZJXoCZ9kYihtxTPIxqfh+nmOX30YJZkPhFiHLIGYi2y67G5k903B5NaqiQ==
-ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=google.com;
-	spf=pass smtp.mailfrom=flex--elkin.bounces.google.com;
-	dkim=pass header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=Q1yNJE5J;
-	arc=none smtp.remote-ip=74.125.82.199
-Received: from mail-dy1-f199.google.com (mail-dy1-f199.google.com [74.125.82.199])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
+	t=1795657534;
+	b=GD9OsO5oBn1XR6h9TBkEj9ohf2jOfk57tnzNUfC8pRZOdidQF2mDYcVA5VRjc8II0lAh
+	 nhH74CEFyULasL06+/YmaP5hqWCrqZAvUX+qIEI6Pu0xnN7AIV7lLi7xbe9Y/3gN7d3Du
+	 z5kY/RemSPVtrKkoY6I3aenj+KWLbqbrUT/4M0SE9IOQJFgpJT8ErfG1JxxCGpgjQzVB5
+	 EROm1IuKgi0/AfHLlArCecDk4ZIRTHzJhE7QyaTToi3LLlZkVMkEcYKaOkdzF7XObyNW5
+	 YX53VcOuY4y5FhMgwOucDyz9YJbTD36/OgCdWxW4BVYy8KfY1t5sbWQzYpZzS4XLvWQ==
+ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795657534;
+	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
+	 Content-Type:Message-Id:X-B4-Tracking:To:Cc:X-Mailer:
+	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
+	 X-Original-From:Reply-To:Content-Transfer-Encoding;
+	bh=mqtT1NBF6kkEhZlIdXJqIac3O6MblaqJpKIS6Lamh2Q=;
+	b=Liyfmw1pO973HjLLJVPKfMs1zAXsGbAE9HEFl0Qq4HaqqtgrvKMsHaAVWFY5dbBANLDw
+	 h3tDOCtkmsd8fctHdFObEwJaNYH5EyGQBMLo4wyhFwd468KjZ/UwhjzcjQBc6PA8P+AD1
+	 Lk51XnQNXSmIRkV9t+vYn2OWCCRZEUN/xdhsNQEWzw+GB9nKfjbKiqBcqtbokZzdWe8VI
+	 1D8nAAHAK73J2OXHqScoOfCgoOAwsVOQSDHH6m1NDymo5pGwljtpbsSH85JrkXL5Kb1bC
+	 au7vunet4zfS3JVDJpuKG+dwVEtfb4TTUVIAt4RHLU20Q+ETGAM5SMbkMsFHC4WceGw==
+ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gJs1PQRu;
+	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
+Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	(No client certificate requested)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 542CE606A321
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 01:45:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=gJs1PQRu
+Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
+ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
+	t=1795657534;
+	b=lLqmRm9bLQucy/qTKSK4YK8GO3fqJyhucT4U3BZdr1oI9R/YjzRf+9aeAZZOwrxSD2cG
+	 ggcNwWlfwcDg5wLOxV+MNdskDTlkd+MeQ479BI3jBsVBDh+xoDmakUiBxfhz5cPd6s9nA
+	 lvo2PGRJLhG7A88GVXc4xGBSZuw0R9JvK/oQJSZUQyd7ININ59NgN7cfWM878g7eNEsWX
+	 iL/0p0Rl+LZy9CDyeBy6U2u19YD/nR3R/onpxZBmi2IBWe2NBi4O4TAWObDmrJDISvZqK
+	 P7ZunkqDj3MMWWowAUClhAiZe2Zta8r4M5xkl9t119HKhNDkhyOxFFMpo/f5AlBtLKQ==
+ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
+	c=relaxed/relaxed; t=1795657534;
+	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
+	 Message-Id:X-B4-Tracking:To:Cc:X-Mailer:X-Developer-Signature:
+	 X-Developer-Key:X-Endpoint-Received:X-Original-From:Reply-To:
+	 Content-Transfer-Encoding;
+	bh=mqtT1NBF6kkEhZlIdXJqIac3O6MblaqJpKIS6Lamh2Q=;
+	b=UpqLL0A77a+bduUZ+knEYO1qFikGAQ+u0XqkZBg2xyAOnvO63mAmaqijRVb95EQvbZsO
+	 i9MxuyUe07wladpy9Kp4SFPh6n9dOEN1YjFMoVTpiKfr6XcPQzH3R9cq0il74TmHOaLOn
+	 scU++7CAf+Zu/PcVb6S5C5IEncNTxfS08MVdZYdhLk4CWRqNovm3qEXREsSSeJgyW/wfK
+	 mcm1Aura/ZBkvrP1ulB2Sjrt85pyC7wlwKC592lA2UZqEZWe5UUDcxwiYDyarT1WYWbBR
+	 1l1vVKLsUQKIaNZydIzXQTGuxypzFfX3BAoMsPasluzkpuciipN3PmretvCLUkEZN/A==
+ARC-Authentication-Results: i=1; smtp.kernel.org; 
+	arc=none smtp.remote-ip=100.80.115.77
+Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2FBE0606A326
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 22:18:49 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 2FBE0606A326
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--elkin.bounces.google.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.a=rsa-sha256 header.s=20260707 header.b=Q1yNJE5J
-Received: by mail-dy1-f199.google.com with SMTP id 5a478bee46e88-341eff9e381so9493800eec.1
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 14:18:49 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20260707; t=1795645129; x=1796249929; darn=vger.kernel.org;
-        h=content-type:cc:to:from:subject:message-id:mime-version:date:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=u2+GtbAzliCVLY4qt9XkKEEOn7y3no8jVdjlKGtflhg=;
-        b=Q1yNJE5Jql0gSdpOJaxee+sYbAdE4vnO9HYViUBT7dcZuqOUWfAGz6ujF6vvm059uG
-         bkOO8kYVpx4hvdU5anFdhMtCACp8MQ9Zbr0EqqWWUrkKFIgHlYfCush9fml4vs8IRqHq
-         F5gHH5hEiTsNDrCCP01faNxe2nOzkQEOMfQ+t3B4mKafRr4igC/56NH8lSjaG1Sx+fKf
-         HYI3vqyBaRzdEUzMvXNfBHsgty6iGew4dx8XnqN3hH6xcWtf5ZoFDUmksU5gN9fvnGUl
-         9iXb0GXcWrku0pEI0oX5BBEU8Q9QyKSASZ0xpicvvmik7RCSsOFIij8UgbCuwQxtkcF7
-         xJAg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795645129; x=1796249929;
-        h=content-type:cc:to:from:subject:message-id:mime-version:date
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=u2+GtbAzliCVLY4qt9XkKEEOn7y3no8jVdjlKGtflhg=;
-        b=VFKPnhN6zlwJkfs3YZ3fl5teDUpMXc+dCj5TsvtNvCfvD1svblz8DwrZvkQQ3301di
-         K9+jgNcgL9i12h+QUQXMW+5ORGQj8jMoUlEw1J8GdAYbJrrmcyq7e0GAV7UojF+SYqKw
-         lEu7CXDP/sRqM8COljSm/XTeD+JCalJPZEnBQ2rdZQw1OoNgVhmbdvB7v3bGcpFfBljT
-         N6NhYqpn5jF7q/sbdV4iVnn/ysB3gXpwE/Jkf0kwbGtmXAWrVUrgnWoG7AMmn1r9urQR
-         z0PiAjzfeaDXlb/XEh0Bz3xBsIrFtN8xZaEpS/R4pwfFI6kBWi4c0alVNo/ZNB1zqkiT
-         dOBw==
-X-Gm-Message-State: APuU4Z+bPCT246A/1V1crxZAN/mojfHHjArs6WnhX5n9dmE8lIdfe8MW
-	WGMnsAIjqUj6cZDsr0qmVB74N1J5og+NQqcG9x6oul9RRPpFvkKjoGREua4tePEkb9OKfH8+KGX
-	ZUw==
-X-Received: from dybla7.prod.google.com ([2002:a05:7301:1a87:b0:381:610e:404b])
- (user=elkin job=prod-delivery.src-stubby-dispatcher) by 2002:a05:693c:8948:20b0:386:b08e:4b7b
- with SMTP id 5a478bee46e88-386b08e4e93mr10610272eec.29.1795645128820; Wed, 25
- Nov 2026 14:18:48 -0800 (PST)
-Date: Wed, 25 Nov 2026 22:18:12 +0000
+	by smtp.kernel.org (Postfix) with ESMTPS id 9D5191F000CA;
+	Thu, 26 Nov 2026 01:45:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1795657534;
+	bh=mqtT1NBF6kkEhZlIdXJqIac3O6MblaqJpKIS6Lamh2Q=;
+	h=From:Date:Subject:To:Cc:Reply-To;
+	b=gJs1PQRuj0DWCnVT3zBdG/uvSU2Wh9S7ZDRtOkp6gfUAdbPq4xIJiAaupiBi+/J86
+	 +uGdH5qUATgbzJqv+cNnxPvTps82JdHXYqFehqOTd1jpbZqaGMRGF8sjukUQEj+Znm
+	 fmLPihu0w9Y7C19vc2XxtIgjeHPB8x6L1QakwKNP7loAryg5vOwMKeO9uhTPyhslao
+	 DznvZqBXHF8qSN1AVSN3dRiZ6BL06x5F6qciHNvdm6xvamPW4ooKkIsQhrgBArQh3a
+	 nwCR0jiQtZd6WgM3Wk8VoUjLMJAOGZfUIBBwEy/vn+0ghEwH5R1b6xK+jW1FzFkfSK
+	 6jlLr3MqKHdFQ==
+Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
+	by lkml.kernel.org (Postfix) with ESMTP id F2A7F4D14B;
+	Thu, 26 Nov 2026 01:45:23 +0000 (UTC)
+From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
+Date: Thu, 26 Nov 2026 10:45:24 +0900
+Subject: [PATCH] nfsd: stop a block layout at the maximum file size
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -74,72 +81,82 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
-Mime-Version: 1.0
-X-Mailer: git-send-email 2.56.1.839.g22a8290db9-goog
-Message-ID: <20261125221812.1423319-1-elkin@google.com>
-Subject: [PATCH] nfs/blocklayout: use div64_u64() for chunk_size in bl_map_stripe()
-From: Elkin Cruz <elkin@google.com>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	llvm@lists.linux.dev, irogers@google.com, Elkin Cruz <elkin@google.com>, 
-	stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Message-Id: <20261126-nfsd-block-maxbytes-v1-1-1869942523f9@samsung.com>
+X-B4-Tracking: v=1; b=H4sIADOPB2sC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDIzNDQyMz3by04hTdpJz85Gzd3MSKpMqS1GJdI9M0c3NT05QkY4NEJaDOgqL
+ UtMwKsKnRsbW1ADkIto9lAAAA
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Christoph Hellwig <hch@lst.de>, Sergey Bashirov <sergeybashirov@gmail.com>, 
+ linux-nfs@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
+X-Mailer: b4 0.13.0
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1795657523; l=1992;
+ i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
+ bh=NszbfrGTuRyaQObY/OY6rQ5VCgbAPzgwgkSXEuIR8lY=;
+ b=13UcwiZpfABYvEKSs3/K7KnvvOT5MTk6vV+4Z0WbZ8B4cz7NB7xvfKFFpkmO9q0mhNaPdoa9p
+ UqaUecEXjJoAi/bmHFbaJS1MrFk3+m0CEbkHINIXwqXKkGsmN6P5kl5
+X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
+ pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
+X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
+ auth_id=1122
+X-Original-From: Daejun Park <daejun7.park@samsung.com>
+Reply-To: daejun7.park@samsung.com
+Content-Transfer-Encoding: 7bit
 
-In bl_map_stripe(), dev->chunk_size is a 64-bit integer (u64) decoded
-from XDR. Passing dev->chunk_size to div_u64() silently truncates the
-divisor to 32 bits, causing division by zero if chunk_size is a multiple
-of 4 GiB and silent miscalculation for other values above U32_MAX.
+From: Daejun Park <daejun7.park@samsung.com>
 
-Use div64_u64() to preserve full 64-bit division by dev->chunk_size,
-and reject zero chunk_size or volumes_count upfront in bl_parse_stripe().
+nfsd4_block_proc_layoutget() calls ->map_blocks again for the rest of
+the range after each extent. If the range runs past the maximum file
+size, an extent from XFS reaches that size. The next call then asks
+for an offset at or past it. Since commit 29f3c1be4e55 ("xfs: clamp
+the pNFS layout range to the maximum file size"), xfs_fs_map_blocks()
+rejects such an offset with -EINVAL. The LAYOUTGET then fails with
+NFS4ERR_INVAL. pynfs GETLAYOUT1, a READ for NFS4_UINT64_MAX, fails
+this way.
 
-Fixes: 5466112f0935 ("pnfs/blocklayout: Fix a 64-bit division/remainder issue in bl_map_stripe")
-Fixes: 5c83746a0cf2 ("pnfs/blocklayout: in-kernel GETDEVICEINFO XDR parsing")
-Cc: stable@vger.kernel.org
-Signed-off-by: Elkin Cruz <elkin@google.com>
+Stop the loop at an extent that reaches the maximum file size.
+
+Fixes: cc6c40e09d7b ("NFSD/blocklayout: Support multiple extents per LAYOUTGET")
+Signed-off-by: Daejun Park <daejun7.park@samsung.com>
 ---
+pynfs GETLAYOUT1 and a READ for NFS4_UINT64_MAX at offset 4096 of a
+64 KiB file now get a layout up to 2^63. fstests generic/075, 091 and
+263 over the block and SCSI layouts, and the pynfs block tests over
+the block layout, give the same results as on nfsd-testing (generic/075
+fails with fsx errors on both).
 
-I am trying out new Clang static analysis checks for kernel bug
-classes, and they flagged this code as possibly buggy. The findings
-were triaged/fixed and commit descriptions were drafted with help of AI,
-then checked against linux-next (not runtime-tested on hardware).
+7.4 and 7.3.y (with the backport of 29f3c1be4e55) return the
+NFS4ERR_INVAL, so they may want this in stable. Older LTS kernels map
+one extent per LAYOUTGET.
+---
+ fs/nfsd/blocklayout.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Thanks,
-Elkin
-
-Note: Liu Chao posted a patch on 2026-10-16 checking !chunk_size
-(https://lore.kernel.org/r/20261016041139.2292455-1-liuc63@xiaopeng.com),
-which is not yet in linux-next. This patch additionally fixes the 64-bit
-truncation in div_u64() (which still divides by zero for non-zero multiples
-of 4 GiB) and zero volumes_count. Happy to rebase on top of that patch if
-it is already queued.
-
- fs/nfs/blocklayout/dev.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index 00462e6affb1..8c7af13d45d0 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -274,7 +274,7 @@ static bool bl_map_stripe(struct pnfs_block_dev *dev, u64 offset,
- 	u64 disk_chunk;
- 	u64 disk_offset;
+diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+index 23f2365787e..c8942191b5f 100644
+--- a/fs/nfsd/blocklayout.c
++++ b/fs/nfsd/blocklayout.c
+@@ -182,7 +182,9 @@ nfsd4_block_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
+ 		}
  
--	chunk = div_u64(offset, dev->chunk_size);
-+	chunk = div64_u64(offset, dev->chunk_size);
- 	disk_chunk = div_u64_rem(chunk, dev->nr_children, &chunk_idx);
- 
- 	if (chunk_idx >= dev->nr_children) {
-@@ -536,6 +536,9 @@ bl_parse_stripe(struct nfs_server *server, struct pnfs_block_dev *d,
- 	u64 len = 0;
- 	int ret, i;
- 
-+	if (!v->stripe.chunk_size || !v->stripe.volumes_count)
-+		return -EINVAL;
-+
- 	d->children = kzalloc_objs(struct pnfs_block_dev,
- 				   v->stripe.volumes_count, gfp_mask);
- 	if (!d->children)
+ 		bex_length = bex->len - (offset - bex->foff);
+-		if (bex_length >= length) {
++		/* There is nothing to map past the maximum file size. */
++		if (bex_length >= length ||
++		    bex->foff + bex->len >= inode->i_sb->s_maxbytes) {
+ 			bl->nr_extents = i + 1;
+ 			break;
+ 		}
+
+---
+base-commit: 6f174a0eca19e69a14c34b0ed56b60d484f22fd6
+change-id: 20261126-nfsd-block-maxbytes-25f7755db30a
+
+Best regards,
 -- 
-2.56.1.839.g22a8290db9-goog
+Daejun Park <daejun7.park@samsung.com>
+
 
