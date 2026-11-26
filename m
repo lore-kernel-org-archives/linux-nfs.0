@@ -1,79 +1,138 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795657957;
-	b=IGI7/vsQZ/7dNMVXypc2k2mFboxDN1d+1SxeJkcztBIzuN1uh8S825GjfI7mhAhRa3DE
-	 VJ/Ra1c3X8h65r1X+DOkbe0F2wUdf8lj957RnNcDoJkvI9hvbOCFPwXQPZDkHmzfRGzcB
-	 KiT03a6j/VLANS2swyxNtgasIidteH7l/kSmvqIZ/XL1Gg+qG1glfXjf1oBsl4Hqiz2tF
-	 kN9X7rxJs9ikZKxJHqZJxM1xariRH6+1EfLFCCd71z8WqSUo8jX4eDQ+nuM2m/uIpWuC5
-	 vqx9zrjJjqa22hDxl+pTcsWFEgmDPYc2Ybl6/xLKUWz93uki2Gh56SFwnUCUyiNqNMg==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795657957;
-	h=Received:DKIM-Signature:Received:From:Date:Subject:MIME-Version:
-	 Content-Type:Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=dWCjJZ3Shq53Quzo8dulZttUT1lx1SSneksXpJWVxRE=;
-	b=x8/4iiu7DW1OogxE2G8QE+RrMrLTabNWBj0LNBXibEzRVmviTP+7wUyZxjhQGR09v0G7
-	 R726kL8FbAquJYOMRav0xgiIaT/QOSjtm0VHQ9OLT/Ip3Xmivkh5iv6OqbSd5AgcPY4RC
-	 OTuZGQPyUOZWua0eOo9IMp2PAPLySzIozU+Zh0Do3kIrFbzq6MOp9zUNC4WyP3FIKQYsj
-	 2xI0Baedk6cCabZarooc0N9QVCb+WPJft7F3SRnqHJqsTVFzYQ3p7X9fmn1TJH4TYugwU
-	 YdgVizE51Abq1AztS5gPa7y55Ox0Ss15DQ6+l67Kaice7yYpQFZi//Iw9npcASzOoDA==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=loPkFd9M;
-	arc=pass header.oldest-pass=0 smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 642E5606A338;
-	Thu, 26 Nov 2026 01:52:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=loPkFd9M
-Authentication-Results: smtp.kernel.org; arc=none smtp.remote-ip=100.80.115.77
-ARC-Seal: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256; cv=none;
-	t=1795657956;
-	b=vrpWpzP6TsHmPcqr92UOZrMwhO4sVvLbDnF7R9GEVpBPncsdVIHSSguGfEovf4D0Fydx
-	 K6umM+/FHDbvREveh04+tjXZZkXusoZOXiPl02kMqQmSwXfs0QxWblN9Te/QVAQXPYMO0
-	 NW3MMB2UozZh6GhDuEVv5hu3d1BlOb+TQ0MQO5AJCgb6mAABwkZzyPdHR4a38B29cRCok
-	 AGZAHuAqzuQ92AIB6Ski5HmiDr1vUOyewwywiQcNOULxf8NYwphDa786rsdhw5UauEWl9
-	 9Ss5mJeQs+vOZga3Y8Ncj3Q46qs3dUHTRRCM+udCGmPNnIt1DEwg1R5SuvwlGrTol8Q==
-ARC-Message-Signature: i=1; d=kernel.org; s=arc20260519; a=rsa-sha256;
-	c=relaxed/relaxed; t=1795657956;
-	h=DKIM-Signature:Received:From:Date:Subject:MIME-Version:Content-Type:
-	 Message-Id:References:In-Reply-To:To:Cc:X-Mailer:
-	 X-Developer-Signature:X-Developer-Key:X-Endpoint-Received:
-	 X-Original-From:Reply-To:Content-Transfer-Encoding;
-	bh=dWCjJZ3Shq53Quzo8dulZttUT1lx1SSneksXpJWVxRE=;
-	b=krmfTUTl/2w7FypeKDUFZ4Dw3vDzAVEEDagn+23Lme0sjm+0i4l/gAePVRC+lIoi59ne
-	 EtpvC+PzDvH86aQJBrT2FLstUl6mCsXP7Uam3L/B7dS135/HqpENvx7D8Lvd3KD5ZLPRF
-	 5dQYwUQjb0G65zQGhN1vEjyY4ox7Bl1T3oKc8a0oAXdtHFw5RYBKH28pOceIkQ002gin4
-	 KaQNPhuLvTl5gpdb6rgMn3stBD+J6vobhbAaSMY1BjGlZP/EDeJOqEa5G0+JxEPjFFucP
-	 NJz2+ySEvL8sVfiYDaTsI4LJEwQ6g88Ylr3dwgb/Wfucw7hqG7L+IunceLQ2eZx+f3A==
-ARC-Authentication-Results: i=1; smtp.kernel.org; 
-	arc=none smtp.remote-ip=100.80.115.77
-Received: from lkml.kernel.org (nexus.subspace.kernel.org [100.80.115.77])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=148.163.135.74
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795659929;
+	b=gh57nrH6zmWalwTDyZcWSgub/3uzDTOXGOdBx8bldOWo5CJFMESq0NpmCi/ikTPq8frK
+	 13hCWKWpv7Bkt3HPYMbXieZUMrHuAtMaGiiByjrNaG2r0QV2hV3zeozDzUak2VBgJBdln
+	 7y7/NNMIZxjhwCjiTcflRUR1ygr2WWny7DhCqQjwkZeULuMgYjX61pxOQ5fkBc7E6DNYz
+	 4wF+A5x5Z+SbkyjhTyobM1EUAJZcv89OfefVczeo1MTn0GS1guxR1lqnS23hqWXcu/Wby
+	 b7+FHRLzVlSQrWTFieM+pAWvO2cBi+XC5rDUSg+ADoUjie9+RIFJFDiLsW58NQt1o9A==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795659929;
+	h=DMARC-Filter:Received:DKIM-Signature:Received:Received:
+	 DKIM-Signature:X-Google-DKIM-Signature:X-Forwarded-Encrypted:
+	 X-Gm-Message-State:X-Gm-Gg:X-Received:X-Received:Received:From:To:Cc:
+	 Subject:Date:Message-Id:X-Mailer:In-Reply-To:References:MIME-Version:
+	 Content-Type:Content-Transfer-Encoding:X-Authority-Analysis:
+	 X-Proofpoint-Spam-Details-Enc:X-Proofpoint-ORIG-GUID:
+	 X-Proofpoint-GUID:X-Proofpoint-Spam-Info:X-Proofpoint-Virus-Version:
+	 X-Proofpoint-Spam-Details;
+	bh=bq5K8Z87IavuvaaKNiqMth7LGJ8zdX5mtp1Bwcp67Uc=;
+	b=1MJTuEfKedCIFn/p+HPQWaPrIvYOZNm5rQAYPK/FLhprpP0UrO/I/0M52TMvHVaq6ym8
+	 8cuWLRQon5yyn3mvqqRhnNueME/E1fqcNA/IhJ4uTeax8WrrJ+ij0xN0ywHYJ8VOaVN6A
+	 wlDRT5H91t7GtNJ2E9vsauRQEw7HEEm6+Gsb2OtJ9QcZD/5dTFkV9Y9baApjs5sayZj/Z
+	 16rWOYAVdd0j1FZhTkCIOpn1tTwR4zcWAIJFrn1J4NIXehEHmfH+gmSHOEJOa+/sxZ3cU
+	 ru+00xgONo/KDTVIsSBbq18bq78GRNQzcfI84mT67Er75ew1F6jO9gFWWq6GuA1cG1w==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=columbia.edu;
+	spf=pass smtp.mailfrom=columbia.edu;
+	dkim=pass header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=pps01 header.b=azAUGPgc;
+	dkim=pass header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=lionmail header.b=Ki+KHe6M;
+	arc=none smtp.remote-ip=148.163.135.74
+Received: from mx0a-00364e01.pphosted.com (mx0a-00364e01.pphosted.com [148.163.135.74])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.kernel.org (Postfix) with ESMTPS id AFDF21F000CF;
-	Thu, 26 Nov 2026 01:52:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795657956;
-	bh=dWCjJZ3Shq53Quzo8dulZttUT1lx1SSneksXpJWVxRE=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To;
-	b=loPkFd9MpoJQGhmWflpxjTCQ6qbNvI7Fd2Lq6jcLsDVc49lCljjPdE8tlOKncT/28
-	 W7KbTFkqXcoLf5B5Q3SpcHgnQ8tIYElHLUd1t+lM/mHENTOS9VN+NDcY4//MUH4c3m
-	 9Dn5LAiWoV413gyM1Hk3dp33JHXwlk1vyr77cn6ksNNM5JMVy7gV3OGSr1d/PZP6fI
-	 P6jIVMyBAkE8+AgwkIVZRL2seSlrG24gxJ0sc82F2KVrCdeoP4C6+XJAYeGTNJrx2y
-	 S4toDpFhTWtb4SaORaOqXXAr+Znz8ukyoNuOQUazp09jHxw7A6+yAGuus/DhEqyrQv
-	 Ba9jWL8U3TpMw==
-Received: from nexus.subspace.kernel.org (localhost [IPv6:::1])
-	by lkml.kernel.org (Postfix) with ESMTP id 366CB4D171;
-	Thu, 26 Nov 2026 01:52:25 +0000 (UTC)
-From: Daejun Park via B4 Relay <devnull+daejun7.park.samsung.com@kernel.org>
-Date: Thu, 26 Nov 2026 10:52:25 +0900
-Subject: [PATCH v2 1/2] xfs: factor the mapping of one pNFS extent out of
- xfs_fs_map_blocks()
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A76F606A32C
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 02:25:29 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8A76F606A32C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=columbia.edu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=columbia.edu
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=pps01 header.b=azAUGPgc;
+	dkim=pass (2048-bit key) header.d=columbia.edu header.i=@columbia.edu header.a=rsa-sha256 header.s=lionmail header.b=Ki+KHe6M
+Received: from pps.filterd (m0167070.ppops.net [127.0.0.1])
+	by mx0a-00364e01.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 6AQ2HUfk1883501
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 21:25:22 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=columbia.edu; h=
+	cc:content-transfer-encoding:content-type:date:from:in-reply-to
+	:message-id:mime-version:references:subject:to; s=pps01; bh=bq5K
+	8Z87IavuvaaKNiqMth7LGJ8zdX5mtp1Bwcp67Uc=; b=azAUGPgcRU1jSI5UcEdk
+	lX/Oam7hV0qSGuaoRoZ76iTO+yUv1p2TSRxSWqw/GV116U6mifykV1LTK1RDVF4I
+	iKOPSY3PSz8vfny7Ha9obUkbMW6zmIsYItSxjLycctsWrDJ2rP2Qa4yaT+QQ9KqU
+	+4dz298p9gibceQ5lCgFjd5gQzpe1qreD1yq7bVWWajVHsF3DL8u2w+MyeG6JCax
+	6uARcxrpY97cBRd9pD/9MBjtHydvImyxeSEwdpM3USUiXBCQARMKKoJ4GgI1FvmR
+	xUwASOZFEFsMGQAO+s7arILwa8QlmuqSFhjk/ZCiUMSZ1ZhwWwfuQrgDVwgAtLqi
+	3w==
+Received: from mail-qk1-f200.google.com (mail-qk1-f200.google.com [209.85.222.200])
+	by mx0a-00364e01.pphosted.com (PPS) with ESMTPS id 4j68hh1193-1
+	(version=TLSv1.3 cipher=TLS_AES_128_GCM_SHA256 bits=128 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 21:25:22 -0500 (EST)
+Received: by mail-qk1-f200.google.com with SMTP id af79cd13be357-93f5844e383so983151985a.1
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Nov 2026 18:25:22 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=columbia.edu; s=lionmail; t=1795659921; x=1796264721; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=bq5K8Z87IavuvaaKNiqMth7LGJ8zdX5mtp1Bwcp67Uc=;
+        b=Ki+KHe6MDEgfProqRIGk0un22f7ITJdGDVR8RFLPbBwg0ny1Bmym8YPhpeZ5n8UlJd
+         uG7LtT0XBxXgDmmNj5VuE8pkpIlTsmrOYMww30ypNhH3jQGBmDe/EyrlIGJ7jfYGlEL4
+         7qYCGuERLyRh2UNAj2kvUeVApVok7C9JRl8404UQg3FXcsPs+CyLH4KFqOWFLRL3Ll7q
+         ARh/AYUGKeJJuaXrpWt34OkALRiyTeYrlsd84E/N4Fe1r6aiLKwda5YULwMZWtlFQtI/
+         bCN5U4LkQ4Tf7erCDpoVEO1+B3yiqWYQ7ntypEgKTJuWN2IyZs1VtR/yv8W48b1FM+wm
+         eTqw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795659921; x=1796264721;
+        h=content-transfer-encoding:content-type:mime-version:references
+         :in-reply-to:message-id:date:subject:cc:to:from:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=bq5K8Z87IavuvaaKNiqMth7LGJ8zdX5mtp1Bwcp67Uc=;
+        b=QzE+u8zaXvLIgxfd0qrrr5PfOdNVX4Pgi932R86cuCE2LAGXcz6edRilb9sKgQqAqy
+         W4N2UAhsNKrTdQtPxWedTadxxgAE97GOIBK3lc06xgdKDmNKKN+9vsEECKF/GFIVYWiu
+         56QqGbAn525zj16cpwJ1ypE+BpDN4NAuwshINirUEDROCE3a210ECeJXRp4/WZfDIHcW
+         Oeyxjb14POvlQHQ0q7UyNIFOVtM4UmfeKLTXST1j88uqzlY/Hfmoo8DrqvfHZIugAgm1
+         uV7csb/6vqhqyBAmH9TuF6wwdtfoAN/uDkNdoge82HYm+kkSdbKErygfPQ89RjynPFZl
+         5QwQ==
+X-Forwarded-Encrypted: i=1; AL+hErF8tiis9/f2P4w7cZahi4aVGPjStNet6MIxkUh9j+0oEQMt/wbdV1Bb3i0+Zi3nO2G6Th48UptoUa8=@vger.kernel.org
+X-Gm-Message-State: APuU4Z8rGm6tbUZyw1rirYltRb97up10MAb8WggqC6O8I5C2wFtIyDUU
+	hoRODGIyKS6x8NR4pm2b14ST9Q4vqQS4CbkDIt6N14GcbegILRFxAHcRSFNOt6XaBupZC0f4cOv
+	I4gvWonxWQ7FNbuvLqj/z4cX6y2YEZPnRfk4rjbrlMBviFUrOEWMaQB3NsA==
+X-Gm-Gg: AZFdTZdgj8KNi/4ltlYrO65+mBlLmzDaZgbQj+kpgJ/cFCTq5KgfoxxGaN8MWv9jI3D
+	+xh+RQO6BosPH6iQj/S6bHx61j+q3kiRTjtF3rOEU9oWq6ltflIj+ZEZdTiMbRCMGJVYeiW4upb
+	+vXu/AwBENXeqrkKYgpeigR0MPen6FZnVLT0I32PGwHr2Z5dEtgRmkyRWv49p2Sh3q0rugx+JLE
+	nNQRphsIg4Kh+oc0o4LOAGpAtWHBg4UZMFzqq5dNrZidjFKhLdrUB4grDk9UpBJGzV8+Mm3TfUC
+	r6PTd77HCPFxzvG9fJ82txoWkDqy84VrB2GI0MiLbQfWxI0Vnd7lDlFGzq0/DfIF5Bt//egtWZh
+	LuBVgY8UbITgMuC6zoNWXfeCZA6IAcHu3CsXQSYpvgwLYjcnZBxPbwWmuzy4CQS504ySHi+tC3t
+	5kvzfwop4cNnlLbU9q9JFwcqLclqTR43s=
+X-Received: by 2002:a05:620a:1b8c:b0:949:7920:9d09 with SMTP id af79cd13be357-949ba99fdd3mr3499404285a.35.1795659921396;
+        Wed, 25 Nov 2026 18:25:21 -0800 (PST)
+X-Received: by 2002:a05:620a:1b8c:b0:949:7920:9d09 with SMTP id af79cd13be357-949ba99fdd3mr3499401185a.35.1795659920987;
+        Wed, 25 Nov 2026 18:25:20 -0800 (PST)
+Received: from localhost.localdomain (dyn-160-39-33-242.dyn.columbia.edu. [160.39.33.242])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-949bb34ae74sm1452063385a.8.2026.11.25.18.25.19
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 25 Nov 2026 18:25:20 -0800 (PST)
+From: Tal Zussman <tz2294@columbia.edu>
+To: "David Hildenbrand (Arm)" <david@kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Cc: Miklos Szeredi <miklos@szeredi.hu>, fuse-devel@lists.linux.dev,
+        Pedro Falcato <pfalcato@suse.de>, John Hubbard <jhubbard@nvidia.com>,
+        Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+        Zi Yan <ziy@nvidia.com>,
+        "Matthew Wilcox (Oracle)" <willy@infradead.org>,
+        Lorenzo Stoakes <ljs@kernel.org>, Peter Xu <peterx@redhat.com>,
+        Johannes Weiner <hannes@cmpxchg.org>, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "Liam R. Howlett" <liam@infradead.org>,
+        Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>,
+        Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>,
+        Baolin Wang <baolin.wang@linux.alibaba.com>,
+        Nico Pache <nico.pache@linux.dev>, Ryan Roberts <ryan.roberts@arm.com>,
+        Dev Jain <dev.jain@arm.com>, Barry Song <baohua@kernel.org>,
+        Lance Yang <lance.yang@linux.dev>, Usama Arif <usama.arif@linux.dev>,
+        Kiryl Shutsemau <kas@kernel.org>, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org, Kairui Song <kasong@tencent.com>,
+        Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>,
+        Axel Rasmussen <axelrasmussen@google.com>,
+        Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>,
+        Baoquan He <baoquan.he@linux.dev>, Michal Hocko <mhocko@kernel.org>,
+        linux-fsdevel@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH RFC 0/5] mm: GUP dirty + ->release_folio() fixes
+Date: Wed, 25 Nov 2026 21:24:18 -0500
+Message-Id: <20261126022418.3620783-1-tz2294@columbia.edu>
+X-Mailer: git-send-email 2.39.5
+In-Reply-To: <d088452f-1118-4a06-bc16-1942e523e0fc@kernel.org>
+References: <20261119-gup-dirty-what-v1-0-236d69f25c24@suse.de> <4f096d70-6f94-4148-8f47-242b8551e5f9@nvidia.com> <awWNyDZT2SVu2Zp9@pedro-suse.tail5790ac.ts.net> <55114986-0ba1-4a80-8498-bf674d64e01b@kernel.org> <away88BuU8ibcTA5@infradead.org> <d088452f-1118-4a06-bc16-1942e523e0fc@kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -83,217 +142,59 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Message-Id: <20261126-xfs-nfsd-map-blocks-v2-1-6d85b1388739@samsung.com>
-References: <20261126-xfs-nfsd-map-blocks-v2-0-6d85b1388739@samsung.com>
-In-Reply-To: <20261126-xfs-nfsd-map-blocks-v2-0-6d85b1388739@samsung.com>
-To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- Christoph Hellwig <hch@lst.de>, Carlos Maiolino <cem@kernel.org>, 
- Amir Goldstein <amir73il@gmail.com>
-Cc: "Darrick J. Wong" <djwong@kernel.org>, Dave Chinner <dgc@kernel.org>, 
- Sergey Bashirov <sergeybashirov@gmail.com>, 
- Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org, 
- linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Daejun Park <daejun7.park@samsung.com>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1795657944; l=6438;
- i=daejun7.park@samsung.com; s=20261006; h=from:subject:message-id;
- bh=LbAnNAneOGzHgP5YEL5LZU8hkVcZI2YdvmZ1qH3H1no=;
- b=fBQ5f75Kco5k8yOS0YcINvvUfjxQyYlVTcUXHnd38mo0nX1bX2Vn8K7UQZ7Zm94MifUu4AkMp
- nl3ccCSYuNXCl3GtNNBd9y2d7AKR48nauQpBX43Hf793XcNmQaS2jBr
-X-Developer-Key: i=daejun7.park@samsung.com; a=ed25519;
- pk=4yUfDqGRZTIj0Ik43z1GoMZRWCNm/rgX6uJuM9dtNIg=
-X-Endpoint-Received: by B4 Relay for daejun7.park@samsung.com/20261006 with
- auth_id=1122
-X-Original-From: Daejun Park <daejun7.park@samsung.com>
-Reply-To: daejun7.park@samsung.com
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-Authority-Analysis: v=2.4 cv=fuRJ914f c=1 sm=1 tr=0 ts=6b079892 cx=c_pps
+ a=hnmNkyzTK/kJ09Xio7VxxA==:117 a=GaPK54s0Se3oFqK5NkZy0g==:17
+ a=IkcTkHD0fZMA:10 a=zJRp6_cAMcgA:10 a=x7bEGLp0ZPQA:10 a=A0y_DWxS2BwA:10
+ a=VkNPw1HP01LnGYTKEx00:22 a=Da8U98TiO7q1upZEImrf:22 a=svvvyxlR1OQQkelhaPoB:22
+ a=VwQbUJbxAAAA:8 a=X-ZpGw2H3ZcMOUJhEmsA:9 a=QEXdDO2ut3YA:10
+ a=PEH46H7Ffwr30OY-TuGO:22
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYxMTI2MDAwOCBTYWx0ZWRfXxg7ohcLXnvKw
+ mvLcX3qd/65vt7QHtYpIe87vDXqefxVBTAWOQROdQr8bxXEdAvwXvTP4nTdnQoZMlPC1m+p0Tki
+ 0ivdtcSsZO4bv9cm0Dzbubu32xMeIqbHjd04XUgbhrUqyhXrYOj/mtzEgoloOhnqzz+WxxcjsL1
+ vD2+knYBd/GQt9sYYBE+f44j/SZiqzHfCsqgrJgn2ZJiEriiuXDV7DtswvfeUcepE2Ob2npS5bT
+ /GfDdujW2SLNeCFvlKgubRTmarZ+/wF8zhZ+/nHdiP2h4wE38+i+ru3DQGrQu6ra22gyNrQgz6u
+ jIUzYE2h1e61hxPqJxyJ8vpFREsp7Spd1cHfqY/HDvGDLBBT5OjC7U1QM21XpEFwxZ7oBEj0SBa
+ 4wJWeEYS/t3ShFTqKrnMYqYovD1DpsnRyLu13vX3LeJyO5bdLSdRQE2Vs5pWlPhFpswo5wwshRl
+ 2mFDDSwFHeCh0usI2Dg==
+X-Proofpoint-ORIG-GUID: cvby04fjIf3CSRN3M1PHjs12UJSBPETT
+X-Proofpoint-GUID: cvby04fjIf3CSRN3M1PHjs12UJSBPETT
+X-Proofpoint-Spam-Info: AW1haW4tMjYxMTI2MDAwOCBTYWx0ZWRfX65jYvB7abxZP
+ 5aroWTKAWgYmBbYkLEXLPW6QONEcrYZoEk51OZ8vZkYdQtBWsrxgIzs+kgY8xgoTqDfjebapL2k
+ hdxS2RGxr42rOb+3rnSd03W1e7ig/hMEG3hhIR08oqhTJ8HhjpHE
+X-Proofpoint-Virus-Version: vendor=nai engine=6900 definitions=11977
+ signatures=596817
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0
+ phishscore=0 lowpriorityscore=10 suspectscore=0 bulkscore=10 malwarescore=0
+ impostorscore=10 adultscore=0 spamscore=0 clxscore=1011 priorityscore=1501
+ classifier=typeunknown authscore=0 authtc= authcc= route=outbound adjust=0
+ reason=mlx scancount=1 engine=8.22.0-2611040001 definitions=main-2611260008
 
-From: Daejun Park <daejun7.park@samsung.com>
++CC Miklos
 
-Move the part of xfs_fs_map_blocks() that maps one extent of a pNFS
-layout into a new helper, xfs_fs_map_extent(). The helper also
-allocates the extent first if it is a hole in a write layout. The next
-patch calls it once for each extent of a layout.
+On 11/25/26 5:19 AM, David Hildenbrand (Arm) wrote:
+> On 11/25/26 11:05, Christoph Hellwig wrote:
+>> On Wed, Nov 25, 2026 at 10:50:42AM +0100, David Hildenbrand (Arm) wrote:
+>>> 1) We fix all such cases now where unprivileged users can trigger this,
+>>>    converting to FOLL_PIN.
+>>
+>> We need to, if not for this series then for all the other outstanding
+>> issues with GUP writes.
+>
+> Cool, and I agree (that's why I placed it at 1).
+>
+> But who is "we"? Because I recall that "we" wanted to do that a while ago.
+>
+> (I won't be "we" ;) Pedro, can you take a look? I'm afraid the fuse thing might
+> be the harder nut to crack)
 
-No change in behavior.
+Coincidentally, I sent out a patch to convert fuse_copy_fill() to use
+iov_iter_extract_pages() a few days ago in order to remove its usage of
+set_page_dirty_lock() and address a different race. I think it should
+address the fuse side of this issue as well.
 
-Signed-off-by: Daejun Park <daejun7.park@samsung.com>
----
- fs/xfs/xfs_pnfs.c | 137 +++++++++++++++++++++++++++++++-----------------------
- 1 file changed, 80 insertions(+), 57 deletions(-)
+https://lore.kernel.org/all/20261120-fuse-copy-fill-pin-v1-1-72a0d888f140@columbia.edu/
 
-diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
-index 4a6c1a399d7..39d1c5271a7 100644
---- a/fs/xfs/xfs_pnfs.c
-+++ b/fs/xfs/xfs_pnfs.c
-@@ -122,6 +122,74 @@ xfs_fs_map_update_inode(
- 	return xfs_log_force_inode(ip, false, NULL);
- }
- 
-+/*
-+ * Map the extent of a pNFS layout that starts at @offset_fsb, allocating it
-+ * first if it is a hole in a write layout, and set *@update_inode if it
-+ * allocated. The mapping may end before or after @end. Called with the iolock
-+ * and the invalidate lock held.
-+ */
-+static int
-+xfs_fs_map_extent(
-+	struct xfs_inode	*ip,
-+	xfs_fileoff_t		offset_fsb,
-+	loff_t			end,
-+	bool			write,
-+	struct xfs_bmbt_irec	*imap,
-+	u64			*seq,
-+	bool			*update_inode)
-+{
-+	struct xfs_mount	*mp = ip->i_mount;
-+	xfs_fileoff_t		end_fsb = XFS_B_TO_FSB(mp, (xfs_ufsize_t)end);
-+	int			nimaps = 1;
-+	uint			lock_flags;
-+	int			error;
-+
-+	lock_flags = xfs_ilock_data_map_shared(ip);
-+	/*
-+	 * Map to the end of the extent that covers the start of the range,
-+	 * so that a client doing I/O in pieces gets a layout it can use for
-+	 * the pieces that follow.  Never map anything before the start of
-+	 * the range: nfsd calls in here once per extent of a LAYOUTGET, for
-+	 * the range that is left after the previous extent, and the mapping
-+	 * can change in between, so a mapping that reaches back can overlap
-+	 * one already in the layout.  Don't extend the mapping past EOF
-+	 * beyond the range either: xfs_free_eofblocks() can free blocks past
-+	 * EOF without breaking the layout.
-+	 */
-+	error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
-+				imap, &nimaps, XFS_BMAPI_ENTIRE);
-+	if (error) {
-+		xfs_iunlock(ip, lock_flags);
-+		return error;
-+	}
-+	if (nimaps)
-+		xfs_trim_extent(imap, offset_fsb,
-+				max_t(xfs_fileoff_t, end_fsb,
-+				      XFS_B_TO_FSB(mp, XFS_ISIZE(ip))) -
-+				offset_fsb);
-+	*seq = xfs_iomap_inode_sequence(ip, 0);
-+
-+	ASSERT(!nimaps || imap->br_startblock != DELAYSTARTBLOCK);
-+
-+	if (!write || (nimaps && imap->br_startblock != HOLESTARTBLOCK)) {
-+		xfs_iunlock(ip, lock_flags);
-+		return 0;
-+	}
-+
-+	if (end > XFS_ISIZE(ip))
-+		end_fsb = xfs_iomap_eof_align_last_fsb(ip, end_fsb);
-+	else if (nimaps)
-+		end_fsb = min(end_fsb, imap->br_startoff + imap->br_blockcount);
-+	xfs_iunlock(ip, lock_flags);
-+
-+	error = xfs_iomap_write_direct(ip, offset_fsb, end_fsb - offset_fsb, 0,
-+			imap, seq);
-+	if (error)
-+		return error;
-+	*update_inode = true;
-+	return 0;
-+}
-+
- /*
-  * Get a layout for the pNFS client.
-  */
-@@ -137,10 +205,7 @@ xfs_fs_map_blocks(
- 	struct xfs_inode	*ip = XFS_I(inode);
- 	struct xfs_mount	*mp = ip->i_mount;
- 	struct xfs_bmbt_irec	imap;
--	xfs_fileoff_t		offset_fsb, end_fsb;
- 	loff_t			limit;
--	int			nimaps = 1;
--	uint			lock_flags;
- 	int			error = 0;
- 	u64			seq;
- 	bool			update_inode = false;
-@@ -205,64 +270,22 @@ xfs_fs_map_blocks(
- 				round_up(XFS_ISIZE(ip), mp->m_sb.sb_blocksize),
- 				LLONG_MAX, NULL);
- 
--	end_fsb = XFS_B_TO_FSB(mp, (xfs_ufsize_t)offset + length);
--	offset_fsb = XFS_B_TO_FSBT(mp, offset);
-+	error = xfs_fs_map_extent(ip, XFS_B_TO_FSBT(mp, offset),
-+			offset + length, write, &imap, &seq, &update_inode);
-+	if (error)
-+		goto out_unlock;
- 
--	lock_flags = xfs_ilock_data_map_shared(ip);
- 	/*
--	 * Map to the end of the extent that covers the start of the range,
--	 * so that a client doing I/O in pieces gets a layout it can use for
--	 * the pieces that follow.  Never map anything before the start of
--	 * the range: nfsd calls in here once per extent of a LAYOUTGET, for
--	 * the range that is left after the previous extent, and the mapping
--	 * can change in between, so a mapping that reaches back can overlap
--	 * one already in the layout.  Don't extend the mapping past EOF
--	 * beyond the range either: xfs_free_eofblocks() can free blocks past
--	 * EOF without breaking the layout.
-+	 * Blocks past EOF that were allocated for buffered writes, such as
-+	 * speculative preallocation, can be freed by xfs_free_eofblocks()
-+	 * without breaking the layout unless the inode is marked as
-+	 * preallocated. Mark it before handing them out for writing, as for
-+	 * blocks allocated above.
- 	 */
--	error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
--				&imap, &nimaps, XFS_BMAPI_ENTIRE);
--	if (error) {
--		xfs_iunlock(ip, lock_flags);
--		goto out_unlock;
--	}
--	if (nimaps)
--		xfs_trim_extent(&imap, offset_fsb,
--				max_t(xfs_fileoff_t, end_fsb,
--				      XFS_B_TO_FSB(mp, XFS_ISIZE(ip))) -
--				offset_fsb);
--	seq = xfs_iomap_inode_sequence(ip, 0);
--
--	ASSERT(!nimaps || imap.br_startblock != DELAYSTARTBLOCK);
--
--	if (write && (!nimaps || imap.br_startblock == HOLESTARTBLOCK)) {
--		if (offset + length > XFS_ISIZE(ip))
--			end_fsb = xfs_iomap_eof_align_last_fsb(ip, end_fsb);
--		else if (nimaps && imap.br_startblock == HOLESTARTBLOCK)
--			end_fsb = min(end_fsb, imap.br_startoff +
--					       imap.br_blockcount);
--		xfs_iunlock(ip, lock_flags);
--
--		error = xfs_iomap_write_direct(ip, offset_fsb,
--				end_fsb - offset_fsb, 0, &imap, &seq);
--		if (error)
--			goto out_unlock;
-+	if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
-+	    imap.br_startoff + imap.br_blockcount >
-+	    XFS_B_TO_FSB(mp, XFS_ISIZE(ip)))
- 		update_inode = true;
--	} else {
--		xfs_iunlock(ip, lock_flags);
--
--		/*
--		 * Blocks past EOF that were allocated for buffered writes, such
--		 * as speculative preallocation, can be freed by
--		 * xfs_free_eofblocks() without breaking the layout unless the
--		 * inode is marked as preallocated. Mark it before handing them
--		 * out for writing, as for blocks allocated above.
--		 */
--		if (write && !(ip->i_diflags & XFS_DIFLAG_PREALLOC) &&
--		    imap.br_startoff + imap.br_blockcount >
--		    XFS_B_TO_FSB(mp, XFS_ISIZE(ip)))
--			update_inode = true;
--	}
- 
- 	if (update_inode) {
- 		error = xfs_fs_map_update_inode(ip);
-
--- 
-2.43.0
-
-
+Thanks,
+Tal
