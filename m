@@ -1,53 +1,113 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.48
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795701313;
-	b=VzB07uF0iXTuBdxIGyJqPGi2vO98JVbi8fiB2SRUUVoGRer5lW42Szwn/fj3ia346hj+
-	 rF8B+fAR5P0E+IVTrVHWP5Z1RvpnszaTtSZ1lkUwHcjjb5L9/nuhf/PspV08LviDkqGiu
-	 p+dmqKCwtwb4OkjLqhtuNRQs3v0yFa1XkEigkNktoJjwlT9i9Z3UDPcAAOJ92Zqe3NDM6
-	 nzvElu5wMi5j6JtAd1K91JPZ626HS7yWpNUiWux0efniOl07OXuHlaIOzmAd24ARgSlCs
-	 Q4/sEqqly2HJQvqAYM7js42entx3dMA50iJLBHdzgl0ENQ4niO98DBXS3gkyhNnKF6A==
+	t=1795710706;
+	b=L6ZGBxQ8HELd00hfGTzXLxz3+UD1pz2OjLvkXK7myIwmc44gS63Vo6PB1NePMNy1+xSU
+	 iS3mH1thpt+lLVRswbJ+9xKVZN+g9BvMIzgOVwfeqZKzjG1c/t2lQuIbc3mVBHa8Gz+kV
+	 y+nBdeNpHUxD3tzAgTJ1B9Az8S8LRx3/SUUqU+gA6HlBD+EGRmBrrsHyWZiiJBwSqMgSV
+	 lRhmhOTDpZR6hNhk61EPYC7IyAC7yU+mp84zmVzxKVSD9c574VdGvhJ/WD73pT3Zu3x3a
+	 Xo8jH99LDEB7u2PNHK4vxbU6PBnzi8WvYCMYRQw0EeOpOr5zAb/noRAvwUKJTLQ5w9A==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795701313;
-	h=Received:DKIM-Signature:Date:From:To:Cc:Subject:Message-ID:
-	 References:MIME-Version:Content-Type:Content-Disposition:In-Reply-To;
-	bh=vKIf+WNo5OzHHAJYkS+pAgKjd3TBVYejDD4IVW523e4=;
-	b=XEiFfqvhZfdpAGYLkXDqOZRheyID5G7iXyR9kEuSzC3Hxag/IE0VScNmkqD34Zfy970y
-	 Yfne4laIwmsx5uLFI68XPgSKDFGTUtYVHOHFyUFoL6nv71u1d/VooMPpO8ZwfKP0P58ss
-	 46vjMy8h2tU399zi54x5Qm9lNo7sK7OsE2KjikSinsJ3mPUzERdP2IvP14N8yztTmhWa2
-	 Pc/nFHDg0/0YSviWLrHLthUSwKIwgXVgJlrbFXWI10vYGYjeLYOnq9Mol71sH0UCdcHat
-	 IZzKx6JiMhtij2yODGS7fn0UxQZopDgIlVHHfvRtcj+IlRIQ/W3/2kZNs6Xk6AJvEsg==
+	a=rsa-sha256; c=relaxed/relaxed; t=1795710706;
+	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=OPwcu3THbOq+3XWyQQ+nL5e2PeyQBnz7B0EEXV1jfaY=;
+	b=zf/e9DaB60i3lg/nKCSmYsc/c74vYYmIzRSOCX7wNj6VoHEdkm6chYnH8TykkhiqXOi4
+	 Lv2w6Qn7+1gRHZFUFrngLfvBiq+dNqS8a0aYyF6RxOGh1BG+kyoySIJwpQCZ1cyWd/Clx
+	 T3mRCRYk+02poUi+jMSWYef3zATiEXCLkiH3a9FRalRc7L9FEgE7yqYFa3jDT8RYvHh9h
+	 OU8bjuEjOFmdsi7JeittFaKcqvOyKGVs8yjQuQbbpt3Evp7wz0Th+gaLsvW3Y4Cfd6/9M
+	 YZpGcOC1ErC37WFvyv/PjG+x8rLltN8m7eY/vb6rbLo7WYnQOURiXDME42dt/Sh3UGw==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FDYomTmu;
-	arc=none smtp.remote-ip=100.103.45.18
-Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature ECDSA (prime256v1))
+	dmarc=pass header.from=gmail.com;
+	spf=pass smtp.mailfrom=gmail.com;
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=fhVaPyMJ;
+	arc=none smtp.remote-ip=209.85.128.48
+Received: from mail-wm1-f48.google.com (mail-wm1-f48.google.com [209.85.128.48])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CB8E606A31C;
-	Thu, 26 Nov 2026 13:55:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8FFE2606A330
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 16:31:46 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 8FFE2606A330
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=FDYomTmu
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B3A511F000C0;
-	Thu, 26 Nov 2026 13:55:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795701312;
-	bh=vKIf+WNo5OzHHAJYkS+pAgKjd3TBVYejDD4IVW523e4=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To;
-	b=FDYomTmuQZ6AIJRVZKh9cY6orkhEsTfU4F0Ule5osgzmdGCRgcoqotLvV3sk7l2R3
-	 uAI3QddPJIxni3Bb3tDiBfknIbnBkRCeYm8a9slPLGqEa4Aly7+yPWOe7LT7CTWT0x
-	 LsceOvQ/jI0j/YsNxbO1f7zkrZZsXr+nN7ai9HIxcaHjqcwL/DTjsNmPL9ugOEVPR8
-	 H6E0xt4CDXjNFgKU1kMAub0O8JdtOf5ASAXTj7CZXQjmDcocUZvi/aTQAlMN7ibN6b
-	 BDQLYD/ITt4mWndUxcclR/BIbZmam7P41NHEWDBm5QBbz4fiRH8+RNQ/eg2cvy1fVz
-	 00wQKvPHYuQ9w==
-Date: Thu, 26 Nov 2026 15:55:08 +0200
-From: Leon Romanovsky <leon@kernel.org>
-To: Cygnus Qiu <eritque-arcus@ikuyo.dev>
-Cc: bernard.metzler@linux.dev, jgg@ziepe.ca, cel@kernel.org,
-	linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH] RDMA/siw: don't complete a fenced READ twice on flush
-Message-ID: <20261126135508.GO774860@unreal>
-References: <20261125060646.155172-1-eritque-arcus@ikuyo.dev>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=fhVaPyMJ
+Received: by mail-wm1-f48.google.com with SMTP id 5b1f17b1804b1-4a207b02a2cso51720315e9.1
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 08:31:46 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20260707; t=1795710705; x=1796315505; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=OPwcu3THbOq+3XWyQQ+nL5e2PeyQBnz7B0EEXV1jfaY=;
+        b=fhVaPyMJ7OSZKu+EfBR8QJPG6D2mMYRvOGv38yu4nUA1P3yn1DsfxVBQ0+khtEVapy
+         2rKHvWryXzuJCGetU24K/q5+tTgl94BktvfxWS7UUR9ERY0H5ej9eALqz0Z7fm5Siyzf
+         drLCOM2QaTY7MOaVp63tDZ5jzY++BxDTn5lvjce9YocznzQfBG8TrunqO8kaO6QQnsUc
+         4ekYKo9SBTD5k4eki8wffLdGPthgAHLz/xhj9Mo8JcNXzyg9DLuv9xKijzMCOMwJpGo0
+         QYNd650J94JGcDVe1VKHNp4Vf/D/0OF5wYOa7E0Wy73fqCr6hk8/4dQ+XovV2YKaVfFb
+         60pA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20260707; t=1795710705; x=1796315505;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=OPwcu3THbOq+3XWyQQ+nL5e2PeyQBnz7B0EEXV1jfaY=;
+        b=FJFbu/uLXsZclit4a2BTISLND9O//VbMQ0bJXsMf99wGE60z4maDQcq4O1wiEZZ3mJ
+         FA4izBpPb+cz6TdfkcTaGR3EwvEYu6yR+ls3euoMqmfQmkDT8VIoyVV1fDPWDI2cH1US
+         ej7nhUvOYFTENrB+nUAdfJAuxuKOgKxlwZnYtbjgB70XsLt0Ry6+kaYUc02pY6OH8yGW
+         t0ZEV2HgkQvPtsmk89WWHsvJ5cgqga/LYJXrZ3uoHlxK5xSlof+t6ILz6WILjyTyf3K8
+         hDbfNJXZ6Teqk1+k8qZe9z5xGApkqUGWLRiX/Jumbz7p0I6rceNz1aJu2Fs+SH+JJFgy
+         zXkA==
+X-Forwarded-Encrypted: i=1; AL+hErFVrsaP863ZLWCvmq2Uyt4a5P6GAosBlVQog+x+sgEa8VYFYm52TZFInO9fgo/2f4Sr+KXBac+z/xM=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/F4qXZSGdicqV44bZ7nrHz5xn56FBEV/9FAnqodvrCXGVrlaXM
+	PhZTnx7NQ0plyOvGwcagob0bEGXW2uXOW3v79u8akjb1l9HCOwvuzwk0
+X-Gm-Gg: AZFdTZesZdgCcVBsC4ev+k6s0kjNWSDWj6kboJ0GZyur1SjyfX6VXwHJcqaT+cH9RNL
+	HvXyq80W2bpILjyWazzOsu6TV+dH1w+MvOY1e23P0p49LgVf8QIBG0Zzx+PL6MasVaggaL5WFA6
+	I+4lk0Mhtvu498jlJZbOvd7exvnvJ9fEY/2W970V7imyid6mD1oIsIxWa/d6keH7boRL4bAw8/A
+	wCNYgWtaN37PxHGk83S2uzqWTZZWgX21j6/CJB8fdcfZZtRVU7JAGJRWlw0kmE6ZSFDHxTgNUrv
+	px50rNXkNe4IOVdh9KDXV8fGaz1k6IPW+sfzES2Vlgair8o9YazyG/ir18LfdEnnDJzG0WGo02D
+	DOUtCxZ+H7bSfoCRcsq1HcdBAjIgSINNAk4ss+7H06PeWJW4rr/Fytqn/VBUMuCsCiQ1YwQE20G
+	GVcm6WVGIu4wXQGkZ5F12kUhopPJjfakgE3iwuuctNAo9MNIP+EPoCxELeFTobX9FzGQdF5WFMM
+	4+TzWL8xjEBdgjj3x4mg6zkH7cXW4KhybJYcs6Jm68nqhQXss8uIf7AenGguAW3fDD88SxP6xWm
+	QfNfdXY25Cau2VH0BPMt9XFW
+X-Received: by 2002:a05:600c:820d:b0:4bb:5de1:e912 with SMTP id 5b1f17b1804b1-4bb887c3ae7mr436997625e9.1.1795710704643;
+        Thu, 26 Nov 2026 08:31:44 -0800 (PST)
+Received: from infinity ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb853a9846sm721964995e9.11.2026.11.26.08.31.42
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 26 Nov 2026 08:31:44 -0800 (PST)
+From: koraynilay <koray.fra@gmail.com>
+To: Namjae Jeon <linkinjeon@kernel.org>,
+	Hyunchul Lee <hyc.lee@gmail.com>,
+	Eric Biggers <ebiggers@kernel.org>,
+	"Theodore Y . Ts'o" <tytso@mit.edu>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>
+Cc: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Alexander Aring <alex.aring@gmail.com>,
+	"Darrick J . Wong" <djwong@kernel.org>,
+	Andrey Albershteyn <aalbersh@kernel.org>,
+	Amir Goldstein <amir73il@gmail.com>,
+	=?UTF-8?q?Pali=20Roh=C3=A1r?= <pali@kernel.org>,
+	Lauri Gates <lauri.gates@gmail.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Dave Chinner <dgc@kernel.org>,
+	linux-btrfs@vger.kernel.org,
+	linux-xfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	ntfs@lists.linux.dev,
+	linux-nfs@vger.kernel.org,
+	linux-api@vger.kernel.org,
+	koraynilay <koray.fra@gmail.com>
+Subject: [PATCH v2 0/4] Add f*_xflags_{rw,ro}_mask flags to the fileattr API
+Date: Thu, 26 Nov 2026 17:31:10 +0100
+Message-ID: <20261126163114.403846-1-koray.fra@gmail.com>
+X-Mailer: git-send-email 2.56.0
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -57,85 +117,98 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20261125060646.155172-1-eritque-arcus@ikuyo.dev>
+Content-Transfer-Encoding: 8bit
 
-On Wed, Nov 25, 2026 at 01:06:46AM -0500, Cygnus Qiu wrote:
-> siw_sq_flush() completes the READ in the TX slot while it is still
-> SIW_WR_QUEUED, assuming a queued READ is not in the ORQ yet. That only
-> holds when a full ORQ fenced it. siw_activate_tx_from_sq() copies a READ
-> into a free ORQ slot, and siw_check_tx_fence() copies a fenced READ into
-> the ORQ once a Read Response frees a slot; in both cases the WQE stays
-> QUEUED until the TX path sends the Read Request. A flush in that window
-> completes the READ from the ORQ and again from the TX slot: two
-> IB_WC_WR_FLUSH_ERR completions for one work request.
-> 
-> The peer controls the window. It advertises IRD 1, so the ORQ holds one
-> READ, and answers the first Read Request with a Read Response and a FIN
-> in one TCP segment: the FIN suspends TX before the Read Response moves
-> the next READ into the ORQ, and the close flushes it.
-> 
-> svcrdma's svc_rdma_wc_read_done() then puts the receive context twice,
-> which links it into sc_recv_ctxts as a loop, and svc_rdma_free() reads
-> it after freeing it and frees it a second time, a double free. svcrdma
-> pulls the Read chunk before it decodes the RPC, so the peer needs no
-> RPC credentials and no export access.
-> 
-> Complete a QUEUED READ from the TX slot only while the ORQ fence is set.
-> 
-> Found with afb-afl, an LLM-driven kernel audit/repro pipeline; the fix
-> and this changelog were also drafted with LLM assistance. Reproduced on
-> an unmodified KASAN build of mainline: a plain TCP client sends nfsd's
-> svcrdma listener on siw an RDMA_NOMSG call whose Read chunk has two
-> segments and answers the first Read Request as above.
-> svcrdma_wc_read_flush fires twice for the chunk (5 of 5 runs), then:
-> 
->   BUG: KASAN: slab-use-after-free in llist_del_first+0x150/0x170
->   Read of size 8 at addr ffff8881119d9000 by task nfsd/183
->    llist_del_first+0x150/0x170
->    svc_rdma_recv_ctxts_destroy+0xf3/0x1b0
->    svc_rdma_free+0xd8/0x2e0
->    svc_xprt_free+0x22c/0x420
->   Freed by task 183:
->    kfree+0x162/0x500
->    svc_rdma_recv_ctxts_destroy+0xe7/0x1b0
-> 
-> Without KASAN and with SLAB_FREELIST_HARDENED, the double free is
-> caught as "kernel BUG at mm/slub.c:605" in kfree() from
-> svc_rdma_recv_ctxts_destroy() (4 of 4 runs).
-> 
-> With this patch the chunk is flushed once and KASAN stays silent (4 of 4
-> runs). The rdma-core tests could not run: the siw provider of rdma-core
-> 66 fails an assertion in siw_destroy_cq() on the first test, with and
-> without this patch.
-> 
-> Fixes: f29dd55b0236 ("rdma/siw: queue pair methods")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Cygnus Qiu <eritque-arcus@ikuyo.dev>
-> ---
-> Tested on mainline 4405c18c95d2 (v7.4-rc3+) in QEMU. Applies to
-> mainline 8d7fe9885c62.
-> 
-> Sending the FIN only after the second Read Request has gone out, or
-> with no Read Response at all (the fenced READ never enters the ORQ),
-> gives one flush completion before and after the patch.
-> 
-> siw_sq_flush() now relies on orq_fence. That bit shares a byte with
-> tx_suspend, which siw_cm_llp_state_change() sets without the QP state
-> lock. A lost update there already stalls the fenced READ in
-> siw_check_tx_fence(); with this patch it would also lose that READ's
-> flush completion. I did not try to hit that window.
-> 
-> A reproducer and the test logs are available on request.
-> 
->  drivers/infiniband/sw/siw/siw_qp.c | 7 ++++---
->  1 file changed, 4 insertions(+), 3 deletions(-)
+This is a follow up patch series stemmed from [1] and [2], splitting the
+_mask change for the fileattr API into its own separate patch.
+
+The first patch is a preparatory cleanup so that the code in the later
+patches can be formatted better.
+
+The second patch updates fscrypt_prepare_setflags() to take FS_XFLAG_*
+xflags instead of legacy FS_*_FL flags.
+
+The third patch is the actual implementation, which introduces:
+- fa_xflags_{rw,ro}_mask fields to struct file_attr
+- fsx_xflags_{rw,ro}_mask fields and has_masks selector to struct file_kattr
+- AT_FILE_ATTR_MASKS at_flag for file_[gs]etattr()
+
+These masks have the following semantics:
+- rw_mask:
+  * for filesystems: advertise which xflags they support changing
+  * for userspace: specify which xflags it wants to modify
+- ro_mask:
+  * for filesystems: advertise which xflags they support only reading
+  * for userspace: ignored
+
+This allows userspace to not have to do a RMW cycle when using the
+file_[gs]etattr() syscalls, avoiding possible race conditions and
+simplifying their usage.
+
+Patch 3/4 also introduces the missing FS_XFLAG_PROJID flag so that
+programs like chattr can leverage the new mask API.
+FS_XFLAG_PROJID is kept out of the legacy FS_XFLAGS_MASK and so it's
+defined as part of a new FS_FILE_ATTR_XFLAGS_MASK group of xflags that
+will be used moving forward for any new xflag (like the one proposed in [2]).
+
+Patch 4/4 converts fs/ntfs to this new API, to show how it can benefit
+filesystem drivers too, and for this purpose adds FS_XFLAG_COMPR and
+FS_XFLAG_ENCRYPT from their FS_COMPR_FL and FS_ENCRYPT_FL counterparts.
+
+The series has been tested with custom xfstests [3] (generic/816-835,
+xfs/611, xfs/673) across NTFS, ext4 (project quotas), XFS (project
+quotas and extent size hints), Btrfs, and F2FS.
+Note: these tests were written by gemini and not manually checked,
+before sending them upstream (if needed) I'll have to review/rewrite
+them manually.
+
+Note 2: there are apparently quite a few bugs with overlayfs and a few
+other issues, but I wanted to get the final API design out first.
+
+v2 changes:
+- make fa_xflags_{rw,ro}_mask in struct file_attr __u64;
+- add AT_FILE_ATTR_MASKS to opt in to mask semantics instead of needing
+  unreliable heuristics on usize and mask values;
+- reject intermediate sizes between VER0 and VER1;
+- reject non-zero masks on SET without AT_FILE_ATTR_MASKS;
+- add patch 2/4 for fscrypt_prepare_setflags;
+- add xflags_to_flags() / flags_to_xflags() and
+  fileattr_set_{legacy_to_mask,mask_to_legacy}() to translate between
+  legacy RMW callers/filesystems and _mask callers/filesystems;
+- clamp fa->fsx_xflags to rw_user_mask in file_attr_to_fileattr();
+- update fileattr_set_prepare() to validate capabilities and projid
+  changes against rw_user_mask / xflags;
+- move the rw_mask == 0 early-return no-op from file_setattr() into
+  vfs_fileattr_set();
+- put FS_XFLAG_COMPR in FS_XFLAG_RDONLY_MASK only (keep FS_XFLAG_ENCRYPT
+  in both FS_XFLAG_COMMON and FS_XFLAG_RDONLY_MASK);
+- update ntfs_fileattr_set() to apply only bits selected in
+  fsx_xflags_rw_mask;
+
+Thanks,
+koraynilay
+
+[1]: https://lore.kernel.org/CAOQ4uxg8aVcWyNiFDk8djdn-M3xJcu_7-kRxVq9jjFsbcGp1ew@mail.gmail.com/
+[2]: https://lore.kernel.org/CAOQ4uxjVQ9cjV=_jBjQtNg9zCuWUEJT9KNYMKV+1jwBkHen5OA@mail.gmail.com/
+[3]: https://github.com/koraynilay/xfstests/tree/patches-in-queue
+
+koraynilay (4):
+  vfs: use goto out on error in vfs_fileattr_set()
+  fscrypt: update fscrypt_prepare_setflags() to use xflags
+  vfs: add xflags mask to fileattr API
+  ntfs: switch to the new xflags fileattr API
+
+ fs/crypto/hooks.c          |  10 +-
+ fs/file_attr.c             | 357 +++++++++++++++++++++++++++++++++----
+ fs/ntfs/file.c             | 109 +++++------
+ include/linux/fileattr.h   |  14 +-
+ include/linux/fscrypt.h    |   6 +-
+ include/uapi/linux/fcntl.h |   6 +
+ include/uapi/linux/fs.h    |   9 +-
+ 7 files changed, 409 insertions(+), 102 deletions(-)
 
 
-Please read this suggestion https://lore.kernel.org/all/0037554862c0d9dce3ddafd1238347e4b16a5079.1795581896.git.wqu@suse.com
-It is applicable to this patch as well. 
+base-commit: 3857587d9d6fa44d40d1c73bde6a39f6f7a5216c
+-- 
+2.56.0
 
-Rewrote the commit message, add full KASAN stack trace and resubmit.
-
-Thanks
