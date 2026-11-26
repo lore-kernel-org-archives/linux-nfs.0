@@ -1,83 +1,83 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.46
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.128.41
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795710710;
-	b=f+8aJvWQXGvre9wEQaxW4UvM7i8LINpRP+xtpvNgFxwINXwkySbAvLiowEq4sHJYBi9X
-	 hK5N8A2euiNskS2nqbTwr6a1krdq8A00/RaGRjHDaILHvnSQ9V2iXS6yFSwFSZAoV2czT
-	 tbvrhIsvnamPgHBXq6q1eMIB/v6QCOF6poMU5Vh4rSFQFARIeaBKpKmXvuX81/HkABMWq
-	 f2gQ2CQqBcA3hvhA5AM2TMcGx97ipcI/qYNoeer8K6sw6Y9hgg2an5ok3YKceg4qGoLAv
-	 HNfoA+c2kd3g6C7v+22Zxp7kZ2Qxw5E7c1nhTKq08OzDSqDDR/0g71d0cCgWk0DgdKQ==
+	t=1795710713;
+	b=4cTL6fQS6PvzXXri9ts3zfXyzCZn5xaGvFml4aaVMY00bnYqiz29zz/9Pws8C0mUD4xX
+	 g8BnyzfbKHLfjzrs1XNWqG5wgllyTadRi27arWSu3Gsnz4t0mLOkJ6VwktId+rSW0yZhO
+	 1hPtr27V2mXgN8YRn/jNu94iv7M6qxvYGqIXVFR4QMj73rRt+Vu1x+An3CiI7CcWt/4u+
+	 h3ktJ/c9X+uNXFR3N5wQzENEawt1VthpyhOaxtsFGKPzdxUiVJVgtlMyakFFpB1gBMmZv
+	 ynalNSARJZcS/HzGCiQ6Hunadhz1o6HUdCp7NGn56orHUh9YC2MSo2GM/61t7UEgdWA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795710710;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795710713;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-ID:X-Mailer:In-Reply-To:References:
 	 MIME-Version:Content-Transfer-Encoding;
-	bh=6DGKGHZD1sWqO2WRSY4U0udOhpGKQXiV3WJqb4Fx1ZI=;
-	b=E0e6VnrL21QtkPW18tT3WeulZE6EH7CA8bESTUlSvOubF0UTMTl1iepsfJ7TEUpyizWJ
-	 ZBiVksTg1goHnNXWKOV2FVDKxzEMEXlFNIXirlOGubXMNj38X8hKtQT5QPiENj9DhyTbb
-	 kQ4mFzEjpA6clUxSR3nE+kU1uGKtLO4u09ApVL7/Djn6qk9+Hk4+ZARDd+mtpG0tiqMiO
-	 QhHDOOIRZv+UtuYrjx2vFZfcwcSu/c8yZ7jYn9NRbuq37QiGRrWUDFdSm2wwT8RSBAZgy
-	 j0Z7HhrRySNkg+vtIP8z7ooCYoieTZmy4fPgmUA5tbIZJ30c0wUsW7GrGEXWWexWW7g==
+	bh=JaTAxRtKeYbk84RLM3i2yEqwJv/D2pe6Nve7rFnRBXM=;
+	b=NqqyfbibyOsP7C2t5rxqTcyf54amVvyiIcHABtZuRpLRQ6WDr7b7oDq7DGITAAzF3ACD
+	 5YHc99gWsoNXyAezaejSGhEgfbJC2AEpe46ul+mRff7JG66OEFKekZ67d4Kt/jbaznZ0N
+	 FK08jYSGpwNFnTiuG2XAgmhVV77lEEwWvzqkT8JRAH1fnMMtHX2OzAPr0SJ+YCTY3PWgZ
+	 WMO7p1QeOqf3BtAdz32OlQBFgbBtXMxB4mrOwu+qLvUsYnwhwKvGhM9qfBsNaAiMVY+3J
+	 Yf8rfsWZ7F9gEQPaD7OOMDPniWW/zWYFZ28w1OudDChgHqQi8qv8IprGttwrX+G4OKg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=pass header.from=gmail.com;
 	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NgzesBph;
-	arc=none smtp.remote-ip=209.85.128.46
-Received: from mail-wm1-f46.google.com (mail-wm1-f46.google.com [209.85.128.46])
+	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=oWgqtZPJ;
+	arc=none smtp.remote-ip=209.85.128.41
+Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 216F5606A6AD
-	for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 16:31:49 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 216F5606A6AD
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83D0260A2622
+	for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 16:31:53 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 83D0260A2622
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=NgzesBph
-Received: by mail-wm1-f46.google.com with SMTP id 5b1f17b1804b1-4bb72b44a97so61874025e9.0
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 08:31:49 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=oWgqtZPJ
+Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-4bba5e17cbeso19238835e9.1
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Nov 2026 08:31:53 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795710708; x=1796315508; darn=vger.kernel.org;
+        d=gmail.com; s=20260707; t=1795710712; x=1796315512; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=6DGKGHZD1sWqO2WRSY4U0udOhpGKQXiV3WJqb4Fx1ZI=;
-        b=NgzesBpha5/UiuwtyApe4LBXa4J/ZEE9RKL51o52cHEQZvDJx1Io0LkMX9T4hggZMH
-         yMa0nLXZDeXh3OTT5Dceu8BR+qdcmeSaC9RWK6GGdpgvq67OWwu0N8mw3xfC+ykgxBkA
-         yEoRN9ICF95EXoJwq1ROoEh5ttxJozEqUgS4kFy2WgRT3O8gDHMMShxwnJZV/bfNq8gV
-         94Ff+uDAmyBMb5RFFUJa2wayxciw/19DqrWBprAc5PQ2xTH4mJm64KnLuI4iptKk72YS
-         FGHpM0M/l0unSVUyE9VXt42T1xN0phYdlNSwj0GuBcjfL5tAcfYo3HAercHmLDLsdKJ/
-         INoQ==
+        bh=JaTAxRtKeYbk84RLM3i2yEqwJv/D2pe6Nve7rFnRBXM=;
+        b=oWgqtZPJ+QTfEFZ5N9eQvoTBWfIeBxFyGemMJWQgY+87l+MIRZRTkXIxAtrUT6b9OX
+         lT2HhMQ6C4JwF1MVSaAdVK71Ty/ZBm5ROUsJ+uXnsteA6mBaBY2BimSwk8fGh1c+cdpC
+         ZNaJxtEMzp0Ca1dT4WWYXeNRtaSMn+HAyyvTTo16OFk+LTiV3CzkZulp2AUJR0Vx2MN5
+         NOSdZ3PNLKDcOBGL3j2FfEk2hPWjgRK6SwtQ5bvYSz3OAddq6jZ+wZk3tDft2ZPjyQQm
+         fpWnjnFFEclwrR+7KfqwNBjGOOsYdzfpFiXJGWvJ8Lb3XSuMI4Cw1dd2/ry2v+TMORkb
+         Ql1g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795710708; x=1796315508;
+        d=1e100.net; s=20260707; t=1795710712; x=1796315512;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=6DGKGHZD1sWqO2WRSY4U0udOhpGKQXiV3WJqb4Fx1ZI=;
-        b=kBvbduiEjypYCSdCkuW6g3qHfYAOEZbj4gj3H2dTKaPevy+7ckg4slgV1IsXOLg/uJ
-         wUouDpJYA8xs8Ve/pUG6oPF3ILu8YGL3bDVbkm6mvGoZgiCX0x0nTRj6T+qAZG7qLGvE
-         YHqHkNaJjY5eg+HjK6EZ8pPu5RBnvXMOTnSeFMKRpmV7pkRglfbu4Y/ZxPF69tpAXvOK
-         XJCXAFwlI2Fv8Er5tnJCWkMi4avrN5R0olN3HemL/rWdSccoZSm7Z7wcdPvc/auQYAHx
-         uArjffpfLkRqBiGllLFC+Ui/AsfKoMWLTTpsvoyN6Uj+UDXP+b3VEVXQTaGcoXhvYzaT
-         tOmA==
-X-Forwarded-Encrypted: i=1; AL+hErG9zs5KQ2pGoBAkV8nM2YFO0Uvsia/5RCsIuGTdtv8AsV3opgkRBQjBdipuY7DCnsLuOZg0vwKXgvs=@vger.kernel.org
-X-Gm-Message-State: APuU4Z+j3hiSw32Z1yo73A4d5g60YWtD5zYR+pj5k538Ekw49QXjmu0y
-	fs8FrtV5wZcjcl7/jVmLR/+67nm+RYR/khEGikDP4GtbwRyS+AZgZ7kr
-X-Gm-Gg: AZFdTZeUfySau0vEo0Cp22vnrVoiTgQ0i03HCWWAYObMvtoFhUNneA0T/H7zfJOpYyg
-	wyYsP5THg/eeHeUom5cz1rxkO1GGULH6dJjxVCjg3812jxFWVrkU0/k6fDNts0QJXHIQrrthIjP
-	oyIDeOprZsUA6pgzfMtd2V1DiEkRGkU8kBq5bozhsyKsznI3r3pH4pCV0rHHFpNS2siZI6vIFSR
-	W2RZgL0xHPCdgn4ZqdNxB+qPcg7h+i/dXT0pTpPVsVo0jbv5dLkKOkuK/NTpjzJttXV3pozl6cg
-	SuPg2h9Djl6kFhQtzOsB2wXRVnzFAz/dCVsE5bUF5egtok9M7TIKOL3Sp2TUb4YQjpFQCpa1n2d
-	07yoTMyfhpNXx5L1YlbVGpNELw/0bs1Lr1C5PxqmvPydDa9a/sE4WTN2l2pFMKKtb+HquYLtj99
-	KEnhFnr1zC5/AqhVLMxQj/AW9JpiMUwZo8aTv7yH3+2DAdV/MLbxOo6Zz9wtC+msPWT7SYD0PEv
-	Zo5saCumkyZTtwLLgVkWUNtnwUs0OqVpEIzN+9/LzqimMVpCQ4qD/uPU++cr63uRH0csCzq/rXG
-	WPWQYxHryTwz/jKwpm9mmyT9
-X-Received: by 2002:a05:600c:3b83:b0:4b7:6b96:e431 with SMTP id 5b1f17b1804b1-4bb88822242mr502582645e9.28.1795710708243;
-        Thu, 26 Nov 2026 08:31:48 -0800 (PST)
+        bh=JaTAxRtKeYbk84RLM3i2yEqwJv/D2pe6Nve7rFnRBXM=;
+        b=nknB0kGFinW8vGKmbCR7iM17BHkcoh/4ven6aOgr1s6pQ/P9TdgZ7nOK1wjMKK07EM
+         jgwQeaFGVeAAJfqEgibcdfK/4pHCgpvFfraydvOKhftc/Mnziyfbbk3GyEgeAdSVs0kd
+         ldGF9T6mwlgtgMNdXdp1UpoFrJyYAuI0NSAxa4vYs5FHvIolAuvb21TS2r5xQWnJwVhv
+         WlZ2DK5DRIqDdVaneQ6raqrqNH3p/kxTVieScjj7/ZRtpRsp7xtJ6VRmEFLADoUwNAUV
+         //daTcJ4K/lg27VcjRvaqydxW7geftLas9LN/L4M0omvM4zC4t/gN6JhtvhyetplP5hg
+         yvvw==
+X-Forwarded-Encrypted: i=1; AL+hErGLK+lBOMQsss6yhIEkze1m9VBm0bHCM4lncZSxPIyxbrEI9NVnDbHkrXC2s5Aw0HfpZ4gZ9hEWNgE=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/iH5LDxPWyCtVtRhe5b7x8YbKdb7iF2sXnqNptVweLzJKUHNxr
+	qjc6az4kxCt3AecxzxsVN4jFN+5gSyEhCiQ8ngSb2KiUtReGKvfisn5Y
+X-Gm-Gg: AZFdTZfTXeGOD1zTBOEMhVccFa/mAqk+4ISKiNk/8kzKWy12Gf3a23KTvWZeQKqGBzC
+	r0Qu6Mn/WcjgdkJl4mj//gwWLAgBm6vOQArc0A4teLkvk2Gxho39sdnB9wA5zST1NX7GmVK+UUS
+	TKscmuTrZZbD05jUUTW48CFD5w4mcpoLyubRYeloEDPf3LxN6Axj4ZW4dfOygY5AmbMfkOo8vhO
+	vVOxQdgi/dKfP0os48PXHDR8V9jFQmi0KUpt/R6rOtxwxgF4qOBqo4BsFn/Pwy7Om6Gm2x8UGGl
+	Q5uji5bk+u1AzxVe6JjyZt+qEr/w6/UZnh+HBxl9+S1B5Fv6R4YdxfGLFXGlf3h3Ql+MN/CA+/6
+	j/ONHu2MXfHYbq+noeVtQCwFpQMi/uBtNm80cIU/KRyBUYnvJdV0oVA/aAfUcqLDJ2kpCZKAwG2
+	FTaUeGioyG4yuUIAxmKh7tPPH08kpNK1XjtWSaIxmhETjJwdFeVmfWWNwXQv8faYreFdBLwIrPa
+	clX3fZDbGFFGSQGyxzPzGcqCIOqlTGnpV9crQQe3zFfl9PYgL7GqAP2MtkWRP6GGix4dfMQO6CM
+	ZVUPGUZ19cA5SZ6/3kS2w/76
+X-Received: by 2002:a05:600c:4f84:b0:4bb:8701:a2df with SMTP id 5b1f17b1804b1-4bb88809950mr444061975e9.17.1795710711689;
+        Thu, 26 Nov 2026 08:31:51 -0800 (PST)
 Received: from infinity ([2001:b07:5d26:7a6a:365a:60ff:fe0d:cfc6])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb853a9846sm721964995e9.11.2026.11.26.08.31.46
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4bb853a9846sm721964995e9.11.2026.11.26.08.31.50
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 26 Nov 2026 08:31:47 -0800 (PST)
+        Thu, 26 Nov 2026 08:31:51 -0800 (PST)
 From: koraynilay <koray.fra@gmail.com>
 To: Namjae Jeon <linkinjeon@kernel.org>,
 	Hyunchul Lee <hyc.lee@gmail.com>,
@@ -105,9 +105,9 @@ Cc: Chuck Lever <cel@kernel.org>,
 	linux-nfs@vger.kernel.org,
 	linux-api@vger.kernel.org,
 	koraynilay <koray.fra@gmail.com>
-Subject: [PATCH v2 2/4] fscrypt: update fscrypt_prepare_setflags() to use xflags
-Date: Thu, 26 Nov 2026 17:31:12 +0100
-Message-ID: <20261126163114.403846-3-koray.fra@gmail.com>
+Subject: [PATCH v2 4/4] ntfs: switch to the new xflags fileattr API
+Date: Thu, 26 Nov 2026 17:31:14 +0100
+Message-ID: <20261126163114.403846-5-koray.fra@gmail.com>
 X-Mailer: git-send-email 2.56.0
 In-Reply-To: <20261126163114.403846-1-koray.fra@gmail.com>
 References: <20261126163114.403846-1-koray.fra@gmail.com>
@@ -122,89 +122,257 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Update fscrypt_prepare_setflags() to use FS_XFLAG_* xflags instead of
-legacy FS_*_FL flags.
+Switch ntfs_fileattr_[gs]et() from the legacy FS_*_FL flags to the
+modern xflags (FS_XFLAG_*) fileattr API with masks.
 
+Introduce FS_XFLAG_COMPR and FS_XFLAG_ENCRYPT to be used in this API
+upgrade.
+
+Following the FS_XFLAG_VERITY example, put FS_XFLAG_ENCRYPT in
+FS_XFLAG_RDONLY_MASK and in FS_XFLAG_COMMON, since it's read-only for
+all filesystems.
+
+Following the FS_XFLAG_CASEFOLD example, put FS_XFLAG_COMPR in
+FS_XFLAG_RDONLY_MASK but not in FS_XFLAG_COMMON, since it's read-write
+for some filesystems and read-only for others, to avoid breaking
+existing filesystems.
+
+Also update vfs fileattr_fill_* helpers to include these two flags as
+well.
+
+Assisted-by: Gemini:3.8-flash-high antigravity-cli-1.5.11
 Signed-off-by: koraynilay <koray.fra@gmail.com>
 ---
- fs/crypto/hooks.c       | 10 +++++-----
- fs/file_attr.c          |  2 +-
- include/linux/fscrypt.h |  6 +++---
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ fs/file_attr.c           |   8 +++
+ fs/ntfs/file.c           | 109 +++++++++++++++++++++------------------
+ include/linux/fileattr.h |   7 +--
+ include/uapi/linux/fs.h  |   2 +
+ 4 files changed, 72 insertions(+), 54 deletions(-)
 
-diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
-index 149498bdab94..52d6a33fc9e9 100644
---- a/fs/crypto/hooks.c
-+++ b/fs/crypto/hooks.c
-@@ -182,10 +182,10 @@ int __fscrypt_prepare_setattr(struct dentry *dentry, struct iattr *attr)
- EXPORT_SYMBOL_GPL(__fscrypt_prepare_setattr);
- 
- /**
-- * fscrypt_prepare_setflags() - prepare to change flags with FS_IOC_SETFLAGS
-+ * fscrypt_prepare_setflags() - prepare to change xflags
-  * @inode: the inode on which flags are being changed
-- * @oldflags: the old flags
-- * @flags: the new flags
-+ * @oldxflags: the old xflags
-+ * @xflags: the new xflags
-  *
-  * The caller should be holding i_rwsem for write.
-  *
-@@ -193,7 +193,7 @@ EXPORT_SYMBOL_GPL(__fscrypt_prepare_setattr);
-  *	   another error occurs.
-  */
- int fscrypt_prepare_setflags(struct inode *inode,
--			     unsigned int oldflags, unsigned int flags)
-+			     unsigned int oldxflags, unsigned int xflags)
- {
- 	struct fscrypt_inode_info *ci;
- 	struct fscrypt_master_key *mk;
-@@ -204,7 +204,7 @@ int fscrypt_prepare_setflags(struct inode *inode,
- 	 * derive the secret key needed for the dirhash.  This is only possible
- 	 * if the directory uses a v2 encryption policy.
- 	 */
--	if (IS_ENCRYPTED(inode) && (flags & ~oldflags & FS_CASEFOLD_FL)) {
-+	if (IS_ENCRYPTED(inode) && (xflags & ~oldxflags & FS_XFLAG_CASEFOLD)) {
- 		err = fscrypt_require_key(inode);
- 		if (err)
- 			return err;
 diff --git a/fs/file_attr.c b/fs/file_attr.c
-index 40d6518f1d8e..1687891c526c 100644
+index 35bc2ded2ff8..3631353ec9c7 100644
 --- a/fs/file_attr.c
 +++ b/fs/file_attr.c
-@@ -195,7 +195,7 @@ static int fileattr_set_prepare(struct inode *inode,
- 	    !capable(CAP_LINUX_IMMUTABLE))
- 		return -EPERM;
+@@ -39,6 +39,10 @@ void fileattr_fill_xflags(struct file_kattr *fa, u32 xflags)
+ 		fa->flags |= FS_VERITY_FL;
+ 	if (fa->fsx_xflags & FS_XFLAG_CASEFOLD)
+ 		fa->flags |= FS_CASEFOLD_FL;
++	if (fa->fsx_xflags & FS_XFLAG_COMPR)
++		fa->flags |= FS_COMPR_FL;
++	if (fa->fsx_xflags & FS_XFLAG_ENCRYPT)
++		fa->flags |= FS_ENCRYPT_FL;
+ }
+ EXPORT_SYMBOL(fileattr_fill_xflags);
  
--	err = fscrypt_prepare_setflags(inode, old_ma->flags, fa->flags);
-+	err = fscrypt_prepare_setflags(inode, old_ma->fsx_xflags, fa->fsx_xflags);
+@@ -71,6 +75,10 @@ void fileattr_fill_flags(struct file_kattr *fa, u32 flags)
+ 		fa->fsx_xflags |= FS_XFLAG_VERITY;
+ 	if (fa->flags & FS_CASEFOLD_FL)
+ 		fa->fsx_xflags |= FS_XFLAG_CASEFOLD;
++	if (fa->flags & FS_COMPR_FL)
++		fa->fsx_xflags |= FS_XFLAG_COMPR;
++	if (fa->flags & FS_ENCRYPT_FL)
++		fa->fsx_xflags |= FS_XFLAG_ENCRYPT;
+ }
+ EXPORT_SYMBOL(fileattr_fill_flags);
+ 
+diff --git a/fs/ntfs/file.c b/fs/ntfs/file.c
+index 50be49f4c913..34acf9333c41 100644
+--- a/fs/ntfs/file.c
++++ b/fs/ntfs/file.c
+@@ -155,31 +155,38 @@ int ntfs_file_release(struct inode *vi, struct file *filp)
+  * @dentry: dentry to report the flags of
+  * @fa: filled in with the flags of @dentry
+  */
++#define NTFS_RO_XFLAGS (FS_XFLAG_COMPR | FS_XFLAG_ENCRYPT | \
++			FS_XFLAG_CASEFOLD)
++#define NTFS_RW_XFLAGS (FS_XFLAG_IMMUTABLE | FS_XFLAG_APPEND | \
++			FS_XFLAG_NOATIME | FS_XFLAG_NODUMP)
+ int ntfs_fileattr_get(struct dentry *dentry, struct file_kattr *fa)
+ {
+ 	struct inode *vi = d_inode(dentry);
+ 	struct ntfs_inode *ni = NTFS_I(vi);
+-	u32 flags = 0;
++	u32 xflags = 0;
+ 
+ 	if (NVolShutdown(ni->vol))
+ 		return -EIO;
+ 
+ 	if (NInoCompressed(ni) || NInoWofCompressed(ni))
+-		flags |= FS_COMPR_FL;
++		xflags |= FS_XFLAG_COMPR;
+ 	if (NInoEncrypted(ni))
+-		flags |= FS_ENCRYPT_FL;
++		xflags |= FS_XFLAG_ENCRYPT;
+ 	if (vi->i_flags & S_IMMUTABLE)
+-		flags |= FS_IMMUTABLE_FL;
++		xflags |= FS_XFLAG_IMMUTABLE;
+ 	if (vi->i_flags & S_APPEND)
+-		flags |= FS_APPEND_FL;
++		xflags |= FS_XFLAG_APPEND;
+ 	if (vi->i_flags & S_NOATIME)
+-		flags |= FS_NOATIME_FL;
++		xflags |= FS_XFLAG_NOATIME;
+ 	if (ni->linuxflags & NTFS_LINUXFLAGS_NODUMP)
+-		flags |= FS_NODUMP_FL;
++		xflags |= FS_XFLAG_NODUMP;
+ 	if (!NVolCaseSensitive(ni->vol))
+-		flags |= FS_CASEFOLD_FL;
++		xflags |= FS_XFLAG_CASEFOLD;
+ 
+-	fileattr_fill_flags(fa, flags);
++	fileattr_fill_xflags(fa, xflags);
++	fa->fsx_xflags_ro_mask = NTFS_RO_XFLAGS;
++	fa->fsx_xflags_rw_mask = NTFS_RW_XFLAGS;
++	fa->has_masks = true;
+ 	return 0;
+ }
+ 
+@@ -207,11 +214,9 @@ int ntfs_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dentry,
+ {
+ 	struct inode *vi = d_inode(dentry);
+ 	struct ntfs_inode *ni = NTFS_I(vi);
+-	u32 allowed = FS_IMMUTABLE_FL | FS_APPEND_FL | FS_NODUMP_FL |
+-		      FS_NOATIME_FL;
+-	u32 readonly = 0;
+-	u32 linuxflags = ni->linuxflags & ~NTFS_LINUXFLAGS_MASK;
+-	unsigned int new_fl = 0;
++	u32 linuxflags = ni->linuxflags;
++	u32 rw_user_mask = fa->fsx_xflags_rw_mask;
++	unsigned int new_fl = 0, mask_fl = 0;
+ 	bool forced_immutable;
+ 	int err;
+ 
+@@ -219,44 +224,46 @@ int ntfs_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dentry,
  	if (err)
  		return err;
  
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 28f2108e29f3..68d0983385d0 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -461,7 +461,7 @@ int fscrypt_prepare_lookup_partial(struct inode *dir, struct dentry *dentry);
- int __fscrypt_prepare_readdir(struct inode *dir);
- int __fscrypt_prepare_setattr(struct dentry *dentry, struct iattr *attr);
- int fscrypt_prepare_setflags(struct inode *inode,
--			     unsigned int oldflags, unsigned int flags);
-+			     unsigned int oldxflags, unsigned int xflags);
- int fscrypt_prepare_symlink(struct inode *dir, const char *target,
- 			    unsigned int len, unsigned int max_len,
- 			    struct fscrypt_str *disk_link);
-@@ -784,8 +784,8 @@ static inline int __fscrypt_prepare_setattr(struct dentry *dentry,
- }
+-	if (fileattr_has_fsx(fa))
+-		return -EOPNOTSUPP;
+-
+-	/* chattr passes the unchanged read-only flags back to us too. */
+-	if (NInoCompressed(ni) || NInoWofCompressed(ni))
+-		readonly |= FS_COMPR_FL;
+-	if (NInoEncrypted(ni))
+-		readonly |= FS_ENCRYPT_FL;
+-	if ((fa->flags ^ readonly) & (FS_COMPR_FL | FS_ENCRYPT_FL))
+-		return -EOPNOTSUPP;
+-	allowed |= readonly;
+-
+-	/* Case folding is a read-only, mount-wide property. */
+-	if (!NVolCaseSensitive(ni->vol))
+-		allowed |= FS_CASEFOLD_FL;
+-	if (fa->flags & ~allowed)
+-		return -EOPNOTSUPP;
+-
+-	forced_immutable = ntfs_is_forced_immutable(vi);
+-	if (!(fa->flags & FS_IMMUTABLE_FL) && forced_immutable)
+-		return -EPERM;
+-
+-	if (fa->flags & FS_IMMUTABLE_FL) {
+-		new_fl |= S_IMMUTABLE;
+-		/* Do not persist an immutable bit derived from the mount. */
+-		if (!forced_immutable ||
+-		    (ni->linuxflags & NTFS_LINUXFLAGS_IMMUTABLE))
+-			linuxflags |= NTFS_LINUXFLAGS_IMMUTABLE;
++	if (rw_user_mask & FS_XFLAG_IMMUTABLE) {
++		forced_immutable = ntfs_is_forced_immutable(vi);
++		if (!(fa->fsx_xflags & FS_XFLAG_IMMUTABLE) && forced_immutable)
++			return -EPERM;
++
++		mask_fl |= S_IMMUTABLE;
++		if (fa->fsx_xflags & FS_XFLAG_IMMUTABLE) {
++			new_fl |= S_IMMUTABLE;
++			/* Do not persist an immutable bit derived from the mount. */
++			if (!forced_immutable ||
++			    (ni->linuxflags & NTFS_LINUXFLAGS_IMMUTABLE))
++				linuxflags |= NTFS_LINUXFLAGS_IMMUTABLE;
++		} else {
++			if (ni->linuxflags & NTFS_LINUXFLAGS_IMMUTABLE)
++				linuxflags &= ~NTFS_LINUXFLAGS_IMMUTABLE;
++		}
+ 	}
+-	if (fa->flags & FS_APPEND_FL) {
+-		new_fl |= S_APPEND;
+-		linuxflags |= NTFS_LINUXFLAGS_APPEND;
++	if (rw_user_mask & FS_XFLAG_APPEND) {
++		mask_fl |= S_APPEND;
++		if (fa->fsx_xflags & FS_XFLAG_APPEND) {
++			new_fl |= S_APPEND;
++			linuxflags |= NTFS_LINUXFLAGS_APPEND;
++		} else {
++			linuxflags &= ~NTFS_LINUXFLAGS_APPEND;
++		}
++	}
++	if (rw_user_mask & FS_XFLAG_NODUMP) {
++		if (fa->fsx_xflags & FS_XFLAG_NODUMP)
++			linuxflags |= NTFS_LINUXFLAGS_NODUMP;
++		else
++			linuxflags &= ~NTFS_LINUXFLAGS_NODUMP;
+ 	}
+-	if (fa->flags & FS_NODUMP_FL)
+-		linuxflags |= NTFS_LINUXFLAGS_NODUMP;
+-	if (fa->flags & FS_NOATIME_FL) {
+-		new_fl |= S_NOATIME;
+-		linuxflags |= NTFS_LINUXFLAGS_NOATIME;
++	if (rw_user_mask & FS_XFLAG_NOATIME) {
++		mask_fl |= S_NOATIME;
++		if (fa->fsx_xflags & FS_XFLAG_NOATIME) {
++			new_fl |= S_NOATIME;
++			linuxflags |= NTFS_LINUXFLAGS_NOATIME;
++		} else {
++			linuxflags &= ~NTFS_LINUXFLAGS_NOATIME;
++		}
+ 	}
  
- static inline int fscrypt_prepare_setflags(struct inode *inode,
--					   unsigned int oldflags,
--					   unsigned int flags)
-+					   unsigned int oldxflags,
-+					   unsigned int xflags)
- {
+ 	mutex_lock(&ni->mrec_lock);
+@@ -265,7 +272,7 @@ int ntfs_fileattr_set(const struct mnt_idmap *idmap, struct dentry *dentry,
+ 	if (err)
+ 		return err;
+ 
+-	inode_set_flags(vi, new_fl, S_IMMUTABLE | S_APPEND | S_NOATIME);
++	inode_set_flags(vi, new_fl, mask_fl);
+ 	inode_set_ctime_current(vi);
+ 	mark_inode_dirty(vi);
  	return 0;
- }
+diff --git a/include/linux/fileattr.h b/include/linux/fileattr.h
+index 725efac15e76..b201333443ca 100644
+--- a/include/linux/fileattr.h
++++ b/include/linux/fileattr.h
+@@ -7,17 +7,18 @@
+ #define FS_COMMON_FL \
+ 	(FS_SYNC_FL | FS_IMMUTABLE_FL | FS_APPEND_FL | \
+ 	 FS_NODUMP_FL |	FS_NOATIME_FL | FS_DAX_FL | \
+-	 FS_PROJINHERIT_FL | FS_VERITY_FL)
++	 FS_PROJINHERIT_FL | FS_VERITY_FL | FS_ENCRYPT_FL)
+ 
+ #define FS_XFLAG_COMMON \
+ 	(FS_XFLAG_SYNC | FS_XFLAG_IMMUTABLE | FS_XFLAG_APPEND | \
+ 	 FS_XFLAG_NODUMP | FS_XFLAG_NOATIME | FS_XFLAG_DAX | \
+-	 FS_XFLAG_PROJINHERIT | FS_XFLAG_VERITY)
++	 FS_XFLAG_PROJINHERIT | FS_XFLAG_VERITY | FS_XFLAG_ENCRYPT)
+ 
+ /* Read-only inode flags */
+ #define FS_XFLAG_RDONLY_MASK \
+ 	(FS_XFLAG_PREALLOC | FS_XFLAG_HASATTR | FS_XFLAG_VERITY | \
+-	 FS_XFLAG_CASEFOLD | FS_XFLAG_CASENONPRESERVING)
++	 FS_XFLAG_CASEFOLD | FS_XFLAG_CASENONPRESERVING | FS_XFLAG_ENCRYPT | \
++	 FS_XFLAG_COMPR)
+ 
+ /* Flags to indicate valid value of fsx_ fields */
+ #define FS_XFLAG_VALUES_MASK \
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 63d88ebe3420..8d78990eb95c 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -274,6 +274,8 @@ struct file_attr {
+ #define FS_XFLAG_CASEFOLD	0x00040000	/* case-insensitive lookups */
+ #define FS_XFLAG_CASENONPRESERVING 0x00080000	/* case not preserved */
+ #define FS_XFLAG_PROJID		0x00100000	/* project ID */
++#define FS_XFLAG_COMPR		0x00200000	/* Compress file */
++#define FS_XFLAG_ENCRYPT	0x00400000	/* Encrypted file */
+ 
+ #define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this	*/
+ 
 -- 
 2.56.0
 
