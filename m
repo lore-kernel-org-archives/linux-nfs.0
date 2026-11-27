@@ -1,48 +1,48 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795801293;
-	b=RH8gW5epslxZaGHmid8drxgJTXCjPdL8lQzOjPd5S9xvFX5qNZjSwyVg5HpvbfbpVdLv
-	 dfxxF/jowGuIMWVigrt4GsYA3CkH5Zt4NJzHq1UxUw91dyECHF1k2T4yfKFAbLLcI3NPw
-	 sjYA9klVZ6eC9sr8u9gycSc1fEETJ+4idZsOcLTXIhvH9Z4xdYRWcMlhgBK/7dRs9wJ9m
-	 Jn6fSftLOTWM5xLVRHnpQY0tX2OTh2J8asHNVTMqFFRXioyBQrFexSMK0afBlDT+G9w9J
-	 U7r/zhjj9ST7QHLfpW5VDst0zpsRAx43DEu3RDa9oPK14cd5oVC4i/9adjJm4YGiuWA==
+	t=1795801295;
+	b=ILow70BahB1h0jFp0PIp6ImEqE855mKlnkxizZgXJfWKledmkbWCRKXXziUF2hMdHJsF
+	 yOgcEyeUztegVugduHREsS0MrSczFohOWRJWJXre3YwHzGjwnwnh++RFspeyQNYy20PUA
+	 yFImU6vem/zeDERbCnKPZWZYu8gdv0tpUXp648sJzznFskn70qr7CMh9G56RR/dp826Yz
+	 50nxIFu02XdtQsyC34yKQhFT4I4TA1HtJvIYzIwZu2940763NgRPhgrl6dzuhZNIpo5ZM
+	 WM9/bTIFO6cjmkjxP32gexQmnczidhegOvOq2ZDcPDs7ZygMXZGME23fahguKJ/uqyA==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795801293;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795801295;
 	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
 	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
 	 X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=Rm24O4KXJh4+S6a1Gqwo//gQ0ArVbXdYLfdR7nrdWMk=;
-	b=LbXvNXlFNf52w50Kqe7ga6TNHltqbBbEGaNoR2xR2OKntVmRhSOUQIA3QsDExL9pCASR
-	 fzjL/i6qcGbwQzkd9PdPyyp5JLfRrMnNe4DcM13hXjC9zmNX81njOpA8bBYn/SxHeIqm/
-	 lYNoMOVe8C6dF6IECcYMN9GxhyX2XHsudk6g6znPN30wmmetkcoqxGPDHjpMD6NO8EaTk
-	 ooDGS/frC5qW/R7nYshPr6wlGk9EbEUB6nh9XbuB1G6PhJZWfxT+2hyGr9ejEptqC61qG
-	 CBei73SP30AcpgUUwTsCZvq3l+T6ynfKKPB9ZDiWlWPSu7eBZf141iijnep27GFUaaw==
+	bh=5E5cz96U9feotO4EW5n25iSPmPmLvfkRPaO1D++GyjM=;
+	b=feqKaZwZe38FDmL9Q1i6kek5JZkfD9R1X0qgVUXb7xIjlhEtWNLlWggaW6gj6GRXGaG6
+	 GGvcHUsF6InUae7sIl0P9biRv6es6WTRnVhxyKTNWnDojnj/aFSR4tEy4WDGOJ+vB4KNz
+	 a96IVEK5oF21xnqms27+tj8pC7MFXQIDrQDs4qtzewNdU2zeXymwmmjFTMFjw1lgZZmQ5
+	 WIAz2/dk97qLtzWG1pPI8fkmXaaxRoLpd6XUBOAb4YThHhkJDsR6EAWH5mfXcdvNkHkBo
+	 f6zZpIiVhuVMG0QSsHZaC7NmK50/k0vRPDlxL6E25PMEh+6e+XcoX4aHPKNtIK5mNIg==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b="LEwfio8/";
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oGAVKaSl;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B256F606A321
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 17:41:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C3E1606A321
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 17:41:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=LEwfio8/
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C004D1F00893;
-	Fri, 27 Nov 2026 17:41:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=oGAVKaSl
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9A9E51F00898;
+	Fri, 27 Nov 2026 17:41:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795801293;
-	bh=Rm24O4KXJh4+S6a1Gqwo//gQ0ArVbXdYLfdR7nrdWMk=;
+	s=k20260515; t=1795801294;
+	bh=5E5cz96U9feotO4EW5n25iSPmPmLvfkRPaO1D++GyjM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=LEwfio8/OQmPqH7Gt6aVWOM54ridLWLVmHuzDhRYMTJ19o4J9OpZYyvXGqNPcbpx7
-	 xI0slgmZazN6IeP6UifPut1eRPVKGXMvc172ahea3NNdMzizhQIbdY40hUZeB1L7ew
-	 5tmfgJr+QfwSJ4Ir89pmgq+3FBS5W50SqgNxq/atLfTAfOb3BjOuA+ev45HaNDrOCO
-	 cncR4gL7vwWuHsZXUuzpR6x7n8uo5tXz/J8MsyIViefNsyJMtL9wb4gUU8VPIGszev
-	 f8fLWl11fMleDcJPRMeK1MNd8z6h4BIZ9nng45Sz4EFL6eCGx9ElI29LkgleBP6Ugj
-	 yo0aIlPxTfZew==
+	b=oGAVKaSlNjgG+M4tkd8Mut5UhZ8vSwikAFC43HT4BEcfv77LPbYzpAAwvyn6As4tn
+	 wbhD7mG+0jKBQXWB46wU0BXfUPMdlmbj6VoRzihTwTvpDoupCis2AbmqenJybEW2Is
+	 5pmPnOUxu+mkcrl5+94+jrY1zfhKslTOZyWpYRCFsn2s4aLWsZgd2cDhwR4FSttGHU
+	 0NBbvFGMzB2OQZd2oqO1t1mXgqSJx3Hsc2tFBYjW701AhG+0Ga8hiE4IZjmMFPNVEF
+	 UB3HrDY8blMfs5IRcYhut1czUdfC2NQt46VZAzBuCKYnlAEomgN60U1pRScON/WtCK
+	 frCAM7qcjHCsQ==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 27 Nov 2026 12:41:24 -0500
-Subject: [PATCH RFC 2/5] NFSD: Remove the session slot shrinker
+Date: Fri, 27 Nov 2026 12:41:25 -0500
+Subject: [PATCH RFC 3/5] NFSD: Simplify the recall-grant slot check
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -54,216 +54,130 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20261127-nfsd-slot-retire-v1-2-d9f6636cc713@kernel.org>
+Message-Id: <20261127-nfsd-slot-retire-v1-3-d9f6636cc713@kernel.org>
 References: <20261127-nfsd-slot-retire-v1-0-d9f6636cc713@kernel.org>
 In-Reply-To: <20261127-nfsd-slot-retire-v1-0-d9f6636cc713@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>
 Cc: Chuck Lever <cel@kernel.org>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- linux-nfs@vger.kernel.org, Kari Pulli <kari@smasint.com>
+ linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6752; i=cel@kernel.org;
- h=from:subject:message-id; bh=c/5YlN529Cfnk6i36N0uDYCJJyzKFBNiV16ljLRzvfs=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBrCcDKeXDq5p2U56PjVDNd26+hiF0BY6xZH9FuE
- rDRTXRCC8WJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCawnAygAKCRAzarMzb2Z/
- l7wcD/43DqeSKLFK7GGVcJ2JxLeXe+2ilbCD/ZtxfEToMUAKHENG8Q07xs98kNUYe7gj7ijr873
- iOcLPSkV055WlbC5/kP3T0idoPHHvs8Hp7urEWESVTg2lggTUV/rySJoXxCB+vTinVNZgurerBF
- KM2gMNJBzohpiF9G+lRbSe/G+TMnwQhYAlm00TIEQjul2AAyIdXOu0oCGQHO2He95Jc740PUl/H
- jHWDC+P5qOeuKUnARv1z6G/m9NjvYVz/o+z9/W7CbTGBJGSeuCc8Mp7XbGvyQlLI1TOOTSdZGjc
- e6NfgfhLYRchVFuDk3ZPGdDtwiGUcT0+h4PsIuN19/DrBNLt/zDB3VWxcEkBWhKPHDfpwZaXKMY
- JBVeV4s6ihmBr4cc/A9SCtf+t2iYh6jd1VB6RuFRjREKh3oVfPgGJ5b2IrBi0/07Dku+QAw2gdd
- ZCKoMtjzKdqkJ3B/tiDNGjBdkwravReT1idYkTRcQ2ozwt/OMdBw/8Eg24k1VifR/aMuFR2vjPg
- 2z6oVR8veEimO64DI5WqGO/3TgyDJdaY3ycQ/uMv+/eEdyQuH18OVNp44YFOCHNjlK3GA8Bec5j
- RqrOUKbbVoKNmEaLnz2xU8zmYFq4kI1IjM8uQCTOKqxY7ku04Qtg6AbvY8YeGoh+ee0tRIURVkP
- tn40Jx1YIZ//6og==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4034; i=cel@kernel.org;
+ h=from:subject:message-id; bh=ybr9jNgu+xOdtqEgToYNShw7V3/ofOLN5MdQdy4Cnh0=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBrCcDKYMkSZaQXULq1fyQtx7vWptx1f+Hvh81oX
+ qN9Yf4ufsaJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCawnAygAKCRAzarMzb2Z/
+ lxy7D/948GcGyiS3wIQACY2coZNJQWdDA3R4h/8emECo+65wEKxFPTLVCrtOnPR2uTPiZBPdd6B
+ 4WNbHcZ+L9ho1Y7y6DrGSA04ZKXAqeey+REiEB3+hCSTjkO/qQktRHNJfIV9kmSRHNd4sh5/UwW
+ TEwL41q83KBJQPP2FDOfEIKgFEpGLu47pRciBKxYWIl+uw/BAe++KdpFrrVktoU8kXWvPVlpNde
+ P+kjJKOD6XKSwWDwtdx6ghTNa02LFsOZuRquDBz3Q7zKdhsYGCaTmIvF7yoOM46f4inpSamB1Lp
+ HedrAlF7oSmYDmX24VXM11RSZxUoa8RzPEzPi1LtrFmQYV1sBiTtdbtyEsNQqqRfKOaLZjzhgvp
+ qdIbe061K4JD2wHMUbQ8licwwtO5qRC5cPUVUpP7dtKuI62qubwiOzPpCEyxZtejjRuNqOIhDg9
+ TdXpw93nn5TRSc2ByzAAXykYG3yz4YykXAzlft2ngPxRF3su/NKX+zHMGlYdzHgU+h4zlsFTfCm
+ wDQCiLwQmbsJwoOi2dDcWWR1yOP206HAZrsG0oaZZrtVoA7dXyk8RiiYBUMmrD3IJkiFCNok+ff
+ bYxMKzDnBYf4g3yn5fBR/afrpioZJyCfgrLrqBNy6lniDZbHs8DX8jfuxfpxHQddbLQRg47p9dH
+ QwSWFuX/1mYUe4g==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Under memory pressure the shrinker lowers se_target_maxslots, and
-nfsd4_sequence() frees the slots above the target when a request
-arrives that it takes as the client's acknowledgment. RFC 8881 gives
-a server no such acknowledgment. sa_highest_slotid is the highest
-slot the client has a request outstanding on, so it is low whenever
-the upper slots are idle, whether or not the client still holds
-them.
+nfsd4_recall_grant_slot_retired() treats a freed slot, or a slot
+rebuilt after it was freed, as proof that the client has seen the
+reply that granted a delegation. With the session slot shrinker gone,
+NFSD frees a session's slots only when it frees the session. Neither
+case arises, because se_slots never holds a saved sequence ID and no
+slot carries NFSD4_SLOT_REUSED.
 
-The Linux NFS client discards a slot when a reply lowers
-sr_highest_slotid below it, and replies that arrive late can raise
-its limit over that slot again. The client then sends sequence ID 1
-on a slot NFSD still holds at a higher sequence ID. NFSD returns
-NFS4ERR_SEQ_MISORDERED, and the client retries the same request
-every 15 seconds without releasing the slot. While it holds that
-slot, every SEQUENCE carries a high sa_highest_slotid, so NFSD never
-frees the slots above the target. The session makes no progress on
-those slots until it is destroyed. On a v7.0 server whose target had
-been driven to 1 on sessions of 96 to 444 slots, WRITEs stalled for
-more than a day.
+Remove both tests. The NFSD4_SLOT_INITIALIZED test goes as well. The
+granting compound sets that flag before its slot can accept another
+sequence ID, so only a rebuilt slot could fail the test.
 
-Remove the shrinker. se_target_maxslots is then never lowered, NFSD
-never retires a slot while its session lives, and the client is
-never told to discard one. A slot table still grows on demand, and
-its memory is returned when the session is destroyed. A slot with a
-full NFSD_SLOT_CACHE_SIZE reply cache occupies a 4 KB allocation, so
-a session at NFSD_MAX_SLOTS_PER_SESSION holds up to 8 MB that memory
-pressure can no longer reclaim.
+The test that remains is the retirement rule of RFC 8881 Section
+2.10.6.1: the granting request is retired once its slot moves to a
+new sequence ID. The slot itself stays in service, so rename the
+function to nfsd4_recall_grant_retired().
 
-The code in nfsd4_sequence() that frees slots above the target can
-no longer run. That code and the session list and counters the
-shrinker used are left for a later cleanup.
-
-Fixes: 35e34642b599 ("nfsd: add shrinker to reduce number of slots allocated per session")
-Reported-by: Kari Pulli <kari@smasint.com>
-Closes: https://lore.kernel.org/linux-nfs/CAPJN3b=1qd=5E7BVTCG6UtR7=BqUenM6j7zTuDHCEno5oj77hQ@mail.gmail.com/
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 106 ----------------------------------------------------
- 1 file changed, 106 deletions(-)
+ fs/nfsd/nfs4state.c | 40 +++++++++++++---------------------------
+ 1 file changed, 13 insertions(+), 27 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 29f675b14670..80c2fb487ffe 100644
+index 80c2fb487ffe..12d06ffc7a4e 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2372,7 +2372,6 @@ gen_sessionid(struct nfsd4_session *ses, u64 rand)
-  */
- #define NFSD_MIN_HDR_SEQ_SZ  (24 + 12 + 44)
- 
--static struct shrinker *nfsd_slot_shrinker;
- static DEFINE_SPINLOCK(nfsd_session_list_lock);
- static LIST_HEAD(nfsd_session_list);
- /* The sum of "target_slots" on every session, slot 0 included. */
-@@ -2410,41 +2409,6 @@ free_session_slots(struct nfsd4_session *ses, int from)
- 	}
+@@ -6414,14 +6414,18 @@ static void nfsd4_recall_grant_sessionid(const struct nfs4_delegation *dp,
+ 	nfsd4_sessionid_set_rand(sid, dp->dl_recall_grant.sessionid_rand);
  }
  
--/*
-- * This interface can be used by a shrinker to reduce the target max-slots
-- * for a session so that some slots can eventually be freed.
-- * It uses spin_trylock() as it may be called in a context where another
-- * spinlock is held that has a dependency on client_lock.  As shrinkers are
-- * best-effort, skipping a session with the client_lock already held has no
-- * great cost.
-- */
--static int
--reduce_session_slots(struct nfsd4_session *ses, int dec)
--{
--	struct nfsd_net *nn = net_generic(ses->se_client->net,
--					  nfsd_net_id);
--	int ret = 0;
--
--	if (ses->se_target_maxslots <= 1)
--		return ret;
--	if (!spin_trylock(&nn->client_lock))
--		return ret;
--	ret = min(dec, ses->se_target_maxslots-1);
--	ses->se_target_maxslots -= ret;
--	atomic_sub(ret, &nfsd_total_target_slots);
--	ses->se_slot_gen += 1;
--	if (ses->se_slot_gen == 0) {
--		int i;
--		ses->se_slot_gen = 1;
--		for (i = 0; i < ses->se_fchannel.maxreqs; i++) {
--			struct nfsd4_slot *slot = xa_load(&ses->se_slots, i);
--			slot->sl_generation = 0;
--		}
--	}
--	spin_unlock(&nn->client_lock);
--	return ret;
--}
--
- static struct nfsd4_slot *nfsd4_alloc_slot(struct nfsd4_channel_attrs *fattrs,
- 					   int index, gfp_t gfp)
+-static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
++/*
++ * RFC 8881 Section 2.10.6.1: the granting request is retired once
++ * its slot accepts a new sequence ID.
++ */
++static bool nfsd4_recall_grant_retired(struct nfs4_delegation *dp)
  {
-@@ -2620,66 +2584,6 @@ static void free_session(struct nfsd4_session *ses)
- 	__free_session(ses);
- }
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 	struct nfsd4_sessionid sid;
++	struct nfsd4_slot *slot;
+ 	bool retired = false;
+-	void *entry;
  
--/**
-- * nfsd_slot_shrinker_count - report reclaimable DRC slots
-- * @s: shrinker descriptor (unused)
-- * @sc: shrink control (unused)
-- *
-- * Return: a positive count of reclaimable slots, or SHRINK_EMPTY when
-- * there is nothing to reclaim.
-- */
--static unsigned long
--nfsd_slot_shrinker_count(struct shrinker *s, struct shrink_control *sc)
--{
--	int count;
+ 	if (!dp->dl_recall_grant.valid)
+ 		return false;
+@@ -6436,27 +6440,9 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+ 	spin_lock(&nn->client_lock);
+ 	ses = __find_in_sessionid_hashtbl((struct nfs4_sessionid *)&sid,
+ 					  clp->net);
+-	entry = ses ? xa_load(&ses->se_slots, dp->dl_recall_grant.slotid) : NULL;
+-	if (xa_is_value(entry)) {
+-		/*
+-		 * A slot is freed only once the client has acknowledged
+-		 * the smaller slot table, which it cannot do while a
+-		 * request on that slot is outstanding.
+-		 */
+-		retired = true;
+-	} else if (entry) {
+-		struct nfsd4_slot *slot = entry;
 -
--	/*
--	 * To prevent session deadlock, one slot of each session (slot 0)
--	 * is not reclaimable while the session is active. Thus the number
--	 * of sessions is subtracted from the total number of target slots.
--	 */
--	count = atomic_read(&nfsd_total_target_slots) -
--		atomic_read(&nfsd_total_sessions);
--
--	return count > 0 ? count : SHRINK_EMPTY;
--}
--
--/**
-- * nfsd_slot_shrinker_scan - reclaim DRC slots under memory pressure
-- * @s: shrinker descriptor (unused)
-- * @sc: shrink control; @sc->nr_to_scan bounds the sessions visited,
-- *      @sc->nr_scanned reports how many were visited
-- *
-- * Return: the number of session slots NFSD will release.
-- */
--static unsigned long
--nfsd_slot_shrinker_scan(struct shrinker *s, struct shrink_control *sc)
--{
--	struct nfsd4_session *ses;
--	unsigned long scanned = 0;
--	unsigned long freed = 0;
--
--	/*
--	 * Each visited session releases at most one slot. After
--	 * nr_to_scan sessions have been visited, the list head is
--	 * rotated past the last visited session so the next scan
--	 * resumes from there.
--	 */
--	spin_lock(&nfsd_session_list_lock);
--	list_for_each_entry(ses, &nfsd_session_list, se_all_sessions) {
--		freed += reduce_session_slots(ses, 1);
--		scanned += 1;
--		if (scanned >= sc->nr_to_scan) {
--			/* Move starting point for next scan */
--			list_move(&nfsd_session_list, &ses->se_all_sessions);
--			break;
--		}
+-		/*
+-		 * A reactivated slot was freed and rebuilt, so the same
+-		 * acknowledgment applies. The seqid test errs toward
+-		 * revoking: a rebuilt slot restarting at seqid 1 matches
+-		 * an old grant.
+-		 */
+-		retired = (slot->sl_flags & NFSD4_SLOT_REUSED) ||
+-			  ((slot->sl_flags & NFSD4_SLOT_INITIALIZED) &&
+-			   slot->sl_seqid != dp->dl_recall_grant.seqid);
 -	}
--	spin_unlock(&nfsd_session_list_lock);
--	sc->nr_scanned = scanned;
--	return freed;
--}
--
- static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new,
- 			 struct nfs4_client *clp,
- 			 struct nfsd4_create_session *cses, u64 sessionid_rand)
-@@ -10690,15 +10594,6 @@ nfs4_state_start(void)
- 	if (ret)
- 		return ret;
- 
--	nfsd_slot_shrinker = shrinker_alloc(0, "nfsd-DRC-slot");
--	if (!nfsd_slot_shrinker) {
--		rhltable_destroy(&nfs4_file_rhltable);
--		return -ENOMEM;
--	}
--	nfsd_slot_shrinker->count_objects = nfsd_slot_shrinker_count;
--	nfsd_slot_shrinker->scan_objects = nfsd_slot_shrinker_scan;
--	shrinker_register(nfsd_slot_shrinker);
--
- 	set_max_delegations();
- 	return 0;
++	slot = ses ? xa_load(&ses->se_slots, dp->dl_recall_grant.slotid) : NULL;
++	if (slot)
++		retired = slot->sl_seqid != dp->dl_recall_grant.seqid;
+ 	spin_unlock(&nn->client_lock);
+ 	return retired;
  }
-@@ -10742,7 +10637,6 @@ void
- nfs4_state_shutdown(void)
+@@ -6471,7 +6457,7 @@ static bool nfsd4_recall_grant_slot_retired(struct nfs4_delegation *dp)
+ static void nfsd4_refresh_recall_grant(struct nfs4_delegation *dp)
  {
- 	rhltable_destroy(&nfs4_file_rhltable);
--	shrinker_free(nfsd_slot_shrinker);
+ 	dp->dl_recall_grant.retired_at_send =
+-			nfsd4_recall_grant_slot_retired(dp);
++			nfsd4_recall_grant_retired(dp);
+ 	if (dp->dl_recall_grant.retired_at_send)
+ 		nfsd41_cb_destroy_referring_call_list(&dp->dl_recall);
  }
- 
- static void
+@@ -6556,9 +6542,9 @@ static int nfsd4_cb_recall_done(struct nfsd4_callback *cb,
+ 	case -EBADHANDLE:
+ 	case -NFS4ERR_BAD_STATEID:
+ 		/*
+-		 * Retirement of the granting slot proves the client saw
+-		 * the grant. Trust the rejection only if the slot had
+-		 * retired when this recall was sent.
++		 * Retirement of the granting request proves the client
++		 * saw the grant. Trust the rejection only if the request
++		 * had retired when this recall was sent.
+ 		 */
+ 		if (dp->dl_recall_grant.retired_at_send) {
+ 			nfsd4_deleg_recall_rejected(dp);
 
 -- 
 2.56.0
