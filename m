@@ -1,49 +1,49 @@
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=100.103.45.18
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
 	t=1795801292;
-	b=sDW4RZCY2K7DjwMXjcSpchuqMfqIvL9cEV8TUrxkxRwbvhTLqReR6I663M6tDSrJlCev
-	 YwK5i1tSl37PSiNrnzQqY7pv7to9aMXFmpfjA49GOlSwk1rs6zUK7wxaTQdjckVTmwOLR
-	 VzWlq48po/zqtCKnPJ/O5ezKHAL0cbK6N0LX0Ck0MS2voOEAUrhpSMJAFzIPoyudVnimt
-	 HPMx2P7ZF7sjelBe9VP+OgVZ2pgVq49sgnBUs5rC0OxL1nxmPXr2lbAZU6/he6w7ltzbC
-	 lINfcuvnAIpO/LEpl4KgAd9pAdVAetnIqHdIHzKBrFhmwe05QToCtDQowHj6QgfiEyw==
+	b=UTxiYmYAb2gSruNUVhBFsI7dbsON1JmeWu34RQXAifiPLMgYODppl2FplRPJBkfOd7xI
+	 NixNTUdDdaDCBPJ99QB8rQ6wVvbN/Txlb+TokC4gsuFIArhNxI/zw16f91rlwQ29LNT+9
+	 zBv8QrE293tSdaNZfFpjv5eytg4d4NX4jnlU31pZwnALS+iN79vvPM0DJssqUri0gMPF3
+	 hP/qMftJxdcLPRaDjs2dPOypHU1D/PbT4vgazUajNNQ0sMFGSjFF6ZKnX5XYiZ0Xde68O
+	 eklviXLpItxgVUEjea6lCediOcu5l6xsyNgcJVCm+dtsEKz3GvLTZLNZw1mRWlI7cUw==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
 	a=rsa-sha256; c=relaxed/relaxed; t=1795801292;
-	h=Received:DKIM-Signature:From:Subject:Date:Message-Id:MIME-Version:
-	 Content-Type:Content-Transfer-Encoding:X-B4-Tracking:X-Change-ID:To:
-	 Cc:X-Mailer:X-Developer-Signature:X-Developer-Key;
-	bh=6+gGf55wW0NDqieHYVrN1p1lsG0XVC+VIIKKfXoHp3g=;
-	b=R/pLhV7IjgO15xcCQ+MbZZ7PXuO2gS1xOhOfAtjqT3e7oDcTB3vuHC9npmHq4wT45dja
-	 MGrCbFl5kucFJ2ugvg/+HEwEf3NEFyNZvn7huRkTavsrqjjcZI4PLOUXV2y544Wg6DJjb
-	 R1rYJ/Yj+hxxYvh02jpkay/WdMc6CIvB9qtbj2LxjmUxywB62RSAckK8RPa68LTGqxxbZ
-	 wMetUDRdfsXzJ+I0p+g/l41MfCOERE23TLQ3bH5qemSRXB3KjCIfXXHORz/YsxzO5KGa3
-	 oFf7a7pj/O+PkeZvDQw4z2cxbG6pXPx9rxTj2ax+WtSZSUWKbVLaS+dg/W8fhw3Efxg==
+	h=Received:DKIM-Signature:From:Date:Subject:MIME-Version:Content-Type:
+	 Content-Transfer-Encoding:Message-Id:References:In-Reply-To:To:Cc:
+	 X-Mailer:X-Developer-Signature:X-Developer-Key;
+	bh=jwqM64RtEGdcvM5dPp4L9fYd7nbq9Fx36rftcIh10Xo=;
+	b=hC1jq0kSXlyKWRcAeAElI4HsmfutEcUcHifKb+o/xJau3D0FM25o0s/lTXXQxcbxSCqk
+	 m9fVM+TWBjMUhoYwM+AFCAbRywHcWlGUjTGaS2NOY1UFWsrBUnSiqvaQlZvn8BZ257YJ4
+	 rxFFHq6lrjV04pXHp6G1+0bpM6jmWknAIiT5yfAUDaeh02wotlkUkEKLFWSy67UP8N6EI
+	 wTjLYjGpLVQoAkJDIrkdSzSnp4sHSkXJKlbKtokd8LE80n1XQ3H9rKcUCqqPwLyuvBN7u
+	 WcAC4/8mN5hZcsNV0SlE2EJleCPd9fPsfzUF+G7xY+aYI9mWyuSa97+dMdvl+06mx/Q==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
-	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Jo9HcRLc;
+	dkim=pass header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RniRtZiI;
 	arc=none smtp.remote-ip=100.103.45.18
 Received: from smtp.kernel.org (quasi.space.kernel.org [100.103.45.18])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35747606A31C
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 17:41:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC725606A323
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 17:41:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=Jo9HcRLc
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A4601F00893;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.a=rsa-sha256 header.s=k20260515 header.b=RniRtZiI
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 083741F00898;
 	Fri, 27 Nov 2026 17:41:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1795801291;
-	bh=6+gGf55wW0NDqieHYVrN1p1lsG0XVC+VIIKKfXoHp3g=;
-	h=From:Subject:Date:To:Cc;
-	b=Jo9HcRLcQ897V1kbE6Hqke4Nx08DRZtgHx3nBrixbY3ABM4K8njsGzn8RKooTjvPu
-	 VwpS990Pp+HZfpJRHKfY7Mlx8DgP36OcSOck7NbTFYH7JvjSIN6oAj5kDme8ci5DUt
-	 QT8KL5gpqBw91Dr0DyB8nsvyPd6p5zd3u9KJb1PrknKv9QMWtjI2tPNjaaFhG44/4T
-	 0kkQBC8Q2V9xuNRcI0AKCKP8RYVOJewVZNA962Pi4B8r35pRCEGQ10JKzNTEXZIeEa
-	 u8k5/mjhglN+4rf03AMNXg4ExmAkepa8/XeaIoA5o0aJ9zUGepeF+vCxI292nqwS6S
-	 HH6bb2XXVc1MA==
+	s=k20260515; t=1795801292;
+	bh=jwqM64RtEGdcvM5dPp4L9fYd7nbq9Fx36rftcIh10Xo=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=RniRtZiIn4nlpUAZ9PxewgBybcKlOwYWGeKemlje4VaEPm4wuQNJpVMa4hLgLXLXM
+	 uND2fesbN9XpnaaEsilH7l/x0ySt1Z/1zg/6YlB80vhUmWuSEUXyXsWVOIbi3OYgqz
+	 0T7vfEl/ic+nlP/YwGESxV0ikmQGqKhoRcuRQMx2P9zkTAWi6wmmf5mqCeNDcLt25u
+	 ZqV3KP2GCUL1MqHBNHavptPV/WHfs3OyvSjwNk1Q8ND7hE8Y/Fpt5ERmfc4Fk7eAWP
+	 T8BoKBR3ctDSIxx+SLcJk3nxbdQPTlBaiZYFEw5tJ/GevQgM7rbCIMFkavLGYdal/z
+	 9XQ2zce1oUbVw==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH RFC 0/5] NFSD: Stop shrinking NFSv4 session slot tables
-Date: Fri, 27 Nov 2026 12:41:22 -0500
-Message-Id: <20261127-nfsd-slot-retire-v1-0-d9f6636cc713@kernel.org>
+Date: Fri, 27 Nov 2026 12:41:23 -0500
+Subject: [PATCH RFC 1/5] NFSD: Cap the CREATE_SESSION slot count at the
+ thread ceiling
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -55,112 +55,63 @@ Precedence: list
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQrCMBBFr1JmbTANmLZuBQ/gVlwk6bQdKanMR
- BFK725Sl+/x/1tBkAkFztUKjB8SWmKG+lBBmFwcUVGfGYw2tq7NScVBeiXzkhRjIkalG9201ti
- uNR3k24txoO+evMPteoHHX8rbPzGkEisz7wSVZxfDVFTA+binE0qiOMK2/QATE9k3nAAAAA==
-X-Change-ID: 20261125-nfsd-slot-retire-070786269829
+Message-Id: <20261127-nfsd-slot-retire-v1-1-d9f6636cc713@kernel.org>
+References: <20261127-nfsd-slot-retire-v1-0-d9f6636cc713@kernel.org>
+In-Reply-To: <20261127-nfsd-slot-retire-v1-0-d9f6636cc713@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>
 Cc: Chuck Lever <cel@kernel.org>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
- linux-nfs@vger.kernel.org, Kari Pulli <kari@smasint.com>
+ linux-nfs@vger.kernel.org
 X-Mailer: b4 0.17-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3552; i=cel@kernel.org;
- h=from:subject:message-id; bh=VGAL9gmpJ2pw6rBaM3vZwRuKGEaXjFT1BAWS8Rx6ai8=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBrCcDErKxufx+U/eBauT7UrniYmschQqzNgxBIx
- Cpgk6pxO3eJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCawnAxAAKCRAzarMzb2Z/
- l0fSEACuDmruWc/FsmXJuMxdxHkAy+HiyGvDsoiMzZdV3t6pglvn+FcVC2m78oFOuHd6wN0gUgb
- 1nE9x8oPe2Ur4iIGb4JR/Eu8f8ZhOGuzOMucGBrG/wkGmm1tYrqvKNoGn4naTtHLN+chxAnm677
- cUjKL74wm9iPD96ziO1u1KwmpC6rBp1dkQNbk5IZvPl4WXlqiW4yaQw8pEqCcDi4B1xXL+y3k+r
- Xr+BLINOpk+dPYlv3v+sVNbh7zG7BhAQRGYmJOKnrL/jm7yJpf43rHZ2OS4bcLb+uqHyvWf1FQV
- hztl2CFdsChCaSwajxWQqaLyO9UWHygOEbt7fjDxkkAV3QsIA/5KSTb5A5dfbH1NohrGn/s7EVP
- ZsIcnL1ELDbxlOSpXOwOGEiNhzxtSHpuuFMX+JJkZ4/KXxGneb/E4rlgx1m0fqw3jgwbWODYkY8
- QHbZNZQYR9KUV1zfwQZAa4S6W3MZbJbFfO06oak8FHvcZHxD59tmCxzkrvgWAP4gH4qsCL/RX2l
- TJQxhCtHWPYXFnwePH1+Z6jrk9WaJOWii1+FayPHf8lwIeF8cX1I3om0vOI4oUbrVOoUrE4Wvnk
- f4eKHQi3a3LoTvlN2Zt7GPJcEnRcepr+pMRxmrRj9bXrZkpBQ6X8fAbjYb0A8nOOQhNWnScY6Gh
- Mq1dkfdQHrlqh+g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1447; i=cel@kernel.org;
+ h=from:subject:message-id; bh=ZNRZ/TdjC+DFRmbI060jU7h426iKNJYT5doPy1F6HYc=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBrCcDJXQ/X82VZmBEil3Z+lciZvhNaV8cc/J4/t
+ EW2zj6i+4mJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCawnAyQAKCRAzarMzb2Z/
+ l6AkD/9nDAcMMjMqqIv9jSrkCzy5ppcID1qP+fDIePqIKuI9nO2hJYKEnoSgNbCtA+GnxTiQjnP
+ GUYD+Km/zqm6ZrCmwuACKjml33WH6I3vXybGA5lKba9mvsP46xikepMDWyuARPDZUhwQ7HVKB4C
+ uT5VmXLCznnDNSkE74cW3XaBDNHrEG6F6Zg/+w3ZXKliy8zkrq/077l1Avr2G41s7L9UrJq7bw6
+ lNXdussx5bBnzFZcLDO0gw2irWOPdFNXijQevo4jXN0cAqftUkh1p4Tj3YWN6GwszDA5slAb21N
+ gi8xteBvjV93e41ARLugfWfhb9Bfz7UutnaNttcO9qMxzfMU6d9/SsKV0a9K02etwWYiMbELFNL
+ rvi3HpRIO7+N3lnywU89z6qMhzKrOdSb3RD+as9MLYLaBwyrD98DtfzC9zJMidg70p3Swo3QOVW
+ AF2NmEHlcO6keOt1r4ZT46B3FRe3L24xyZAOBgjwGgWVWRGLIgX6SOq+YYpWDxF+ybjf+PwfGdb
+ acfzBdF4kbpqg2VGy+3JJrWjDeS6qyw6UxDkq+HfnDtZcH8Z5EzMW1aMp8bZfPqCSJxaa1JqNX9
+ SHIHkr+PTN2EqTPYPzlIMpJf6tmoZqFSSdKkTbaiAVGhY3cUzBrYXQgfGNtpmeP0jnb2D+tbjAp
+ qM0WsBitD83zErg==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Problem statement:
+check_forechannel_attrs() grants a new session up to
+NFSD_MAX_SLOTS_PER_SESSION slots, and alloc_session() allocates all of
+them up front. The growth path in nfsd4_sequence() stops at
+svc_serv_maxthreads() instead, because slots beyond the nfsd thread
+count cannot raise a client's throughput. A client that asks for 2048
+slots in CREATE_SESSION gets a table it cannot use, and only the slot
+shrinker reclaims the excess before the session is destroyed.
 
-1. We've had a few recent reports of persistent hangs due to
-   NFS4ERR_SEQ_MISORDERED loops after the NFSD slot table shrinker
-   runs.
+Apply the same ceiling in check_forechannel_attrs(), so a session's
+slot table stays within it even without a shrinker to trim it.
 
-   After a session slot is freed and regrown, a retransmit on that
-   slot gets NFS4ERR_SEQ_MISORDERED on every retry. Session state on
-   NFSD and the client has drifted apart such that the client resets
-   slots to sequence ID 1 while NFSD still holds the old sequence ID
-   values for those slots.
-
-2. After a table shrink, NFSD accepts either a sequence ID of 1 or
-   the remembered sequence ID of the old slot that was there before
-   a table shrink, the latter case permits the server to re-execute
-   the RPC the client thinks is still executing but the server
-   thinks has been shrunk and regrown. This breaks exactly-once
-   semantics.
-
-Analysis:
-
-Since v6.14, a memory shrinker lowers an NFSv4 session's slot target
-so that NFSD can release the slots above the target (once it infers
-that the client's slot table has shrunk). However after close study
-of RFC 8881, I've found no reliable protocol mechanism for an NFSv4
-server to make this inference. A server can observe that the client
-has currently idle slots above the target, but it cannot determine
-with certainty that these are "no longer used" slots.
-
-Slides on dynamic slot allocation presented at IETF 86 in 2013
-describe the missing mechanism [1]. A reordered SEQUENCE can make a
-slot look retired while the client still has a request to replay on
-it, and RFC 5661 does not specify the sequence ID of a slot that is
-retired and then reinstated. The slides propose a per-slot record of
-the last target sent. NFSD's sl_generation is that record, and the
-hangs occur with it in place.
-
-Proposed fix:
-
-Since the NFSv4 session protocol cannot signal the difference between
-an idle slot and a freed slot, the only way forward is to remove the
-slot table shrinker from NFSD. nfs4j, NFS-Ganesha, FreeBSD, illumos,
-and Buildbarn each return a constant sr_target_highest_slotid for
-the life of a session, and none of them implements CB_RECALL_SLOT.
-
-Without the shrinker, NFSD no longer frees any slot before its
-session is destroyed. An NFS client whose workload grows its session
-slot table can pin up to 2048 slots, or about 8MB. For comparison,
-the Linux client asks initially for 64 slots, but never more than
-1024.
-
-Testing:
-
-On 7.2.15, a pynfs reproducer shows the double execution and the
-SEQ_MISORDERED loop. With this series applied, NFSD correctly
-replies from the slot's cached reply. pynfs NFSv4.1 "all" results
-match with and without the series. Session and client teardown,
-CB_RECALL handling, and fio from a remote Linux client with
-nconnect=8 against a server under memory pressure ran clean under
-KASAN, kmemleak, and lockdep.
-
-[1] https://www.ietf.org/proceedings/86/slides/slides-86-nfsv4-6.pdf
-
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Chuck Lever (5):
-      NFSD: Cap the CREATE_SESSION slot count at the thread ceiling
-      NFSD: Remove the session slot shrinker
-      NFSD: Simplify the recall-grant slot check
-      NFSD: Remove the global session list and slot counters
-      NFSD: Remove the dead session slot retirement code
+ fs/nfsd/nfs4state.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
- fs/nfsd/nfs4state.c | 262 +++++-----------------------------------------------
- fs/nfsd/state.h     |   5 -
- fs/nfsd/trace.h     |   3 +-
- 3 files changed, 26 insertions(+), 244 deletions(-)
----
-base-commit: 6f174a0eca19e69a14c34b0ed56b60d484f22fd6
-change-id: 20261125-nfsd-slot-retire-070786269829
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9ebee4fca9d6..29f675b14670 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4803,7 +4803,9 @@ static __be32 check_forechannel_attrs(struct nfsd4_channel_attrs *ca, struct nfs
+ 	ca->maxops = min_t(u32, ca->maxops, NFSD_MAX_OPS_PER_COMPOUND);
+ 	ca->maxresp_cached = min_t(u32, ca->maxresp_cached,
+ 			NFSD_SLOT_CACHE_SIZE + NFSD_MIN_HDR_SEQ_SZ);
+-	ca->maxreqs = min_t(u32, ca->maxreqs, NFSD_MAX_SLOTS_PER_SESSION);
++	/* The same ceiling bounds slot table growth in nfsd4_sequence(). */
++	ca->maxreqs = min3(ca->maxreqs, NFSD_MAX_SLOTS_PER_SESSION,
++			   svc_serv_maxthreads(nn->nfsd_serv));
+ 
+ 	return nfs_ok;
+ }
 
-Best regards,
---  
-Chuck Lever
+-- 
+2.56.0
 
