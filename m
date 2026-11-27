@@ -1,89 +1,89 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.171
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=209.85.210.182
 ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
-	t=1795777004;
-	b=gnKLInfrXUN0d3Txi+ZxLJ2d9+appsoGP7sD6qz6BnG9Zd6YoqDTZIrXGzUqyYuC052+
-	 4RJTHt5KCkqcwKXVtXb8Gq4KQewlWbRHc5xBzqVq4saCft7C2HwRMqHNCpo3RfnisfLsm
-	 ee+vaagSArxuxFXhDkO9RdiMcjIzo/lc6w/8mQePSLUjpPxIJswUrald4sCaXVwBjZAg/
-	 kG9aZA/AkWobYI9p8wLILx/Ft18epK4vdSdNh4CUhYrWDkw48KTOMi+0kBpDZO1NncEiD
-	 mpNTbqGv092QtPIOFP3MeTwb802kSgGlgzRerl++65l7qxmMXSqIsaKcdpuLUNOw94A==
+	t=1795777009;
+	b=lVhlXr3zyBuPlowsGeCR9HoaYidXLNA+XvMzUSpyxqWnnKantLFbr5gmiGZIqQTi06ic
+	 BADiuV4KYPXLmiAxDQAqJ4OrniC9YFB1k4QPOTBiwZjzF/wkFTVc2Pgm0m0U9G35Xi6jO
+	 XZwhKZI6xi8R3Oihgqz5EGy3/KldlPRBhDye3Z9MAu5/mf5eKeg4PhVinpCd8l3IKyK74
+	 hEGEilzCUmL1xbfXs2AugYN39YtyWiebbzoXyBLrVGSOHBhY5/WQzqB9RmdQg4owkoqNX
+	 0aWGq2EFCPuJkIITl8OCrvScCX3/JQO8QYP/nkr58nvONmtfR4Dbt0/OcjhJ3RmGD3Q==
 ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795777004;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795777009;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
 	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
 	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:MIME-Version:
 	 Content-Transfer-Encoding;
-	bh=FjJXi5krpE2+5wdhVjWmRpm5ckA1fcncKpg6z0V2nbU=;
-	b=oDNfZuy4GOUOtmENIgydZyXhKwt/uZiF3vYt7k50egTpG049HjIKHgfELM85iItAPmlB
-	 fBKXzGykY0vwFAyT9/yTENnbUYCA6V3SkS2ddYFQ4hQhBwWHc/bkBxuY/9VZxtDAAuRFf
-	 Yul/YL/kHsqAl6uCBjkA2cvfTkXgf/+bcYoGCxxZ/S1E6nl3Z6eZfe9Wk/sx0fNc+GrtT
-	 kXo8IzRRaIqgqXr/Y9q9/nbNp+4R1limWcIW6u4i+gC16TQdqiACWQ1vJwVYSgg8VLOYX
-	 Fr5yq01ND0FiJGjHKPuW2RWvRN4BoX5Ksv+zrIi9U6kmgFC7uZG4Z3vFtucFDro6O1Q==
+	bh=uGRu1YiKX/bMIxmsS1uKkMBOHlcKQ3bTOVU2lGWV4Hg=;
+	b=0q4owGDBE+XtWIeR5S1mCJApY2Q/i5GLBPo1ziBXnP5Ft0Jg96UX8j0+JIQut0B5Kn8s
+	 TkvZpibpDw0XDBYdU6TB7Ttty/QiO/BRM1TiM7CIylgjyrieWkgQPii4HIBsYcf/9+fhI
+	 VdnVHbPXvZWnsF9RPMr/hFIEWj+e4a3WiTgP+cEJWBWyJZDey//ltYzqgcGr3pIpgClUn
+	 Vq/Nmii3ogo8AFHNXLFqUAuX4BXgh09YLUpaorLO8pP9oz8Xnhb8zhGGsgmQRfkmEglt+
+	 Quzx/JMT8FoQRx8hwFecb+eVLPG8SJ7uubdRNTuE80t+//GAWe550sy4GjDrHCe8nuQ==
 ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
 	dmarc=none header.from=iiitd.ac.in;
 	spf=pass smtp.mailfrom=iiitd.ac.in;
-	dkim=pass header.d=iiitd.ac.in header.i=@iiitd.ac.in header.a=rsa-sha256 header.s=google header.b=bi5jb153;
-	arc=none smtp.remote-ip=74.125.82.171
-Received: from mail-dy1-f171.google.com (mail-dy1-f171.google.com [74.125.82.171])
+	dkim=pass header.d=iiitd.ac.in header.i=@iiitd.ac.in header.a=rsa-sha256 header.s=google header.b=Y+1PcCbF;
+	arc=none smtp.remote-ip=209.85.210.182
+Received: from mail-pf1-f182.google.com (mail-pf1-f182.google.com [209.85.210.182])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 94ABA606A31F
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 10:56:43 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 94ABA606A31F
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE04A60A260C
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 10:56:48 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org BE04A60A260C
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iiitd.ac.in
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iiitd.ac.in
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=iiitd.ac.in header.i=@iiitd.ac.in header.a=rsa-sha256 header.s=google header.b=bi5jb153
-Received: by mail-dy1-f171.google.com with SMTP id 5a478bee46e88-33fb4680717so4526623eec.1
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 02:56:43 -0800 (PST)
+	dkim=pass (1024-bit key) header.d=iiitd.ac.in header.i=@iiitd.ac.in header.a=rsa-sha256 header.s=google header.b=Y+1PcCbF
+Received: by mail-pf1-f182.google.com with SMTP id d2e1a72fcca58-8b68e59ab33so5854844b3a.2
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 02:56:48 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=iiitd.ac.in; s=google; t=1795777003; x=1796381803; darn=vger.kernel.org;
+        d=iiitd.ac.in; s=google; t=1795777008; x=1796381808; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=FjJXi5krpE2+5wdhVjWmRpm5ckA1fcncKpg6z0V2nbU=;
-        b=bi5jb153wW8OES5qJHDlVzAH8Hsyg4mONwXc+GXqwgN0kAnNedyzGQw8vEh83AcgUn
-         PHby7b2QJ15t3wwWT0jUGj/PebWSqxl86qShiWlTqorOdOj0BWTWAvU16NplqNMt5Yj4
-         HYJ3mLosErapCWFdqcCM8kzH6pWZu5XOFbZW0=
+        bh=uGRu1YiKX/bMIxmsS1uKkMBOHlcKQ3bTOVU2lGWV4Hg=;
+        b=Y+1PcCbFNDEPQQhERe56HBn2ULcX9K7X1rig7/w1KebamCCkqB8QHsWcCVWJlsQMPv
+         W/N9w3QnnKj3DxsGlmDV+3rp6MZO2GHV2xyzB9x0T1TejFIQDF+A1wskMWUMomPR0jac
+         95cJ8kQBq63BBZU7hsb1oBsf0ePHjvO26ky7Q=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795777003; x=1796381803;
+        d=1e100.net; s=20260707; t=1795777008; x=1796381808;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=FjJXi5krpE2+5wdhVjWmRpm5ckA1fcncKpg6z0V2nbU=;
-        b=MGaWFwcdwNgx3+n99+U+LglDMlN6wzQJCcBvXIHbzMfQ8n7ulQ6eeqh2S9P5Bi+1Nr
-         O/rLx3R6Y75gnYII62GarRsyWLrc4Y/WS0bnKheKoextMdKMXA0t1pIkLJV8DFOUmFhQ
-         iIM1QXNMxwckEM39Bad72B+RO0//+Oa2JZbmmeK1wkYDukezmHrO5vddPu+SRP0tp5Ic
-         Z0kIpo8bSeW3cFEt8p3txYyxz9Zo+ZHUL4NQNwI97GMROnR2MwT0lw8l0muBa1BM3ORI
-         dvBwP0vpToAmwK8yWXZiQ0hiOtxi3wE+i3Tt0g4dFF9w2OWb9F59FRhppazrA+2k6f33
-         5xyA==
-X-Forwarded-Encrypted: i=1; AL+hErGoJZJ3wTuPBaSPCUCoWm5BuYPfhc9PHHGcra6gbbKVU79rBzJBscQwLigkkQ09VLJ/lgU85NiZ/ik=@vger.kernel.org
-X-Gm-Message-State: APuU4Z/vOMYetalASjyTrHQycs1JbehafhC9emxI/KqWHcNlR9J93CAV
-	tEOE8aCNOEKVSrazhzThXeyDaOJLKPirwYwQOslQkL7zxdfirIyOZL2ezkYIaE8krtY=
-X-Gm-Gg: AZFdTZcKJybz1LXxvtb/YYh5H0+Oldrd9rMfXqlGRqhKUaWc2RGgucbNo9kcK2/hRJ3
-	YzSqicxUtdiiNPCAujVNJNQH4ZOtc1NRm+wc4Ayn/RCbyK3INAbza96Mu/pvEk3Y+nS1igGM+Be
-	NMoMDP+6hw9DJvtr1VIJoOeQ1kP9FfPpQ1mJcB3J40/eoJg7m5CYv+MnZ4JV9iX25WM5LzGTTR7
-	bymbjyzDW9riVkM8kqyttYgJEXj7LirKovYnzzzC1rmOf759d7sBSNIJnrC9WWuTMKNQrjViSI9
-	xgqO52VIkp9rPCHQI7kVJg8k4Nc9ACf2ObltzTABMCHkMTPXN5PB74Gxqpgulvge6TSFX5phCFP
-	DKg0pjA5jELltNrnt8f1dSJOqpA0DTVaAVlhSe4nvY6Pa0dDyEUINuURdwT3GmbWBW6MpL72WEy
-	jWtVK5aoPABnlQdOeF/x8JZZHYAuZPBhK96Wx/7XsRX8TQHAHT+SM5WOno8S8kY9TJ77O/FUg5j
-	/6z1MZVv9BaNwItPzDH6j+DJTOEru5AQ1dYtKwvTEiiuDgKpJollLOpKSK3gzm+cy7+9r6BjBpi
-	7kGr125HePSv0+5UZZd1Zd80218WIIUR6AHiGXza5G6gjQdbJMFkKNSCvXLZVl7JFVIPPSOrXE/
-	tOF+HiRRz6qD4fmCqyEoDtxPRwea+H4zLUgU4GZkHvKuUlPhIC9jNivmkdbNPTVaB
-X-Received: by 2002:a05:693c:8951:10b0:386:b4a1:d92a with SMTP id 5a478bee46e88-386b4a1daa3mr14385650eec.1.1795777002629;
-        Fri, 27 Nov 2026 02:56:42 -0800 (PST)
+        bh=uGRu1YiKX/bMIxmsS1uKkMBOHlcKQ3bTOVU2lGWV4Hg=;
+        b=Rz8/CbKDBR7xAEAJ9USR6iNS1azw67P72CtEmslNKaWbEPpFqPhnoPFzi1ifWouPvb
+         kGKyIw8QrfhOGxhuADpf3uSy9mhcogEsHXn7JtBF6PfQcbyak55sATh/IsEqUngJxV2V
+         NYbOH8fRr40l6MDJPZCfJBchO0JKaEzf1ySBoabdB2GEoYuDhZpYOhUD8gStlUn6b4NS
+         z1U39lPlGdu/zUnXuiSS5t22Ir7FtxDWrKT1SNjg8Kls31wGHa/Em2+tHISFdQIUMbzL
+         naSDGUnW/cnqPGlZRnucWN9dxH1xX7Bjpq+yhxuoonrxHYRqBF+aLIugv3QwSZBCCVRK
+         8e7g==
+X-Forwarded-Encrypted: i=1; AL+hErGVhNPFCS73o6sHXKQiskzVktpRq5kxRXD9Kb0e75NW0vj5u4sFTBRrPQJNXh9WRnQEfguGH1c2Prg=@vger.kernel.org
+X-Gm-Message-State: APuU4Z9iv9LZ0ESOIICwbbxfoPcETfKlF6c2FGM3c6wvyUPJ7bl9Q0Vp
+	EC5NWZ/9CrAE77SM+aipxmiTJ6iOt5xzG0GnFxrJPluwuIHuAt4GwNaU0EETTte8Pn4=
+X-Gm-Gg: AZFdTZeVQx0RjoWDqhc+oeWBsG7TI32XAAt5QLEe8NJfGbnR58EkPfXF958ptgR1fD5
+	Vloxc0aj+j5yIqyMxj+t3Y3x2iqQYhZhakbHB61VWoDijAM3hcwUcYk7Vh2FUQU5q2XgOiSrBA7
+	smcBLIHhqcGrTVOiw10t1hWPylk9LMxSSAkx9HxK+krIEt8chTMMarbiT9G+PvqYuA1JwlQiQWp
+	8Q/BgcSil2L7MjaCeqQNLICIez2OHGCIk4ER8g4SVH4tFb2pJHJSoMQWDUELOflAVGm1URHHIjZ
+	B/nMM2F9dFbWchJidZyI2Rjx+TP/q9Et1+KHg+tSjuAOoYzmssY9K5AExFrI7ohYKpsbErde5UR
+	ZmCs7jwIov8X2tTjLtQSAY8EGjwp1ndWS0KUGmEdKvslkWdVi96+kz9OXT3Co05+QctHO4W2AEW
+	8na6T45tApKbdKFM5jRf1Oh+dcHpUGf4RBFaIggdDPAjygDpkPisMYABTxEu9GSpqxJllEAAfap
+	EqP59wIuHKHHhriChJCDwKPy2i4Kkvipt+J8w+FtT5XNJmbNocULB0TCXBCXV57Ihtcypb92DGa
+	UBTdBoa+lFZr99xVnF2yLklPGzQV50zm0Go7dHM34CUdOxR0FsYx0cvan3SakmK8BTfC8bzXETC
+	IH/Cu6egZ4kqjEnYJxsGzpVUkM35E0N3E/urM+nhdVDLRHvnREIOTzhyRHaIQ1Tr7
+X-Received: by 2002:a05:6a00:4408:b0:878:34d7:697b with SMTP id d2e1a72fcca58-8c87c8602c3mr21453562b3a.41.1795777008027;
+        Fri, 27 Nov 2026 02:56:48 -0800 (PST)
 Received: from iiitd-S2600STB.iiitd.edu.in ([103.25.231.160])
-        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-386aa203267sm40985170eec.0.2026.11.27.02.56.40
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8c872e485f5sm12505768b3a.22.2026.11.27.02.56.45
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 27 Nov 2026 02:56:42 -0800 (PST)
+        Fri, 27 Nov 2026 02:56:47 -0800 (PST)
 From: Piyus Kedia <piyus@iiitd.ac.in>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	linux-nfs@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
 	Kapil Vaswani <kapil@presceralabs.ai>
-Subject: [BUG] nfs: NULL dereference in the nfs_xdr_event tracepoint from readdir
-Date: Fri, 27 Nov 2026 16:26:37 +0530
-Message-Id: <20261127105637.3281004-1-piyus@iiitd.ac.in>
+Subject: [PATCH] nfs: do not trace an xdr_stream that has no RPC request
+Date: Fri, 27 Nov 2026 16:26:43 +0530
+Message-Id: <20261127105643.3281166-1-piyus@iiitd.ac.in>
 X-Mailer: git-send-email 2.34.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -96,76 +96,78 @@ Precedence: list
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Hi,
+The nfs_xdr_event class reads
+xdr->rqst->rq_task->tk_client->cl_program->name, so it needs a stream that
+belongs to an RPC request.  The readdir decoder has no such stream:
+nfs_readdir_folio_filler() builds one over the page cache with
+xdr_init_decode_pages(), which leaves xdr->rqst NULL.
 
-The nfs_xdr_event trace class dereferences xdr->rqst, and the readdir
-decode path reaches it with that pointer NULL, so enabling the tracepoint
-and reading a directory from a server that returns a bad filehandle
-oopses.
-
-The class builds its entry from the RPC task:
-
-  fs/nfs/nfstrace.h
-      __string(program, xdr->rqst->rq_task->tk_client->cl_program->name)
-
-The readdir decoder has no RPC request.  nfs_readdir_folio_filler() sets
-up its stream over the page cache:
-
-  fs/nfs/dir.c:840
-      xdr_init_decode_pages(&stream, &buf, xdr_pages, buflen);
-
-and xdr_init_decode_pages() ends with xdr_init_decode(xdr, buf, NULL,
-NULL), so xdr->rqst stays NULL for the whole decode.
-
-decode_nfs_fh3() traces on its error path:
-
-  fs/nfs/nfs3xdr.c:442
-      trace_nfs_xdr_bad_filehandle(xdr, NFSERR_BADHANDLE);
-
-reached from nfs3_decode_dirent() at fs/nfs/nfs3xdr.c:2017 when a server
-sends a filehandle longer than NFS3_FHSIZE or of length zero.  The trace
-handler then reads through the NULL request:
+decode_nfs_fh3() traces nfs_xdr_bad_filehandle when a server sends a
+filehandle longer than NFS3_FHSIZE or of length zero.  Reached from
+nfs3_decode_dirent() that stream has no request, and the trace handler
+dereferences the NULL pointer:
 
   BUG: KASAN: null-ptr-deref in trace_event_get_offsets_nfs_xdr_event+0x32/0x1c0
-  Read of size 8 at addr 0000000000000098 by task syz-executor/10770
+  Read of size 8 at addr 0000000000000098 by task syz-executor
    trace_nfs_xdr_bad_filehandle+0x16c/0x1b0 fs/nfs/nfstrace.h:1979
    decode_nfs_fh3+0xb5/0xd0 fs/nfs/nfs3xdr.c:442
    nfs3_decode_dirent+0x3be/0x4a0 fs/nfs/nfs3xdr.c:2017
    nfs_readdir_entry_decode+0x14a/0xab0 fs/nfs/dir.c:814
    nfs_readdir_xdr_to_array+0x8af/0x1040 fs/nfs/dir.c:966
    nfs_readdir+0x1003/0x23f0 fs/nfs/dir.c:1277
-   iterate_dir+0x29d/0x520 fs/readdir.c:114
+   iterate_dir+0x29d/0x520
 
-0x98 is offsetof(struct rpc_rqst, rq_task).
+The tracepoint has to be enabled for this to happen.
 
-Two things bound how bad this is: the tracepoint has to be enabled, and
-the filehandle has to come from the server, so it is a bad or hostile
-server rather than an unprivileged local user.
+Give the class a condition so it only fires for a stream that has a
+request.  The event reports the task and client ids, so it has nothing to
+say without one.
 
-It is not a logged splat: the read faults in a tracepoint handler, so the
-machine takes a fatal exception and dies.
+We found this with a syzkaller-based fuzzing harness driven by an AI tool.
 
-  CR2: 0000000000000098
-  Kernel panic - not syncing: Fatal exception
+Fixes: eb3d58c68e39 ("NFSv4: Catch and trace server filehandle encoding errors")
+Cc: stable@vger.kernel.org
+Signed-off-by: Kapil Vaswani <kapil@presceralabs.ai>
+Signed-off-by: Piyus Kedia <piyus@iiitd.ac.in>
+---
+Reproduced on 7.4.0-rc1 (63fe746a609a) with KASAN, same config and image
+before and after, only fs/nfs rebuilt between the two.  The reproducer runs
+rpcbind, MOUNT and NFS servers inside the machine, enables the nfs
+tracepoints and reads a directory whose READDIRPLUS entry carries a
+zero-length filehandle:
 
-Seen on 7.3.1 and REPRODUCED ON 7.4.0-rc1 (63fe746a609a) with KASAN, same
-.config and image before and after, only fs/nfs rebuilt between the two:
+  before   KASAN null-ptr-deref at 0x98, then "Kernel panic - Fatal exception"
+  after    the same program reads the directory, no report, twice
 
-  without the patch (#13)   KASAN null-ptr-deref, then the panic above
-  with the patch (#14)      the same program opens and reads the directory,
-                            no report, twice
+ fs/nfs/nfstrace.h | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-The code has been this way since eb3d58c68e39, so v5.13 and later.
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index a32c76df72db..a3056264344f 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -1971,13 +1971,19 @@ DECLARE_EVENT_CLASS(nfs_xdr_event,
+ 			show_nfs_status(__entry->error)
+ 		)
+ );
++/*
++ * Only trace a stream that belongs to an RPC request.  The readdir decoder
++ * builds a stream over the page cache with xdr_init_decode_pages(), which
++ * leaves xdr->rqst NULL, and this class dereferences it.
++ */
+ #define DEFINE_NFS_XDR_EVENT(name) \
+-	DEFINE_EVENT(nfs_xdr_event, name, \
++	DEFINE_EVENT_CONDITION(nfs_xdr_event, name, \
+ 			TP_PROTO( \
+ 				const struct xdr_stream *xdr, \
+ 				int error \
+ 			), \
+-			TP_ARGS(xdr, error))
++			TP_ARGS(xdr, error), \
++			TP_CONDITION(xdr->rqst))
+ DEFINE_NFS_XDR_EVENT(nfs_xdr_status);
+ DEFINE_NFS_XDR_EVENT(nfs_xdr_bad_filehandle);
+ 
+-- 
+2.34.1
 
-A patch follows.  It gives the class a TP_CONDITION so the event only
-fires for a stream that has a request, which covers both nfs_xdr_status
-and nfs_xdr_bad_filehandle in one place.  The event reports the task and
-client ids, so without a request it has nothing to report anyway.
-
-The reproducer runs both ends inside one machine - rpcbind, MOUNT and NFS
-servers on 111/2049/2050, the NFS tracepoints enabled through tracefs, and
-then a readdir - so it needs no network and no real server.  It is
-fuzzer-generated and we are happy to send it on request.
-
-Thanks,
-Piyus
