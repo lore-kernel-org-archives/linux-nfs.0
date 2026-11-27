@@ -1,100 +1,54 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.54
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795781098;
-	b=stLtWPFjy1lIaMEU0UL1R4Cao+vH4czJdBsGWm+91KMPNWryWsVFmXtUs/n1o+Wux2+c
-	 ViV55dFK2z5s+IexbvhvklFNAq/j975ZMaUVylSywxo8w2oZdmNZGfQzpFKwDWWVIjVvO
-	 zwmPQn2pW6f2ajusgB/HpbEc4b+r8NKGbIyaC28C+PbdzZ6dD/H4sidi6eGF5w2W9izqF
-	 Y1yd/cpWJX5SvTAvlb2aiIlFeqqE7WfcXqdu3+8Olv/qHxZ/5Dgebvsjt17Rqx+dW0r2w
-	 w8yKgNuZVbdyG8Rtag3Ed1h115ngHKhd6ZBnNtB2nT9PEShorHFnY9KY+WXMuIj21Rg==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795781098;
-	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:
-	 MIME-Version:References:In-Reply-To:From:Date:X-Gm-Features:
-	 Message-ID:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	bh=ftbPRsCQ0aqf0DRrrjwD4Al8a/o+mRVmt2zUH0Y6zDA=;
-	b=BLGX/Qce9q3Cz79iyQNdHvaCXhfeye8G8G4Qk6zTabgvBnX6xmQzm8cZQ2wn42J4cHfh
-	 3hWp1BvhEcpie6PA1YVciKyF0FUlC71a3RcFvQt5FjKZbe9X5sdaAZofhQYBbscHDASRa
-	 jxK+D5nj6JzMxtXtORNxvHBzVbXUyDY8dfr+dkRnATDarc6Cv47OVPc1QwBtFEcOJPEh0
-	 +06Rfer4wTDhgDG7CM+QmCn1P0lqPUY10yc76dru5AYczUET2ueK67keB2NTLEB7z1IYM
-	 t+RISQsvSjC5hzNmDXsGPKugqU0FuwVLmystu5gd/qj748xBMriPPvJLlAjh6Vfiyhw==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="a/faIOem";
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.54
-Received: from mail-ed1-f54.google.com (mail-ed1-f54.google.com [209.85.208.54])
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=95.215.58.45
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795781640;
+	b=X4R9B231VFf8b/2sEvEZ54yCJg0wMRdFm1WveqJFQx/e5YrQoEq2RcCMGk9IH0TSceb5
+	 Y4Ra58DqZcynkwZ6F81EBbn0WgLCm++5vqdbSxsb04SbjeVRSC8/tkROFtZwhuNPDD6KX
+	 zPshnj1tkOHBgFldpndch0cmgpIf0O6SDhGqcohn061ieG+09VuXWMqiIC24tXZhNJgy9
+	 T9orz1plQPZf2yhLzkWONZ8Rp5AR7tCm5Aa432sofOdPM8lY4MuJ2M/2oL359iAcStOZQ
+	 i86nIGMCBYvW995kgM0BHJudTdTl4EWTzn+u773QcjoLiOgThmStC97pHHBCV4wRqtQ==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795781640;
+	h=DMARC-Filter:X-Envelope-To:DKIM-Signature:X-Envelope-To:Received:
+	 X-Mizu-Trace-ID:X-Migadu-Flow:Message-ID:Date:MIME-Version:User-Agent:
+	 Subject:To:Cc:References:From:In-Reply-To:Content-Type:
+	 Content-Transfer-Encoding;
+	bh=qCoEzJI5/N2sQ/738mLqdHEf8qRTgH5fccEHKybhjlI=;
+	b=PTP0/N1suBvqc13JifxKUuJbEAWtGyX1mtFcuiAOsHkNMlnWZE+4aaGNhudkD2x/ZlDo
+	 92e42oLrf0ued8i9heV/c2riFUDNr8V8sFt745sP8ZU4i2LM/hpCVcLHfMvknL6xyptc+
+	 ssyipE8foAw2sUKB1YtCF46jOcXHbxMnu90baFO3fZRQtYQpeTI8SxH2WZ3Qm6JtcDTTm
+	 2GW1apBMQvyJPgg0XKbNkQyNfv9GsxdYiisu4jKJOEKFejFzOD/kOb3tMpXetHqzDFgfC
+	 MTBsKdtCWROHrNhBSrAhHbc7qyJlmXAIv4YOcdewszNbj2Q0Kg+NzBjCWoN28Jeypkw==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=pass header.from=linux.dev;
+	spf=pass smtp.mailfrom=linux.dev;
+	dkim=pass header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=lu79UmFN;
+	arc=none smtp.remote-ip=95.215.58.45
+Received: from mta1.migadu.com (out-45.mta1.migadu.com [95.215.58.45])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C149606A321
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 12:04:57 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0C149606A321
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D08EE606A321
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 12:13:59 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org D08EE606A321
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=a/faIOem
-Received: by mail-ed1-f54.google.com with SMTP id 4fb4d7f45d1cf-6b8a52db5f9so9787033a12.3
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Nov 2026 04:04:57 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795781096; cv=none;
-        d=google.com; s=arc-20260327;
-        b=BjqJLLL+br56WVInD/URAne8E9umoNnyQlldmHD+bNSw5xGlzJ9TQoyqRoA0lzARz5
-         j2zYUOrZ5Fr5KsG36lpqsxyiPyxB4ndEM6SBj/hfBrDAIvY93mourXnFBiogfAXos6l2
-         S0RCSramoMwPw3f3Q7MgN/ygCItpLRSpuXOygJ10bdusRdchxbUsxwFQu7CaVZ+rWXvs
-         VtAiPjlYJRCdMgGQpmsfBS5hNRg3nwXYlXvNQpWP2S9h4CKZeup4eXgJlLJXrX94H64Y
-         /bOaDo8lWDC0ol46803HhaFBUkMumsj0ZcHWc3mYfk/gf2YyDIJMYYHhmqouXxPCjwK0
-         9ntg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=ftbPRsCQ0aqf0DRrrjwD4Al8a/o+mRVmt2zUH0Y6zDA=;
-        fh=V+2Jsb8h0zFhmR17oXlYDyF56HuEEj8McEtUv76lWwI=;
-        b=KmVMFFDGL3pDBrA2IiJ1xlKMwtNQJ/v3NPw4N/nD4gtODAwOCtHuEAAJlr0JEu4N6T
-         7EyMjOMCDTfIzfaT+OUyDp+ZPxrjrSXc2Cianc0cQkoJRWNB9ck16a5+1Ecq1Z0hDS6I
-         VH2j5tdKC1V6S5n0PKXUK4E8L1iug9HpdvwKjssnGgyusTrDdnUNXii5SxQPqBfk8oiV
-         udAI1fiezzo2BpWAkkNnxjwX/fVo79reeoQOVpk/ysg7iRf+36Zbd3YCbgv51BKqM4Re
-         kULEbd8r5UIYAkR0Q60W87gL9rfZVqD4JmMO08tRz0IahU6BBPyjXgg1zFbhAMEzMvtH
-         6jrA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795781096; x=1796385896; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=ftbPRsCQ0aqf0DRrrjwD4Al8a/o+mRVmt2zUH0Y6zDA=;
-        b=a/faIOemKG9XP9oN9nHZ0RXKAJGUuULcrj5tlG5oW/VxoETGk/czdvSllhhNf3cLZ9
-         QZfgoKUPAO+lxAeT39SzbkiTrobrvkwTRilpOiRfynBTw3Dq4mQQOsaPpO2q3L/eNCw6
-         75tG8Way+N5Y7kNdc374kxwLxPpgXrf4M3aS8Tkoc7ZPyjzg6Rzr+n+Pscq1n8ZXh53X
-         8gOnoWD+dlS10yDPmY1W05uiGKpWUmd1Zb6pGB8AYpx6o/RFlMqxj59WZhRkFmmQMlzf
-         d6R5FFbL3Np6vQDGcBL5tFUkX4TUGEgF/3bqMPd6LQvhH05HX1jyMVN8C3RNkqypH2BI
-         RiQQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795781096; x=1796385896;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=ftbPRsCQ0aqf0DRrrjwD4Al8a/o+mRVmt2zUH0Y6zDA=;
-        b=GW1jmCdzY9sXJxHy023W1s/EpatC9hzMbTyuFk2AT+fIzJpIhiWbfUuwMQR0p0DboE
-         345rHd1tHgxDr1OX9jVtYPmp+7lAtoguNIFButuvHim/WoFpJh9nPVbjKkkNKyEvpVTq
-         /IOrDplxOPZgLxk2DmZM7GJduG2WyVpo6W9ldKjO8epWfQc1dvcwyYnWVx2mq3NCT+wd
-         ocFg6CjuUpUjsQKVbrCW6wxFxY4qIUrrA7md1J4sapwq2W7bTgmAMRTUJL9/PeWvUiI7
-         bTSk64MOje8EeD1/XfcLQ3wrKB9dt09ezjihBJRN6j/IgACN1PlZMe9bqBzLrhY5wiky
-         kbag==
-X-Forwarded-Encrypted: i=1; AL+hErE+EuW6+tE3HIr/154G1Taxl3/5T/q6lKSvV9HGR5mYIGgO3EysymCqmoQ8Wihqz1wnahxq0RyoJfM=@vger.kernel.org
-X-Gm-Message-State: APuU4Z9e52BG6REHSUZKGGf4txnQ8+MKqhqkyGKA+9hZrsOqqzhwmeVL
-	YWjfSx7BRSbpWF1fNaKHLMSFNlUmxsUb4NPyffu5/T6lcUbNVj2+mMV0hzju3SPXN8TmpO3ySBb
-	sGoWWkTzzR/qe7rLe8KAqk0ndeyAKUc4=
-X-Gm-Gg: AZFdTZeje7W2nGGL4PBjAJ+Tqe+xRaCMlBDU9+RcN0WoaN/npt/SbKPIU1vZp8Xa7pz
-	QS9xJaCpUrH556oz3fxVK/FIulazTvYigDcjRybtWnom+L+aYPSA1smDcMGSoihXSn5wBZX5r2A
-	32vJ/8O/3u/3296NP9ZVdWg7FW7bJ9cPIJiROdg+78nWmdTKYUkEYTcreisL+02Gwv1IVJ6aoyT
-	uP0Bdele4KIsXbGGcRJERiQ61BxGjmdloqVEnapd7IXRrXwaturWfAfTBO4kXTvhtwUaHay8nSA
-	+p8ghpGUbKLJA4LZTG65PKm9eCwr7IGReHo8kw7HvJyNORtqCUHR4gH8/jPJ+MIqPaKySSzyOW7
-	AyvKzIlWjKeZulR7s4wsEvcTkopytt1mpqS+4KK6bCZbrTGY6SE7gF7Y=
-X-Received: by 2002:a05:6402:320f:b0:6b4:59d0:7294 with SMTP id
- 4fb4d7f45d1cf-6ba37e9ec85mr20367582a12.31.1795781096175; Fri, 27 Nov 2026
- 04:04:56 -0800 (PST)
+	dkim=pass (1024-bit key, unprotected) header.d=linux.dev header.i=@linux.dev header.a=rsa-sha256 header.s=key1 header.b=lu79UmFN
+X-Envelope-To: linux-nfs@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=6vHRWvrua0fQYBdh7FtUgGXCTKDmCgIIqUhwP5LG/Xo=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1795781637; v=1; x=1796386437;
+ b=lu79UmFN4HW9fTuJoYrmpHrKSONr7DoC/Kuxf+HEhdviW0Rutz38qxELgpMESgTSVdOrEuWb
+ K96T0ho7diIYpECkcYDSt2N5FKkd05djRG+PpMwtglxa/tDAORrovm90fOydSamanO/CRZ44rF4
+ sbkPoWofoIrD6tAqddybBmIE=
+X-Envelope-To: linux-nfs@vger.kernel.org
+Received: by smtp.migadu.com with ESMTPS id 1c9234c01c8a2ff2;
+	Fri, 27 Nov 2026 12:13:57 +0000
+X-Mizu-Trace-ID: 1c9234c01c8a2ff2
+X-Migadu-Flow: FLOW_OUT
+Message-ID: <4611d7da-478c-43ba-917a-03e5bba4fbbe@linux.dev>
+Date: Fri, 27 Nov 2026 13:13:51 +0100
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -104,64 +58,257 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <20261126163114.403846-1-koray.fra@gmail.com> <20261126163114.403846-5-koray.fra@gmail.com>
-In-Reply-To: <20261126163114.403846-5-koray.fra@gmail.com>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Fri, 27 Nov 2026 13:04:44 +0100
-X-Gm-Features: Aa3M54qEfB_iTiJNZjGRc3XRinkgqc1ntuigIkhA7BS94_VSwwZ4uoMmp26Q3TQ
-Message-ID: <CAOQ4uxgJjy3TaORBkMOdef-JvzX2uA5K2sbMDEcLqmpkedsESw@mail.gmail.com>
-Subject: Re: [PATCH v2 4/4] ntfs: switch to the new xflags fileattr API
-To: koraynilay <koray.fra@gmail.com>
-Cc: Namjae Jeon <linkinjeon@kernel.org>, Hyunchul Lee <hyc.lee@gmail.com>, 
-	Eric Biggers <ebiggers@kernel.org>, "Theodore Y . Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, 
-	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, Jan Kara <jack@suse.cz>, 
-	Alexander Aring <alex.aring@gmail.com>, "Darrick J . Wong" <djwong@kernel.org>, 
-	Andrey Albershteyn <aalbersh@kernel.org>, =?UTF-8?Q?Pali_Roh=C3=A1r?= <pali@kernel.org>, 
-	Lauri Gates <lauri.gates@gmail.com>, Christoph Hellwig <hch@infradead.org>, Dave Chinner <dgc@kernel.org>, 
-	linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	ntfs@lists.linux.dev, linux-nfs@vger.kernel.org, linux-api@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2] RDMA/siw: don't complete a fenced READ twice on flush
+To: Cygnus Qiu <eritque-arcus@ikuyo.dev>, jgg@ziepe.ca, leon@kernel.org
+Cc: cel@kernel.org, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+ linux-kernel@vger.kernel.org, stable@vger.kernel.org
+References: <20261127005304.366336-1-eritque-arcus@ikuyo.dev>
+From: Bernard Metzler <bernard.metzler@linux.dev>
+In-Reply-To: <20261127005304.366336-1-eritque-arcus@ikuyo.dev>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Thu, Nov 26, 2026 at 5:31=E2=80=AFPM koraynilay <koray.fra@gmail.com> wr=
-ote:
->
-> Switch ntfs_fileattr_[gs]et() from the legacy FS_*_FL flags to the
-> modern xflags (FS_XFLAG_*) fileattr API with masks.
->
+On 27.11.2026 01:53, Cygnus Qiu wrote:
+> siw_sq_flush() completes a QUEUED READ in the TX slot, assuming the READ
+> is not in the ORQ yet. That holds only while a full ORQ fences it.
+> siw_check_tx_fence() copies a fenced READ into the ORQ when a Read
+> Response frees a slot, and siw_activate_tx_from_sq() copies a READ into
+> a free slot. In both cases the READ stays QUEUED until the TX path sends
+> it, and a flush in that window completes it twice.
+> 
+> A peer can hold the window open. It advertises IRD 1, so the ORQ holds
+> one READ: READ1 is in the ORQ and sent, READ2 waits fenced in the TX
+> slot. The peer then sends Read Response 1 and a FIN in one TCP segment:
+> 
+>    softirq (TCP receive)                 siw_cm_wq worker
+>    tcp_data_queue()
+>    |-tcp_fin()
+>    | \-siw_cm_llp_state_change()
+>    |   Sets tx_suspend and
+>    |   queues the close.
+>    |
+>    \-tcp_data_ready()
+>      \-siw_qp_llp_data_ready()
+>        |-down_read_trylock(state_lock)
+>        |-tcp_read_sock()
+>        | \-siw_tcp_rx_data()
+>        |   \-siw_rdmap_complete()
+>        |     \-siw_check_tx_fence()
+>        |       |-siw_read_to_orq()
+>        |       | READ2 enters the ORQ.
+>        |       |
+>        |       \-siw_sq_start()
+>        |         orq_fence is now 0.
+>        |         TX is suspended:
+>        |         READ2 stays QUEUED.
+>        |
+>        \-up_read(state_lock)
+>                                          siw_cm_work_handler()
+>                                          \-siw_qp_llp_close()
+>                                            |-down_write(state_lock)
+>                                            \-siw_sq_flush()
+>                                              |-siw_sqe_complete()
+>                                              | READ2 from the ORQ.
+>                                              |
+>                                              \-siw_sqe_complete()
+>                                                READ2 again, from the
+>                                                TX slot.
+> 
+> The FIN only queues the close, so the receive path normally gets
+> qp->state_lock first.
+> 
+> nfsd's svcrdma gets two flush completions for one Read chunk:
+> 
+>    svc_rdma_wc_read_done()
+>    \-svc_rdma_recv_ctxt_put()
+>      Runs twice for the same ctxt. The second llist_add()
+>      links ctxt->rc_node to itself.
+> 
+>    svc_rdma_free()
+>    \-svc_rdma_recv_ctxts_destroy()
+>      |-svc_rdma_recv_ctxt_destroy()
+>      | Frees ctxt.
+>      |
+>      |-llist_del_first()
+>      | Reads the freed ctxt and returns it again.
+>      |
+>      \-svc_rdma_recv_ctxt_destroy()
+>        Frees ctxt a second time.
+> 
+> svcrdma pulls the Read chunk before it decodes the RPC, so the peer
+> needs no RPC credentials and no export access.
+> 
+> Complete a QUEUED READ from the TX slot only while orq_fence is set.
+> orq_fence now decides whether the TX slot completes the READ, so move
+> it out of the bitfield it shared with tx_suspend:
+> siw_cm_llp_state_change() sets tx_suspend without taking a QP lock,
+> and a lost update could drop or duplicate the completion.
+> 
+> Found with afb-afl, an LLM-driven kernel audit/repro pipeline; the fix
+> and this changelog were also drafted with LLM assistance.
+> 
+> Reproduced on an unmodified KASAN build of mainline. A plain TCP client
+> sends nfsd's svcrdma listener on siw an RDMA_NOMSG call with a
+> two-segment Read chunk and answers as above. KASAN reports the read of
+> the freed ctxt; here the second destroy then faults in kfree():
+> 
+>    BUG: KASAN: slab-use-after-free in llist_del_first+0x150/0x170
+>    Read of size 8 at addr ffff8881119d9000 by task nfsd/183
+> 
+>    Call Trace:
+>     <TASK>
+>     dump_stack_lvl+0x5d/0x80
+>     print_report+0x14b/0x4b0
+>     kasan_report+0xfa/0x120
+>     llist_del_first+0x150/0x170
+>     svc_rdma_recv_ctxts_destroy+0xf3/0x1b0
+>     svc_rdma_free+0xd8/0x2e0
+>     svc_xprt_free+0x22c/0x420
+>     svc_recv+0x103f/0x25b0
+>     nfsd+0x35c/0xc80
+>     kthread+0x34d/0x460
+>     ret_from_fork+0x339/0x620
+>     ret_from_fork_asm+0x1a/0x30
+>     </TASK>
+> 
+>    Allocated by task 183:
+>     kasan_save_stack+0x2f/0x50
+>     kasan_save_track+0x14/0x40
+>     __kasan_kmalloc+0x7f/0x90
+>     __kmalloc_node_noprof+0x207/0x680
+>     svc_rdma_post_recvs+0x664/0xbf0
+>     svc_rdma_accept+0xc27/0x1980
+>     svc_recv+0x12c2/0x25b0
+>     nfsd+0x35c/0xc80
+>     kthread+0x34d/0x460
+>     ret_from_fork+0x339/0x620
+>     ret_from_fork_asm+0x1a/0x30
+> 
+>    Freed by task 183:
+>     kasan_save_stack+0x2f/0x50
+>     kasan_save_track+0x14/0x40
+>     kasan_save_free_info+0x3b/0x60
+>     __kasan_slab_free+0x57/0x80
+>     kfree+0x162/0x500
+>     svc_rdma_recv_ctxts_destroy+0xe7/0x1b0
+>     svc_rdma_free+0xd8/0x2e0
+>     svc_xprt_free+0x22c/0x420
+>     svc_recv+0x103f/0x25b0
+>     nfsd+0x35c/0xc80
+>     kthread+0x34d/0x460
+>     ret_from_fork+0x339/0x620
+>     ret_from_fork_asm+0x1a/0x30
+> 
+>    The buggy address belongs to the object at ffff8881119d9000
+>     which belongs to the cache kmalloc-2k of size 2048
+>    The buggy address is located 0 bytes inside of
+>     freed 2048-byte region [ffff8881119d9000, ffff8881119d9800)
+> 
+>    BUG: unable to handle page fault for address: ffffeb860011a6c8
+>    #PF: supervisor read access in kernel mode
+>    #PF: error_code(0x0000) - not-present page
+>    Oops: Oops: 0000 [#1] SMP KASAN NOPTI
+>    RIP: 0010:kfree+0x69/0x500
+>    Call Trace:
+>     <TASK>
+>     svc_rdma_recv_ctxts_destroy+0xdf/0x1b0
+>     svc_rdma_free+0xd8/0x2e0
+>     svc_xprt_free+0x22c/0x420
+>     svc_recv+0x103f/0x25b0
+>     nfsd+0x35c/0xc80
+>     kthread+0x34d/0x460
+>     ret_from_fork+0x339/0x620
+>     ret_from_fork_asm+0x1a/0x30
+>     </TASK>
+> 
+> Without KASAN, SLAB_FREELIST_HARDENED catches the double free as
+> "kernel BUG at mm/slub.c:605" in kfree() from
+> svc_rdma_recv_ctxts_destroy(). With neither KASAN nor
+> SLAB_FREELIST_HARDENED, nfsd pops the freed ctxt again. If another
+> kmalloc-2k allocation has overwritten it by then, nfsd faults; if not,
+> nfsd frees it again and repeats, so later allocations can get that one
+> object many times.
+> 
+> With this patch the READ is flushed once and KASAN stays silent.
+> 
+> Fixes: f29dd55b0236 ("rdma/siw: queue pair methods")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Cygnus Qiu <eritque-arcus@ikuyo.dev>
+> ---
+> Changes in v2:
+> - Rewrite the commit message: charts for the race and the svcrdma free
+>    path, and the full KASAN report.
+> - Give orq_fence its own byte, as Sashiko suggested on v1. The lost
+>    update was not reproduced.
+> - v1: https://lore.kernel.org/r/20261125060646.155172-1-eritque-arcus@ikuyo.dev
+> 
+> Tested on mainline 4405c18c95d2 (v7.4-rc3+) in QEMU. Applies to rdma
+> for-next 94e81a1f3ffa, wip/leon-for-next d24184a64765 and
+> wip/leon-for-rc e7732ec135b5.
+> 
+> Unpatched, the KASAN use-after-free report came in 5 of 5 runs, the
+> hardened BUG in 4 of 4, and with neither, nfsd faulted or spun in
+> svc_rdma_recv_ctxts_destroy() in 15 of 15; add_key() as an
+> unprivileged user got three keys backed by one object in 1 of 6.
+> Patched, the KASAN build flushed once in 3 of 3 runs, and the build
+> with neither showed no fault, spin or shared key in 10 of 10.
+> 
+> Controls (FIN after the second Read Request, or no Read Response)
+> flush once with and without the patch. The rdma-core tests could not
+> run: rdma-core 66's siw provider asserts in siw_destroy_cq() on the
+> first test, on an unpatched kernel and with v1.
+> 
+> A reproducer and the test logs are available on request.
+> 
+>   drivers/infiniband/sw/siw/siw.h    | 2 +-
+>   drivers/infiniband/sw/siw/siw_qp.c | 7 ++++---
+>   2 files changed, 5 insertions(+), 4 deletions(-)
+> 
+> diff --git a/drivers/infiniband/sw/siw/siw.h b/drivers/infiniband/sw/siw/siw.h
+> index dbc998248b..82dc88b6a4 100644
+> --- a/drivers/infiniband/sw/siw/siw.h
+> +++ b/drivers/infiniband/sw/siw/siw.h
+> @@ -394,12 +394,12 @@ struct siw_iwarp_tx {
+>   
+>   	u32 mpa_crc;
+>   	bool mpa_crc_enabled;
+> +	bool orq_fence; /* ORQ full or Send fenced: not a bitfield */
 
-This is where the commit ends doing what its subject is saying.
+"not a bitfield" is a strange /* comment */ to me.
+A brief explanation of why the change was made fits very well
+in the commit message.
 
-> Introduce FS_XFLAG_COMPR and FS_XFLAG_ENCRYPT to be used in this API
-> upgrade.
->
-> Following the FS_XFLAG_VERITY example, put FS_XFLAG_ENCRYPT in
-> FS_XFLAG_RDONLY_MASK and in FS_XFLAG_COMMON, since it's read-only for
-> all filesystems.
->
-> Following the FS_XFLAG_CASEFOLD example, put FS_XFLAG_COMPR in
-> FS_XFLAG_RDONLY_MASK but not in FS_XFLAG_COMMON, since it's read-write
-> for some filesystems and read-only for others, to avoid breaking
-> existing filesystems.
->
-> Also update vfs fileattr_fill_* helpers to include these two flags as
-> well.
+>   
+>   	u8 do_crc : 1; /* do crc for segment */
+>   	u8 use_sendpage : 1; /* send w/o copy */
+>   	u8 tx_suspend : 1; /* stop sending DDP segs. */
+>   	u8 pad : 2; /* # pad in current fpdu */
+> -	u8 orq_fence : 1; /* ORQ full or Send fenced */
+>   	u8 in_syscall : 1; /* TX out of user context */
+>   	u8 zcopy_tx : 1; /* Use TCP_SENDPAGE if possible */
+>   	u8 gso_seg_limit; /* Maximum segments for GSO, 0 = unbound */
+> diff --git a/drivers/infiniband/sw/siw/siw_qp.c b/drivers/infiniband/sw/siw/siw_qp.c
+> index bb780e3904..2cc0f466e7 100644
+> --- a/drivers/infiniband/sw/siw/siw_qp.c
+> +++ b/drivers/infiniband/sw/siw/siw_qp.c
+> @@ -1188,10 +1188,11 @@ void siw_sq_flush(struct siw_qp *qp)
+>   		if (tx_type(wqe) != SIW_OP_READ_RESPONSE &&
+>   		    ((tx_type(wqe) != SIW_OP_READ &&
+>   		      tx_type(wqe) != SIW_OP_READ_LOCAL_INV) ||
+> -		     wqe->wr_status == SIW_WR_QUEUED))
+> +		     (wqe->wr_status == SIW_WR_QUEUED &&
+> +		      qp->tx_ctx.orq_fence)))
+>   			/*
+> -			 * An in-progress Read Request is already in
+> -			 * the ORQ
+> +			 * A Read Request is already in the ORQ unless
+> +			 * a full ORQ fenced it
+>   			 */
+>   			siw_sqe_complete(qp, &wqe->sqe, wqe->bytes,
+>   					 SIW_WC_WR_FLUSH_ERR);
 
-All of those non trivial bits deserve a patch of their own.
+Otherwise: Excellent finding, thanks!
 
-Not only are they independent vfs changes, but they also have
-implications outside
-of ntfs which need to be spelled out.
+Acked-by: Bernard Metzler <bernard.metzler@linux.dev>
 
-With current patches, I think this change now advertizes COMPR|ENCRYPT
-in fxs_xflags for all filesystems that have them set even with the old VER0=
- API.
-That may be ok, but it needs to be spelled out.
-
-Do we also allow to set COMPR via VER0 API? Do we want to?
-These are questions to be asked on a standalone patch.
-
-Thanks,
-Amir.
