@@ -1,97 +1,95 @@
-Authentication-Results: smtp.subspace.kernel.org; arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.44
-ARC-Seal: i=2; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=pass;
-	t=1795853839;
-	b=PnJV17BZPwgURgVEMjaUn+txCY1xjvCek78T5QRu8caz5qGXo3lUsxHmfyIWE5lTwbGy
-	 r7lBA5bNA03qyw2BjwpWqh42EWMnqUOfpq1sSsht+Ikvx9sO4H9nxdoEl0+5YnQEhy0aM
-	 fnQDhgmQKckVpXGdnG4dQXc+wFmex1FVTY+FYs0lEqWyFSVOgRRvFxaeBM+GATtBkyOUl
-	 96AHgFDhh90LmbfZM0g6rThw8Z4c9zO2nYjn2cem2LwNx7HrCrQ+JVpSbC+eBo4Q/FPPB
-	 dp2yWHmvf7e8ENqooFVo7Ja86pZhUcmI9gCl4uDrygHYE7RAD4K/eTOBFlryxExnWkA==
-ARC-Message-Signature: i=2; d=subspace.kernel.org; s=arc20261015;
-	a=rsa-sha256; c=relaxed/relaxed; t=1795853839;
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.remote-ip=74.125.82.173
+ARC-Seal: i=1; d=subspace.kernel.org; s=arc20261015; a=rsa-sha256; cv=none;
+	t=1795861782;
+	b=NYplyGsmUoO6JYpCPrB3TK9xGTeqOa5RcuM0jcmgaQG1galUNRFMEsAUrkqxNIlorFlK
+	 g8cHt4MZyh5zv2sq9VW1h+rLLdCjS6lwgrLJKbDM5NXqhNorKVpKY035CJ82AYhOv37oU
+	 +1cW8ZMGonweQOiX7bEtaNqznV2heyr2MyoAUxZIBtDfHpmXCxK0hW7JUAyjTXKZI37Bq
+	 ynGKBxNSB8PhsGLO0ZMTIibylCZaXhXWM1gzMHFTziVYUvxvrKkTxzOI3gB2R7JJDyoPz
+	 IEXVyzkpwagLJowESw+GIQWyaHQ/qZZ1uBsXDuLDa6Xl/ONYTMxE2MVw4VQ9JSvflAg==
+ARC-Message-Signature: i=1; d=subspace.kernel.org; s=arc20261015;
+	a=rsa-sha256; c=relaxed/relaxed; t=1795861782;
 	h=DMARC-Filter:Received:DKIM-Signature:X-Google-DKIM-Signature:
-	 X-Gm-Message-State:X-Gm-Gg:X-Received:MIME-Version:References:
-	 In-Reply-To:From:Date:X-Gm-Features:Message-ID:Subject:To:
-	 Content-Type:Content-Transfer-Encoding;
-	bh=JUPSemrMM7a7y8Sb6uEiclgKXCr6E/9IRNtd5rKs3yQ=;
-	b=dhbK8lgjnlSZOHgUM5TpP66JXh1sCmFd6pWjQzj32cycYpFGruRhlbnXaQyOiycbNc0T
-	 Cqzvo4ZphOWigQcZ+y3cpz1k4qmz5dDQHKbHWpSLBR5ro4QcR25v8O5eAQMwLJdvkF1ih
-	 fqaWkr9cAw6FNu+Yv2t+LAJBPhXX0VIyWfV+fpfZnc3+Lxb1la1RRgWEoA2qqdG+eDGoc
-	 lny7cc5UhRFA3k7bswjj2e9At9arC3KJEcFdeEjtsx8eqgbKMIFpiMZ9pJoIrE3ry5O/N
-	 z/k9IFXSzV2FVpEGsV29VwHBZlCrZ6LDF0JaPz4eMfobTZ/KKX9CH2V41p/741FCQSA==
-ARC-Authentication-Results: i=2; smtp.subspace.kernel.org; 
-	dmarc=pass header.from=gmail.com;
-	spf=pass smtp.mailfrom=gmail.com;
-	dkim=pass header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b="sD21/WfR";
-	arc=pass header.oldest-pass=0 smtp.remote-ip=209.85.208.44
-Received: from mail-ed1-f44.google.com (mail-ed1-f44.google.com [209.85.208.44])
+	 X-Forwarded-Encrypted:X-Gm-Message-State:X-Gm-Gg:X-Received:Received:
+	 From:To:Cc:Subject:Date:Message-Id:X-Mailer:MIME-Version:
+	 Content-Transfer-Encoding;
+	bh=Yfk+itu/miNKmAfINwyWiMzT+wuiKggJHRBWRDC8lIM=;
+	b=LNXlChbFIqRYfi4rOui9brqQlhXl/SA+l14DXSUGo9YkPn+RgGtrBo+qmSJGX0letgEd
+	 0OnT5s3UwbXAKiZb2P9jnWwhyO3kgrb3qGC43Q1ZCrGEpAuvj04UCO1DvAcpUZCJVgtQ6
+	 TRYvKN64CwM5kGF3o/XBLwwpsCmuxmTpMcwwyv2R7oFcnD4VwgL7vBSwgHWEQJT0UyyK1
+	 QC/7vGjCh0fgtJ/xsp9vDI5CW0mwNpYMW3OdVfWRbuTeymuefhl+51pOgM3jEeHeG22Qz
+	 H0+D6AAH5/QAYKR0XricCfiRMiO5MiwKkb1w5XrltiOSLufGbAFwrFLcm13wZz1Y59w==
+ARC-Authentication-Results: i=1; smtp.subspace.kernel.org; 
+	dmarc=none header.from=iiitd.ac.in;
+	spf=pass smtp.mailfrom=iiitd.ac.in;
+	dkim=pass header.d=iiitd.ac.in header.i=@iiitd.ac.in header.a=rsa-sha256 header.s=google header.b=BSeANsyf;
+	arc=none smtp.remote-ip=74.125.82.173
+Received: from mail-dy1-f173.google.com (mail-dy1-f173.google.com [74.125.82.173])
 	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
 	 key-exchange X25519 server-signature ECDSA (prime256v1) server-digest SHA256)
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F40E606A31C
-	for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2026 08:17:18 +0000 (UTC)
-DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org 0F40E606A31C
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E356A606A31C
+	for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2026 10:29:40 +0000 (UTC)
+DMARC-Filter: OpenDMARC Filter v1.4.2 smtp.subspace.kernel.org E356A606A31C
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iiitd.ac.in
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iiitd.ac.in
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.a=rsa-sha256 header.s=20260707 header.b=sD21/WfR
-Received: by mail-ed1-f44.google.com with SMTP id 4fb4d7f45d1cf-6b47c1a3c74so3149290a12.3
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2026 00:17:18 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1795853837; cv=none;
-        d=google.com; s=arc-20260327;
-        b=GxTKNHkjBVByu7odrwofNqAjmUf1nPmmEi7qta09Ri1kVjbNRtoVF8BcbGN4t6qhZd
-         sShF0ts16Tc9VZ1TkEkojiHfTKFM1Ucz+gc9lmjjWxjity0HSyBSKOFswxGL7K4LdM2F
-         p8b9glAchPVVz8QK7uZhrSL6fEWMgUj0me/tZ5HWr5vCVmxN/nZGuk1mJON4ki75n7sw
-         tdNrcGsUGgvuX81tbhBncSBl5x9xNo7y5Qd3nLGsn6UL5dq3YF03u6Jky9aIgsVS0Cmr
-         glzwKz3kLEjMEXjd5x5BJ04O+MkxHOgoltaQ11sZ4RcECtQaGWutGnJPDvyks8emlWCz
-         kzyA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=JUPSemrMM7a7y8Sb6uEiclgKXCr6E/9IRNtd5rKs3yQ=;
-        fh=A3pMOUK00huGibGCZBFsLekFLVbB5hHGKjUNNKwO+5E=;
-        b=cXyWgNDEoRSyYHnTjbTjRVy0JPG4d0I7gVSRgVRcgS8VJhdDv98HEOxxcxfq29t8eU
-         54U2ohVWPERLgJD9T3ZqBW3/UllGXFVRIY80Wg1TBGkAiHnFprvcpsHzHhMApmrur8co
-         GmWSRqUdpUlqAFEWoReBsgZE/hEp6Kdg9rWvib/uOzQxf3EOD+uuF92l/H1n05xp1tLW
-         esz6aE7AgJVioHb4qJQ/Viirz1rfXGAjKhCog9AkMuyoQwmdHIYyd4iqeMCFHhWE1EYs
-         ElSHWGE3+Mxrg0Fick67YaGDTzgeonKBFj7RhdkgGKG6fUigoCCxHnORtY6Z72+cIuY3
-         hplQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (1024-bit key) header.d=iiitd.ac.in header.i=@iiitd.ac.in header.a=rsa-sha256 header.s=google header.b=BSeANsyf
+Received: by mail-dy1-f173.google.com with SMTP id 5a478bee46e88-33bf40b0c8bso19087921eec.0
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Nov 2026 02:29:40 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20260707; t=1795853837; x=1796458637; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=JUPSemrMM7a7y8Sb6uEiclgKXCr6E/9IRNtd5rKs3yQ=;
-        b=sD21/WfROIJwB//KOU+81rJQLzTt1cid5Jkvd9GERP9P3dMtMxoAm9HP6TrtbggV+h
-         5qr92UoWsbvBYEpo/NA8l/+ZBTUX0J93EyJprJM5w0aev83ONeYRUAnTNhMOi39FJmTW
-         vTB5M3IC4XLGps1nR26IlMT3605MrH+P1GfGL5M8WzbWCAdPyOl4DmoAmAhInuwz7kIE
-         STrtoimYa1ZqfjurddYwcbJ/3mEsm43yyFsuhfVrJWk2N/r9zIjYFJf44Gw684WGRJa7
-         YAVapqu1OiDOLq5gOhsg6Zy2TxUrtw5XrIzYOnlKnxg+glr6PjKHKuYIdCAeO8WRA/Pw
-         2e4g==
+        d=iiitd.ac.in; s=google; t=1795861780; x=1796466580; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=Yfk+itu/miNKmAfINwyWiMzT+wuiKggJHRBWRDC8lIM=;
+        b=BSeANsyfH29+9TCXx9PoWzTGD/q7gDSImwausAYLpHWayO2xtiSVT2PqWok+K9RzaM
+         SWpoMXG6N4EQ09MD5Qq6hjWEEaW/xd0hU8TyQPSGO5Sc1rJlpDYElxmbGJeLXtgx0Cmu
+         HAq91AiIjF+KhQBC7eoLmWuAq8Rh6T61KSE6M=
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20260707; t=1795853837; x=1796458637;
-        h=content-transfer-encoding:content-type:to:subject:message-id:date
-         :from:in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=JUPSemrMM7a7y8Sb6uEiclgKXCr6E/9IRNtd5rKs3yQ=;
-        b=kWyCWvgSUqXoWQun1pW2NbQKYFOFAPj2uD3GcikpXyQM6kIpna/DXqux01YbK/RI0a
-         lZdwoyE/zEnQBYPfzHijBpHYRNaZmfQf/pM3bLqcXBXx5l5BsWTETO4jUlKKlTYcPLuE
-         PnXcXzxzu+Lk6OHbb4MC0a9NAdvrcqdWtw6q7iXBWPT1Ya83ci1s7wn4O0vBNeevP//g
-         ROd8RX39LLPD/uT+r9cbf4Ta7u7bKMZJLVLHNTUYx+FpfyVFGETseAzMQq9uOObCM4H+
-         iuKuKkyiQZFXPhgASVVdK+NEuNgH7ykyEmw329/opftgWqf9BNQwVGNy3sB8CJ4s4SDH
-         Kraw==
-X-Gm-Message-State: APuU4Z8M1X6CqWDzwt2cKHDuUW7In/XOIujwjM+xo5XVqjVXnok0dITb
-	Z++X6JLE51bGAGRDnOBAqqrb8xHwOHA7O9aND3JKbF9uJokI+2TZ5gBxEPphuVudPVA5E+VpxfD
-	LjkbhwXEoCYYfrBNQXBATXVNpKTdlQNcojPqG
-X-Gm-Gg: AZFdTZfryRwg+zIY9zfLhI/SBEcKRUHI6mq91yenaZZzTK/1QToLdz/LPmSl/Sz1fSY
-	eTRQMyBmgoxISAY+mdWQPeHu6BiHU11aAIJmH1lgQN/Pva0mHpaLd0LeErQj6NEIeQROXNB5oL4
-	C7J95aL7DUGCoSpLFsfIKqyK9vclhwD/tP0Ita4Rb02i+/5p7kax+gwfg+bQjKftf3ChiIqaYyk
-	enFQ4dWfD/0yEFZ3mudsBABqwquydreJgcQuEuvewCS0ecE5zBca6maB5UK7Z5jj4TtlLKPIRFX
-	LTdNIhtpl+v3UXD8E1FFTRhl07H16mAKBAeKrfQPzgh+l4EOBFdXAd7xZGnrk3BpBw/Oi17ykdk
-	YMJju8Lsn2Uo0e41Ja0Via0cGnnI5NgX8xWbWE+Pns3QMX3k6TNOTM90D//C+foqiEkxvpw==
-X-Received: by 2002:aa7:df08:0:b0:6b7:1c:eae6 with SMTP id 4fb4d7f45d1cf-6ba37d63d91mr14541835a12.10.1795853837246;
- Sat, 28 Nov 2026 00:17:17 -0800 (PST)
+        d=1e100.net; s=20260707; t=1795861780; x=1796466580;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=Yfk+itu/miNKmAfINwyWiMzT+wuiKggJHRBWRDC8lIM=;
+        b=kq7h9wXVVhs3WxUhwWOsOJU2vwCUbfqWVOn0lFVH0BU5EmNjoo8VwDsWDDsB7d84c/
+         1waxnUiJz0rsVFbGPcuR3sKWJjTQtuJ27GKIHj8r5PBXOgs4XdhbmVGmVoaf5o3pWdUY
+         G/1mjwyyy+MbWuq2/GW1bPCYmfYjcB2AoBQI6PBeTRV2RqohcVyaWxNAFs4xdOupkowg
+         VDvNV6hQHCkgIP5+/QfplA9Zo/nmypkEeHHokMOGLcWxof8QE4P+xDJkXjouWhe8NWt0
+         8+1Za7/70VjPtNqPVHgQhBQ9CKUxt/v92WkUYoEwNBaCOUSTBYuhtNfVb6+s8KwCcruS
+         xFMg==
+X-Forwarded-Encrypted: i=1; AL+hErFYY8oaH/WuhvsUhsXQSKP6b3OqE377vneP/86kb1B//MkzPEcO6AWk7m3lidXbjhLW50QhcJetc0I=@vger.kernel.org
+X-Gm-Message-State: APuU4Z/SCwBkpg/tN20A096kyZZYYJH2NhmPZWf1zNla5O5R3i4uSeLX
+	Q7Z6ZVR0WkRjQpY1JDPZ1aqFhwyL624Tnql8QsHNHixsdoiQ+Wu6KGMS+fX9LNMG42I=
+X-Gm-Gg: AZFdTZemImG3d8lFRWNsVwgNXWlL3bau3XyQ3gZBBH+eIvocGhTjnFJn4RdPBDdGVM/
+	L49rZA5LMInFt8mVzWYw8YXFa+OAAKHVBW1LnFRIQoZvjTCkZgaz4nukW7g1V/7wzO3DYBuZq0i
+	8/aG+f987+FfOmOCyr4LyO86k+3lX2XN8KK5BvzNV0k4aT0urH5DzpoAcEyLDQ7nE7MAdrpxUtN
+	BPkKMf4TaV9Y4xA2v4ZKLI60BLi/9LIdpd77PwJjNc9/KJp6e2IdmF86EIpM/ucpLx9yaAZpYF8
+	gGpe6a45p6ZGUM/2aEWb1MDum0DOBJm8VZg6+CBA0lqITjozrzNX7ITLn91c+PBtCZ3nVoo08Fc
+	Y3zy9KJD0dAnzUW5We+jg0JdIwDPOtTVVEtNpvteCpN1jlX34QbmF78ZTG7EqPjm6WWOBS4JTJS
+	2M3PZZdxUkm5aNJtQrcNPMl9lp0tZr3yBRCDdTmpUR2cPFKu6961rx2J1sOQtsmTZC+UBmt8Cr3
+	h3Do/3o9iFg2S/MyNwK3PIyMEI5cHrQFlVXHWdyMYqRQs/Glc6acVWZ/IAmGpziM3lST+zQba3c
+	ZwoCvTa2As+BlDVVR7Vx1wLwR2jBE1xVnir+j9qfYMzM/B1LpspidzFiwjNVK8i+b0UjkDmYRTQ
+	wdD4GFjUoQWMQss1Gqd3nsXb4hBOtWYFvv94D4M4HfuAxyoFGnkiq1D+DYmO3sXsSxoAaCsR+ix
+	JNNZg+QM4Kmw==
+X-Received: by 2002:a05:7300:f68e:b0:369:f291:49da with SMTP id 5a478bee46e88-38571814b1dmr26833795eec.40.1795861779962;
+        Sat, 28 Nov 2026 02:29:39 -0800 (PST)
+Received: from iiitd-S2600STB.iiitd.edu.in ([103.25.231.160])
+        by smtp.gmail.com with ESMTPSA id 5a478bee46e88-386992b404bsm66558383eec.1.2026.11.28.02.29.36
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sat, 28 Nov 2026 02:29:39 -0800 (PST)
+From: Piyus Kedia <piyus@iiitd.ac.in>
+To: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org
+Cc: NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-kernel@vger.kernel.org,
+	Kapil Vaswani <kapil@presceralabs.ai>
+Subject: [BUG] SUNRPC: use-after-free in svc_one_sock_name() from svc_addsock()
+Date: Sat, 28 Nov 2026 15:59:33 +0530
+Message-Id: <20261128102933.733561-1-piyus@iiitd.ac.in>
+X-Mailer: git-send-email 2.34.1
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Post: <mailto:linux-nfs@vger.kernel.org>
@@ -101,54 +99,153 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 List-Owner: <mailto:linux-nfs+owner@vger.kernel.org>
 Precedence: list
 MIME-Version: 1.0
-References: <CA+1jF5pNXvipBz8Hh3LWn=H07JJGEJPVH_hWZYCE8GhB96kvgg@mail.gmail.com>
- <6bf939ae-c29e-475c-9261-0cddfc31805a@app.fastmail.com> <CA+1jF5roNowGUBSAS-v7uC2GzZTgrLzXD_h_HLVuKOsb1qMu_A@mail.gmail.com>
- <7c0d12cb-4483-4a67-a8a5-5ae75c9f1e32@app.fastmail.com>
-In-Reply-To: <7c0d12cb-4483-4a67-a8a5-5ae75c9f1e32@app.fastmail.com>
-From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
-Date: Sat, 28 Nov 2026 09:17:00 +0100
-X-Gm-Features: Aa3M54rZJ23nU7KCYdbCeoJhK_POV1NUY4yrnDhLsAFZ91y9DpI6PW3TQ6dlayQ
-Message-ID: <CA+1jF5rXRcOV+8iY4q0YpZY3cET3C=syTX8Jd1Sq8ygu3VTfdQ@mail.gmail.com>
-Subject: Re: Which Debian version has working krb5p support in NFS server?
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Tue, Nov 24, 2026 at 3:37=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
->
->
-> On Tue, Nov 24, 2026, at 3:04 AM, Aur=C3=A9lien Couderc wrote:
-> > On Mon, Nov 23, 2026 at 3:28=E2=80=AFPM Chuck Lever <cel@kernel.org> wr=
-ote:
-> >> On Mon, Nov 23, 2026, at 5:03 AM, Aur=C3=A9lien Couderc wrote:
-> >> > Which Debian version has working krb5p support in NFS server? We tri=
-ed
-> >> > to start a test campaign with krb5p, but that project stalled in
-> >> > September because neither Debian 12 or Debian 13 seem to have workin=
-g
-> >> > krb5p support.
-> >>
-> >> Have you reported this to Debian?
-> >
-> > Funny thing is, the Debian people suggested asking in
-> > linux-nfs@vger.kernel.org, to get a list of known "safe" kernel
-> > versions and "known" broken kernel versions.
->
-> Nothing you've said so far indicates whether the problem is in the
-> kernel or in user space (nfs-utils, libkrb5, or a configuration
-> issue).
->
-> krb5p is working on my Fedora systems just fine. Please pursue
-> this more aggressively with Debian to rule out a distribution-
-> specific problem. You can tell them that we aren't aware of
-> open kernel issues with krb5p.
+Hi,
 
-Let me rephrase the question into two questions:
-- Is there a list of kernel versions where krb5p works
-- Is there a list of specific kernel version ranges where krb5p is
-known to be broken?
+svc_addsock() publishes the transport it has just created and then reads
+it back:
 
-Aur=C3=A9lien
---=20
-Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
-Big Data/Data mining expert, chess enthusiast
+  net/sunrpc/svcsock.c
+	svsk->sk_xprt.xpt_cred = get_cred(cred);
+	svc_add_new_perm_xprt(serv, &svsk->sk_xprt);
+	return svc_one_sock_name(svsk, name_return, len);
+
+svc_add_new_perm_xprt() puts the transport on sv_permsocks and clears
+XPT_BUSY, so an nfsd thread can dequeue it immediately.  When the socket
+that was handed in is unbound, that thread deletes it right away and the
+svc_sock is freed before svc_add_new_perm_xprt() has even returned:
+
+  - an unbound AF_INET SOCK_STREAM descriptor passes every check in
+    svc_addsock() - sockfd_lookup(), the netns, family PF_INET/PF_INET6,
+    protocol TCP/UDP, and so->state > SS_UNCONNECTED;
+  - its sk_state is TCP_CLOSE, so svc_tcp_init() took the default: arm
+    of its switch and called svc_xprt_deferred_close().  XPT_CLOSE is
+    set before the transport is ever visible;
+  - the dequeuing nfsd thread therefore runs svc_delete_xprt(), which
+    drops the list reference - the only reference a new transport holds;
+  - the svc_xprt_put() at the end of svc_xprt_received() is then the
+    last one, and frees the svc_sock.
+
+svc_one_sock_name() then reads svsk->sk_sk out of the freed object.
+
+This is reachable by a single write() of a descriptor number to
+/proc/fs/nfsd/portlist, which __write_ports_addfd() passes straight to
+svc_addsock().  It needs CAP_SYS_ADMIN over the nfsd filesystem; the
+write returns success.
+
+WE HAVE REPRODUCED THIS ON AN UNMODIFIED MAINLINE KERNEL.  Not only on
+the kernel the fuzzer runs: we built 9437ee8b6cf6 (your net-7.4-rc5
+merge) straight from Linus' tree with KASAN, carrying no local patches
+of any kind, and reproduced it there.  The kernel says so itself - the
+baseline boot line below has no "-dirty" suffix, which it would have if
+the tree had been touched:
+
+  7.4.0-rc4-00571-g9437ee8b6cf6 #1 SMP PREEMPT_DYNAMIC
+
+The reproducer is a plain C program that brings nfsd up and then writes
+the descriptor of a fresh unbound AF_INET SOCK_STREAM socket to
+/proc/fs/nfsd/portlist:
+
+  BUG: KASAN: slab-use-after-free in svc_one_sock_name+0x23/0x150
+  Read of size 8 at addr ffff888026d502c0 by task repro/9512
+   svc_one_sock_name+0x23/0x150
+   svc_addsock+0x38d/0x3a0
+   write_ports+0x608/0x9e0
+   nfsctl_transaction_write+0xcc/0x110
+   vfs_write+0x218/0x810
+   ksys_write+0x123/0x200
+
+  Allocated by task 9512:
+   __kmalloc_noprof+0x36a/0x720
+   svc_setup_socket+0xf4/0xa30
+   svc_addsock+0x29b/0x3a0
+
+  Freed by task 9512:
+   kfree+0x1c9/0x660
+   svc_xprt_put+0x398/0x540
+   svc_addsock+0x37b/0x3a0
+
+The free is at svc_addsock+0x37b and the read at svc_addsock+0x38d -
+the same task, the same write(2), eighteen bytes of text apart.
+svc_xprt_received() and svc_add_new_perm_xprt() are inlined into
+svc_addsock() in this build, which is why they do not appear by name.
+
+WHETHER IT FIRES ON ANY GIVEN WRITE IS A RACE, and one that the writer
+usually wins: the nfsd thread has to dequeue the transport and get
+through svc_delete_xprt() within the few instructions between
+svc_xprt_enqueue() and the svc_xprt_put() that follows it.  So a single
+write() normally reads a still-live object and reports nothing.  Each
+write is an independent attempt, though, so the rate is what we measured
+- 500 attempts per boot, with kasan_multi_shot so that every occurrence
+is printed and not just the first:
+
+  7.4.0-rc4-00571-g9437ee8b6cf6 #1          483 accepted   29 reports
+  7.4.0-rc4-00571-g9437ee8b6cf6-dirty #2    490 accepted    0 reports
+
+Same tree, same config, same binary, same number of attempts; the only
+difference between #1 and #2 is the patch below, which is the whole of
+the "-dirty".  The patched kernel had MORE live attempts than the
+baseline and produced no KASAN report of any kind.
+
+(The reports carry a "W" taint from an unrelated set_cpu_sibling_map
+WARNING that this guest's CPU topology trips at boot, long before any
+of this.)
+
+For completeness, the first sighting, on the 7.3.1-based kernel the
+fuzzer runs:
+
+  BUG: KASAN: slab-use-after-free in svc_one_sock_name+0x38/0x180 net/sunrpc/svcsock.c:209
+  Read of size 8 at addr ffff8880259752c0 by task syz-executor/10445
+   svc_one_sock_name+0x38/0x180 net/sunrpc/svcsock.c:209
+   svc_addsock+0x34e/0x360 net/sunrpc/svcsock.c:1558
+   __write_ports_addfd fs/nfsd/nfsctl.c:749 [inline]
+   __write_ports fs/nfsd/nfsctl.c:812 [inline]
+   write_ports+0x596/0x960 fs/nfsd/nfsctl.c:868
+   nfsctl_transaction_write+0xcc/0x110 fs/nfsd/nfsctl.c:114
+   vfs_write+0x218/0x810 fs/read_write.c:685
+
+  Allocated by task 10445:
+   svc_setup_socket+0x76/0x320 net/sunrpc/svcsock.c:1454
+   svc_addsock+0x27d/0x360 net/sunrpc/svcsock.c:1547
+
+  Freed by task 10445:
+   kfree+0x1c4/0x660 mm/slub.c:6808
+   svc_sock_free+0xb1/0xd0 net/sunrpc/svcsock.c:1696
+   svc_xprt_free+0x155/0x180 net/sunrpc/svc_xprt.c:181
+   svc_xprt_put+0x2f/0x50 net/sunrpc/svc_xprt.c:187
+   svc_xprt_received+0xce/0xf0 net/sunrpc/svc_xprt.c:250
+   svc_add_new_perm_xprt+0xc1/0xf0 net/sunrpc/svc_xprt.c:260
+   svc_addsock+0x33c/0x360 net/sunrpc/svcsock.c:1557
+
+There too the allocation, the free and the read are all in the same task
+and the same write() syscall, with svc_xprt_received() and
+svc_add_new_perm_xprt() still visible by name in the free stack.
+
+ed2849d3ecfa ("sunrpc: prevent use-after-free on clearing XPT_BUSY")
+already stated the rule:
+
+	So when a creator clears XPT_BUSY it is dropping its only
+	reference and so must not touch the xprt again.
+
+and fixed svc_create_xprt() by reading the port it wanted to return
+before publishing.  It only touched svc_xprt.c, so svc_addsock() kept
+its dereference-after-publication.  06f90cf104fc ("SUNRPC: trace an
+accepted transport before publishing it") fixed the same class in
+svc_handle_xprt() three months ago, and Chuck's note on that one -
+"trace before publication instead of taking an extra reference" - is
+the shape of the patch that follows: format the name while the calling
+thread still owns the transport exclusively.
+
+A patch is attached separately.  We checked mainline as of
+9437ee8b6cf6 (net-7.4-rc5 merge); if a fix is already queued in
+nfsd-next then please ignore this.
+
+We have a reproducer - a short C program, no syzkaller needed - and can
+send it on request.  We have left it out of this mail.
+
+We found this with a syzkaller-based fuzzing harness driven by an AI
+tool.
+
+Thanks,
+Piyus
